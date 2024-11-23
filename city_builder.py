@@ -34,7 +34,7 @@ BUILDING_TYPES = {
 
 # Building costs
 BUILDING_COSTS = {
-    "Castle": 50,
+    "Castle": 75,
     "House": 20,
     "Market": 30,
     "Barracks": 40,
@@ -78,9 +78,12 @@ def update_preview_rect(mouse_pos, current_building_type):
     size = GRID_SIZE * 2 if current_building_type == "Castle" else GRID_SIZE
     return pygame.Rect(grid_x, grid_y, size, size)
 
+def check_collision(preview_rect, buildings):
+    return any(building.rect.colliderect(preview_rect) for building in buildings)
+
 # Initialize game state
 gold = 150
-gold_increase_rate = 0.25
+gold_increase_rate = 5
 buildings = []
 current_building_type = "Castle"
 font = pygame.font.Font(None, 20)
@@ -93,7 +96,7 @@ message_duration = 5000  # 5 seconds
 
 # Main game loop
 running = True
-preview_rect = pygame.Rect(0, 0, 0, 0)  # Initialize as an empty Rect
+preview_rect = None
 while running:
     dt = clock.tick(30)  # Delta time (time since last frame)
     gold += gold_increase_rate * (dt / 1000)  # Adjust gold increase based on time
@@ -105,6 +108,7 @@ while running:
     # Handle events
     mouse_pos = pygame.mouse.get_pos()
     preview_rect = update_preview_rect(mouse_pos, current_building_type)
+    collision = check_collision(preview_rect, buildings) if preview_rect else False
     
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -126,9 +130,6 @@ while running:
             grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
             
             new_building = Building(grid_x, grid_y, current_building_type)
-            
-            # Check for collisions
-            collision = any(building.rect.colliderect(new_building.rect) for building in buildings)
             castle_exists = any(building.type == "Castle" for building in buildings)
 
             # Building placement logic
