@@ -91,6 +91,7 @@ message_duration = 5000  # 3 seconds
 
 # Main game loop
 running = True
+collision = False  # Initialize collision to False
 while running:
     dt = clock.tick(30)  # Delta time (time since last frame)
     gold += gold_increase_rate # Increase gold over time
