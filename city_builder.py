@@ -95,8 +95,13 @@ def check_collision(preview_rect, buildings):
 
 # Initialize game state
 gold = 150
-resources = {"wood": 100, "stone": 100, "food":0}
-gold_increase_rate = 5
+resources = {"wood": 100, "stone": 100, "food": 0}
+resource_increase_rates = {
+    "gold": 5,
+    "wood": 2,
+    "stone": 1,
+    "food": 3,
+}
 buildings = []
 current_building_type = "Castle"
 font = pygame.font.Font(None, 20)
@@ -112,7 +117,12 @@ running = True
 preview_rect = None
 while running:
     dt = clock.tick(30)  # Delta time (time since last frame)
-    gold += gold_increase_rate * (dt / 1000)  # Adjust gold increase based on time
+
+    for resource, rate in resource_increase_rates.items():
+        if resource == "gold":
+            gold += rate * (dt / 1000)
+        else:
+            resources[resource] += rate * (dt / 1000)
 
     # Decrement building cooldown
     if building_cooldown > 0:
