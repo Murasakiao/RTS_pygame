@@ -121,6 +121,18 @@ building_cooldown = 0
 BUILDING_COOLDOWN_TIME = 1000  # 1 second cooldown
 message_duration = 5000  # 5 seconds
 
+# Define building map outside the loop using pygame key constants
+building_map = {
+    K_1: "Castle",
+    K_2: "House",
+    K_3: "Market",
+    K_4: "Barracks",
+    K_5: "Stable",
+    K_6: "Farm",
+    K_7: "LumberMill",
+    K_8: "Quarry",
+}
+
 # Main game loop
 running = True
 preview_rect = None
@@ -141,14 +153,14 @@ while running:
     mouse_pos = pygame.mouse.get_pos()
     preview_rect = update_preview_rect(mouse_pos, current_building_type)
     collision = check_collision(preview_rect, buildings) if preview_rect else False
-    
+
     for event in pygame.event.get():
         if event.type == QUIT:
             running = False
-            
+
         elif event.type == KEYDOWN:
-            if event.key in building_map:  # Use the global building_map
-                current_building_type = building_map.get(event.key, current_building_type)
+            if event.key in building_map:
+                current_building_type = building_map[event.key]  # Directly access the value
 
         elif event.type == MOUSEBUTTONDOWN and event.button == 1:  # Left click
             grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
