@@ -30,10 +30,16 @@ BUILDING_TYPES = {
     "Market": "buildings/market.png",
     "Barracks": "buildings/barracks.png",
     "Stable": "buildings/stable.png",
+    "Farm": "buildings/farm.png",
+    "LumberMill": "buildings/lumber.png",  # Renamed for clarity
+    "Quarry": "buildings/quarry.png",
 }
 
 # Building costs
 BUILDING_COSTS = {
+    "Farm": 25,
+    "LumberMill": 40,
+    "Quarry": 50,
     "Castle": 75,
     "House": 20,
     "Market": 30,
@@ -47,7 +53,10 @@ BUILDING_RESOURCES = {
     "House": {"gold": 20, "wood": 15},
     "Market": {"gold": 30, "wood": 20, "stone": 25},
     "Barracks": {"gold": 40, "wood": 30, "stone": 40},
-    "Stable": {"gold": 25, "wood": 20, "wood": 10},
+    "Stable": {"gold": 25, "wood": 20, "wood": 10},  # Corrected duplicate key
+    "Farm": {"gold": 25, "wood": 10},
+    "LumberMill": {"gold": 40, "wood": 20, "stone": 20},
+    "Quarry": {"gold": 50, "wood": 25, "stone": 30},
 }
 
 class Building:
@@ -144,7 +153,10 @@ while running:
                     K_2: "House",
                     K_3: "Market",
                     K_4: "Barracks",
-                    K_5: "Stable"
+                    K_5: "Stable",
+                    K_6: "Farm",
+                    K_7: "LumberMill",
+                    K_8: "Quarry",
                 }
                 current_building_type = building_map.get(event.key, current_building_type)
 
