@@ -139,11 +139,26 @@ preview_rect = None
 while running:
     dt = clock.tick(30)  # Delta time (time since last frame)
 
+    # Calculate resource increases based on building counts
+    market_count = buildings.count(building for building in buildings if building.type == "Market")
+    farm_count = buildings.count(building for building in buildings if building.type == "Farm")
+    lumber_mill_count = buildings.count(building for building in buildings if building.type == "LumberMill")
+    quarry_count = buildings.count(building for building in buildings if building.type == "Quarry")
+
+    resource_multipliers = {
+        "gold": 1 + (market_count * 0.1),  # Each market increases gold rate by 10%
+        "wood": 1 + (lumber_mill_count * 0.15), # Each lumber mill increases wood rate by 15%
+        "stone": 1 + (quarry_count * 0.12), # Each quarry increases stone rate by 12%
+        "food": 1 + (farm_count * 0.2),  # Each farm increases food rate by 20%
+    }
+
     for resource, rate in resource_increase_rates.items():
+        multiplier = resource_multipliers.get(resource, 1)
+        increase = rate * multiplier * (dt / 1000)
         if resource == "gold":
-            gold += rate * (dt / 1000)
+            gold += increase
         else:
-            resources[resource] += rate * (dt / 1000)
+            resources[resource] += increase
 
     # Decrement building cooldown
     if building_cooldown > 0:
