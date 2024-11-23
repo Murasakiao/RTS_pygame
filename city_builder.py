@@ -147,17 +147,7 @@ while running:
             running = False
             
         elif event.type == KEYDOWN:
-            if event.key in [K_1, K_2, K_3, K_4, K_5]:
-                building_map = {
-                    K_1: "Castle",
-                    K_2: "House",
-                    K_3: "Market",
-                    K_4: "Barracks",
-                    K_5: "Stable",
-                    K_6: "Farm",
-                    K_7: "LumberMill",
-                    K_8: "Quarry",
-                }
+            if event.key in building_map:  # Use the global building_map
                 current_building_type = building_map.get(event.key, current_building_type)
 
         elif event.type == MOUSEBUTTONDOWN and event.button == 1:  # Left click
