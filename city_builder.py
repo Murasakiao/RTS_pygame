@@ -41,6 +41,15 @@ BUILDING_COSTS = {
     "Stable": 25,
 }
 
+# Resource requirements
+BUILDING_RESOURCES = {
+    "Castle": {"gold": 75, "wood": 50, "stone": 100},
+    "House": {"gold": 20, "wood": 15},
+    "Market": {"gold": 30, "wood": 20, "stone": 25},
+    "Barracks": {"gold": 40, "wood": 30, "stone": 40},
+    "Stable": {"gold": 25, "wood": 20, "wood": 10},
+}
+
 class Building:
     def __init__(self, x, y, building_type):
         self.x = x
@@ -79,10 +88,14 @@ def update_preview_rect(mouse_pos, current_building_type):
     return pygame.Rect(grid_x, grid_y, size, size)
 
 def check_collision(preview_rect, buildings):
-    return any(building.rect.colliderect(preview_rect) for building in buildings)
+    for building in buildings:
+        if building.rect.colliderect(preview_rect):
+            return True
+    return False
 
 # Initialize game state
 gold = 150
+resources = {"wood": 100, "stone": 50, "food":0}
 gold_increase_rate = 5
 buildings = []
 current_building_type = "Castle"
@@ -132,23 +145,30 @@ while running:
             new_building = Building(grid_x, grid_y, current_building_type)
             castle_exists = any(building.type == "Castle" for building in buildings)
 
+            cost = BUILDING_RESOURCES.get(current_building_type, BUILDING_COSTS.get(current_building_type))
+            affordable = all(resources.get(resource, gold) >= cost.get(resource, cost) for resource in cost)
+
             # Building placement logic
             if current_building_type == "Castle" and castle_exists:
                 game_messages, message_start_times = add_game_message(
                     "Only one castle can be built.", game_messages, message_start_times)
-            elif not collision and gold >= BUILDING_COSTS[current_building_type] and building_cooldown <= 0:
+            elif not collision and affordable and building_cooldown <= 0:
                 buildings.append(new_building)
-                gold -= BUILDING_COSTS[current_building_type]
+                for resource, amount in cost.items():
+                    if resource == "gold":
+                        gold -= amount
+                    else:
+                        resources[resource] -= amount
                 building_cooldown = BUILDING_COOLDOWN_TIME
                 game_messages, message_start_times = add_game_message(
-                    f"Built {current_building_type} for {BUILDING_COSTS[current_building_type]} gold.",
+                    f"Built {current_building_type} for {cost}.",
                     game_messages, message_start_times)
             elif collision:
                 game_messages, message_start_times = add_game_message(
                     "Cannot build here.", game_messages, message_start_times)
-            elif gold < BUILDING_COSTS[current_building_type]:
+            elif not affordable:
                 game_messages, message_start_times = add_game_message(
-                    f"Not enough gold to build {current_building_type}.",
+                    f"Not enough resources to build {current_building_type}.",
                     game_messages, message_start_times)
 
         elif event.type == MOUSEBUTTONUP and event.button == 1:
@@ -162,7 +182,12 @@ while running:
     draw_grid()
 
     # Draw UI elements
-    gold_text = font.render(f"Gold: {int(gold)}", True, BLACK)
+    resource_text = f"Gold: {int(gold)}"
+    for resource, amount in resources.items():
+        resource_text += f", {resource.capitalize()}: {int(amount)}"
+
+
+    gold_text = font.render(resource_text, True, BLACK)
     screen.blit(gold_text, (10, 10))
 
     # Draw buildings
@@ -179,8 +204,8 @@ while running:
         screen.blit(message_text, (10, 30 + i * 20))
 
     # Draw preview
-    if building_cooldown <= 0 and preview_rect:
-        color = GREEN if not collision and gold >= BUILDING_COSTS[current_building_type] else RED
+    if building_cooldown <= 0 and preview_rect and gold >= BUILDING_COSTS[current_building_type]:
+        color = GREEN if not collision and all(resources.get(resource, gold) >= BUILDING_RESOURCES.get(current_building_type, BUILDING_COSTS.get(current_building_type)).get(resource, gold or 0) for resource in BUILDING_RESOURCES.get(current_building_type, BUILDING_COSTS.get(current_building_type))) else RED
         pygame.draw.rect(screen, color, preview_rect, 2)
 
     # Draw selected building info
