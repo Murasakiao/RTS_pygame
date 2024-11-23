@@ -138,7 +138,48 @@ selected_building = None
 building_cooldown = 0
 BUILDING_COOLDOWN_TIME = 1000  # 1 second cooldown
 message_duration = 5000  # 5 seconds
-units = []  # List to store created units
+
+class Unit:
+    def __init__(self, unit_type, x, y):
+        self.type = unit_type
+        self.x = x
+        self.y = y
+        try:
+            self.image = pygame.transform.scale(pygame.image.load(UNITS[unit_type]["image"]), (GRID_SIZE, GRID_SIZE))
+        except pygame.error as e:
+            print(f"Error loading image for {unit_type}: {e}")
+            self.image = pygame.Surface((GRID_SIZE, GRID_SIZE))  # Fallback surface
+            self.image.fill(RED) # Make it obvious there's a problem
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.moving = False
+        self.destination = None
+
+    def update(self, dt):
+        if self.moving:
+            dx = self.destination[0] - self.x
+            dy = self.destination[1] - self.y
+            distance = (dx**2 + dy**2)**0.5
+
+            if distance > 0:
+                speed = 2  # Adjust for movement speed
+                move_x = dx * speed * dt / 1000
+                move_y = dy * speed * dt / 1000
+
+                self.x += move_x
+                self.y += move_y
+                self.rect.topleft = (self.x, self.y)
+
+            if abs(dx) < 1 and abs(dy) < 1:
+                self.moving = False
+                self.x = self.destination[0]
+                self.y = self.destination[1]
+                self.rect.topleft = (self.x, self.y)
+
+
+    def draw(self):
+        screen.blit(self.image, self.rect)
+
+units = [] # List to store created Unit objects
 
 # Define building map outside the loop using pygame key constants
 building_map = {
@@ -236,7 +277,7 @@ while running:
                 affordable = all(resources.get(resource, gold) >= unit_cost.get(resource, unit_cost) for resource in unit_cost)
 
                 if affordable:
-                    units.append({"type": unit_type, "x": selected_building.x, "y": selected_building.y})
+                    units.append(Unit(unit_type, selected_building.x, selected_building.y))
                     for resource, amount in unit_cost.items():
                         if resource == "gold":
                             gold -= amount
@@ -252,13 +293,30 @@ while running:
                         f"Not enough resources to train {unit_type}.",
                         game_messages, message_start_times)
 
+    selected_unit = None
+    for unit in units:
+        if unit.rect.collidepoint(mouse_pos):
+            selected_unit = unit
+            break
+
+
+    if event.type == MOUSEBUTTONDOWN and event.button == 1:
+        if selected_unit:
+            selected_unit.destination = ((mouse_pos[0] // GRID_SIZE) * GRID_SIZE, (mouse_pos[1] // GRID_SIZE) * GRID_SIZE)
+            selected_unit.moving = True
+            selected_unit = None  # Deselect after setting destination
+        else:
             selected_building = next(
-                (building for building in buildings if building.rect.collidepoint(mouse_pos)),
                 None
             )
 
+
     # Draw game state
     screen.fill(WHITE)
+
+
+    for unit in units:
+        unit.update(dt)
     draw_grid()
 
     # Draw UI elements
@@ -294,14 +352,8 @@ while running:
         info_text = font.render(f"{selected_building.type}", True, BLACK)
         screen.blit(info_text, (selected_building.x, selected_building.y - 20))
 
-
     for unit in units:
-        unit_type = unit["type"]
-        try:
-            image = pygame.transform.scale(pygame.image.load(UNITS[unit_type]["image"]), (GRID_SIZE, GRID_SIZE))
-            screen.blit(image, (unit["x"], unit["y"]))
-        except pygame.error as e:
-            print(f"Error loading image for {unit_type}: {e}")
+        unit.draw()
 
 
     pygame.display.flip()
