@@ -95,7 +95,7 @@ def check_collision(preview_rect, buildings):
 
 # Initialize game state
 gold = 150
-resources = {"wood": 100, "stone": 50, "food":0}
+resources = {"wood": 100, "stone": 100, "food":0}
 gold_increase_rate = 5
 buildings = []
 current_building_type = "Castle"
