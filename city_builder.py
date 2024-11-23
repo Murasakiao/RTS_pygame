@@ -93,7 +93,7 @@ message_duration = 5000  # 5 seconds
 
 # Main game loop
 running = True
-preview_rect = None
+preview_rect = pygame.Rect(0, 0, 0, 0)  # Initialize as an empty Rect
 while running:
     dt = clock.tick(30)  # Delta time (time since last frame)
     gold += gold_increase_rate * (dt / 1000)  # Adjust gold increase based on time
