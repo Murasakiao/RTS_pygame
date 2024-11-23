@@ -47,6 +47,24 @@ BUILDING_COSTS = {
     "Stable": 25,
 }
 
+# Unit types that can be trained in certain buildings
+UNIT_TYPES = {
+    "Barracks": "Swordsman",
+    "Stable": "Knight",
+}
+
+# Unit data (images, costs, etc.)
+UNITS = {
+    "Swordsman": {
+        "image": "characters/swordsman.png",
+        "cost": {"gold": 25, "food": 10},
+    },
+    "Knight": {
+        "image": "characters/knight.png",
+        "cost": {"gold": 40, "food": 20},
+    },
+}
+
 # Resource requirements
 BUILDING_RESOURCES = {
     "Castle": {"gold": 75, "wood": 50, "stone": 100},
@@ -120,6 +138,7 @@ selected_building = None
 building_cooldown = 0
 BUILDING_COOLDOWN_TIME = 1000  # 1 second cooldown
 message_duration = 5000  # 5 seconds
+units = []  # List to store created units
 
 # Define building map outside the loop using pygame key constants
 building_map = {
@@ -211,6 +230,28 @@ while running:
                     game_messages, message_start_times)
 
         elif event.type == MOUSEBUTTONUP and event.button == 1:
+            if selected_building and selected_building.type in UNIT_TYPES and building_cooldown <=0:
+                unit_type = UNIT_TYPES[selected_building.type]
+                unit_cost = UNITS[unit_type]["cost"]
+                affordable = all(resources.get(resource, gold) >= unit_cost.get(resource, unit_cost) for resource in unit_cost)
+
+                if affordable:
+                    units.append({"type": unit_type, "x": selected_building.x, "y": selected_building.y})
+                    for resource, amount in unit_cost.items():
+                        if resource == "gold":
+                            gold -= amount
+                        else:
+                            resources[resource] -= amount
+                    building_cooldown = BUILDING_COOLDOWN_TIME
+                    game_messages, message_start_times = add_game_message(
+                        f"Trained {unit_type} for {unit_cost}.",
+                        game_messages, message_start_times)
+
+                else:
+                    game_messages, message_start_times = add_game_message(
+                        f"Not enough resources to train {unit_type}.",
+                        game_messages, message_start_times)
+
             selected_building = next(
                 (building for building in buildings if building.rect.collidepoint(mouse_pos)),
                 None
@@ -222,6 +263,7 @@ while running:
 
     # Draw UI elements
     resource_text = f"Gold: {int(gold)}"
+
     for resource, amount in resources.items():
         resource_text += f", {resource.capitalize()}: {int(amount)}"
 
@@ -251,6 +293,16 @@ while running:
     if selected_building:
         info_text = font.render(f"{selected_building.type}", True, BLACK)
         screen.blit(info_text, (selected_building.x, selected_building.y - 20))
+
+
+    for unit in units:
+        unit_type = unit["type"]
+        try:
+            image = pygame.transform.scale(pygame.image.load(UNITS[unit_type]["image"]), (GRID_SIZE, GRID_SIZE))
+            screen.blit(image, (unit["x"], unit["y"]))
+        except pygame.error as e:
+            print(f"Error loading image for {unit_type}: {e}")
+
 
     pygame.display.flip()
 
