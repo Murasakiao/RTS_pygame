@@ -140,25 +140,25 @@ while running:
     dt = clock.tick(30)  # Delta time (time since last frame)
 
     # Calculate resource increases based on building counts
-    market_count = buildings.count(building for building in buildings if building.type == "Market")
-    farm_count = buildings.count(building for building in buildings if building.type == "Farm")
-    lumber_mill_count = buildings.count(building for building in buildings if building.type == "LumberMill")
-    quarry_count = buildings.count(building for building in buildings if building.type == "Quarry")
+    building_counts = {}
+    for building in buildings:
+        building_counts[building.type] = building_counts.get(building.type, 0) + 1
 
     resource_multipliers = {
-        "gold": 1 + (market_count * 0.1),  # Each market increases gold rate by 10%
-        "wood": 1 + (lumber_mill_count * 0.15), # Each lumber mill increases wood rate by 15%
-        "stone": 1 + (quarry_count * 0.12), # Each quarry increases stone rate by 12%
-        "food": 1 + (farm_count * 0.2),  # Each farm increases food rate by 20%
+        "gold": 1 + (building_counts.get("Market", 0) * 0.1),  # Each market increases gold rate by 10%
+        "wood": 1 + (building_counts.get("LumberMill", 0) * 0.15),  # Each lumber mill increases wood rate by 15%
+        "stone": 1 + (building_counts.get("Quarry", 0) * 0.12),  # Each quarry increases stone rate by 12%
+        "food": 1 + (building_counts.get("Farm", 0) * 0.2),  # Each farm increases food rate by 20%
     }
 
     for resource, rate in resource_increase_rates.items():
         multiplier = resource_multipliers.get(resource, 1)
-        increase = rate * multiplier * (dt / 1000)
+        increase = rate * multiplier * (dt / 1000)  # Correctly apply delta time
         if resource == "gold":
             gold += increase
         else:
             resources[resource] += increase
+
 
     # Decrement building cooldown
     if building_cooldown > 0:
@@ -184,7 +184,7 @@ while running:
             new_building = Building(grid_x, grid_y, current_building_type)
             castle_exists = any(building.type == "Castle" for building in buildings)
 
-            cost = BUILDING_RESOURCES.get(current_building_type, BUILDING_COSTS.get(current_building_type))
+            cost = BUILDING_RESOURCES.get(current_building_type) or BUILDING_COSTS.get(current_building_type)
             affordable = all(resources.get(resource, gold) >= cost.get(resource, cost) for resource in cost)
 
             # Building placement logic
