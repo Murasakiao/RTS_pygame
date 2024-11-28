@@ -57,11 +57,11 @@ UNIT_TYPES = {
 UNITS = {
     "Swordsman": {
         "image": "characters/swordsman.png",
-        "cost": {"gold": 25, "food": 10, "people": 1},
+        "cost": {"gold": 50, "food": 30, "people": 1},
     },
     "Knight": {
         "image": "characters/bowman.png",
-        "cost": {"gold": 40, "food": 20, "people": 1},
+        "cost": {"gold": 60, "food": 40, "people": 1},
     },
 }
 
@@ -73,8 +73,8 @@ BUILDING_RESOURCES = {
     "Barracks": {"gold": 40, "wood": 20, "stone": 15},
     "Stable": {"gold": 35, "wood": 20, "stone": 15},
     "Farm": {"gold": 25, "wood": 10},
-    "LumberMill": {"gold": 40, "wood": 20, "stone": 20},
-    "Quarry": {"gold": 20, "wood": 15, "stone": 10},
+    "LumberMill": {"gold": 40, "wood": 30, "stone": 10},
+    "Quarry": {"gold": 20, "wood": 30, "stone": 10},
 }
 
 class Building:
@@ -234,7 +234,7 @@ resource_increase_rates = {
     "gold": 5,
     "wood": 2,
     "stone": 1,
-    "food": 3,
+    "food": 1,
     "people": 0.05,
 }
 buildings = []
@@ -320,11 +320,12 @@ while running:
 
                 if clicked_unit:
                     selected_unit = clicked_unit
-                    game_messages, message_start_times = add_game_message(
-                        f"Selected {clicked_unit.type}",
-                        game_messages,
-                        message_start_times
-                    )
+                    if f"Selected {clicked_unit.type}" not in [msg[0] for msg in game_messages]:
+                        game_messages, message_start_times = add_game_message(
+                            f"Selected {clicked_unit.type}",
+                            game_messages,
+                            message_start_times
+                        )
                     continue  # Skip building placement if we clicked a unit
 
                 # If no unit was clicked, handle building placement
