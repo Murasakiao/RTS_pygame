@@ -3,6 +3,7 @@ import sys
 from pygame.locals import *
 import noise
 import random
+import math
 
 # Initialize Pygame
 pygame.init()
@@ -27,14 +28,14 @@ clock = pygame.time.Clock()
 
 # Building types
 BUILDING_TYPES = {
-    "Castle": "../buildings/castle.png",
-    "House": "../buildings/house.png",
-    "Market": "../buildings/market.png",
-    "Barracks": "../buildings/barracks.png",
-    "Stable": "../buildings/stable.png",
-    "Farm": "../buildings/farm.png",
-    "LumberMill": "../buildings/lumber.png",
-    "Quarry": "../buildings/quarry.png",
+    "Castle": "buildings/castle.png",
+    "House": "buildings/house.png",
+    "Market": "buildings/market.png",
+    "Barracks": "buildings/barracks.png",
+    "Stable": "buildings/stable.png",
+    "Farm": "buildings/farm.png",
+    "LumberMill": "buildings/lumber.png",
+    "Quarry": "buildings/quarry.png",
 }
 
 # Building costs
@@ -58,12 +59,16 @@ UNIT_TYPES = {
 # Unit data (images, costs, etc.)
 UNITS = {
     "Swordsman": {
-        "image": "../characters/swordsman.png",
+        "image": "characters/swordsman.png",
         "cost": {"gold": 50, "food": 30, "people": 1},
+        "hp": 10,
+        "atk": 1,
     },
     "Knight": {
-        "image": "../characters/bowman.png",
+        "image": "characters/bowman.png",
         "cost": {"gold": 60, "food": 40, "people": 1},
+        "hp": 8,
+        "atk": 2,
     },
 }
 
@@ -115,33 +120,48 @@ class Unit:
         self.rect = self.image.get_rect(topleft=(x, y))
         self.moving = False
         self.destination = None
-        self.speed = 100  # pixels per second
+        self.speed = 75  # pixels per second
+        self.hp = UNITS[unit_type]["hp"]
+        self.atk = UNITS[unit_type]["atk"]
 
     def update(self, dt):
         if self.moving and self.destination:
             dx = self.destination[0] - self.x
             dy = self.destination[1] - self.y
-            
-            # Prioritize horizontal movement
-            if abs(dx) > abs(dy):
+
+            epsilon = 1e-6  # Small value to prevent overshooting due to floating-point precision
+
+            movement_distance = self.speed * (dt / 1000)
+
+            # Move horizontally
+            if abs(dx) > epsilon:
                 if dx > 0:
-                    self.x += self.speed * (dt / 1000)
+                    self.x += movement_distance
+                    if self.x >= self.destination[0]:
+                        self.x = self.destination[0]
                 else:
-                    self.x -= self.speed * (dt / 1000)
-            # Prioritize vertical movement
-            elif abs(dy) > abs(dx):
+                    self.x -= movement_distance
+                    if self.x <= self.destination[0]:
+                        self.x = self.destination[0]
+
+            # Move vertically
+            if abs(dy) > epsilon:
                 if dy > 0:
-                    self.y += self.speed * (dt / 1000)
+                    self.y += movement_distance
+                    if self.y >= self.destination[1]:
+                        self.y = self.destination[1]
                 else:
-                    self.y -= self.speed * (dt / 1000)
-            
-            # Check if we've reached the destination
-            if abs(dx) < self.speed * (dt / 1000) and abs(dy) < self.speed * (dt / 1000):
-                self.x = self.destination[0]
-                self.y = self.destination[1]
+                    self.y -= movement_distance
+                    if self.y <= self.destination[1]:
+                        self.y = self.destination[1]
+
+            # Check if arrived at destination
+            if (abs(self.x - self.destination[0]) < epsilon and
+                abs(self.y - self.destination[1]) < epsilon):
                 self.moving = False
                 self.destination = None
-            
+
+            # Update the rectangle's position
             self.rect.topleft = (self.x, self.y)
 
     def draw(self):
@@ -157,7 +177,7 @@ class TerrainGenerator:
         self.grass_tiles = []
         for i in range(1, 7):  # Assuming tile_1.png to tile_6.png exist
             try:
-                tile = pygame.image.load(f'../buildings/tile_{i}.png')
+                tile = pygame.image.load(f'buildings/tile_{i}.png')
                 tile = pygame.transform.scale(tile, (grid_size, grid_size))
                 self.grass_tiles.append(tile)
             except Exception as e:
@@ -295,7 +315,7 @@ def check_collision(preview_rect, buildings):
 gold = 150
 resources = {"wood": 100, "stone": 100, "food": 100, "people": 3}
 resource_increase_rates = {
-    "gold": 5,
+    "gold": 3,
     "wood": 2,
     "stone": 1,
     "food": 1,
