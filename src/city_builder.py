@@ -1,6 +1,8 @@
 import pygame
 import sys
 from pygame.locals import *
+import noise
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -25,14 +27,14 @@ clock = pygame.time.Clock()
 
 # Building types
 BUILDING_TYPES = {
-    "Castle": "buildings/castle.png",
-    "House": "buildings/house.png",
-    "Market": "buildings/market.png",
-    "Barracks": "buildings/barracks.png",
-    "Stable": "buildings/stable.png",
-    "Farm": "buildings/farm.png",
-    "LumberMill": "buildings/lumber.png",
-    "Quarry": "buildings/quarry.png",
+    "Castle": "../buildings/castle.png",
+    "House": "../buildings/house.png",
+    "Market": "../buildings/market.png",
+    "Barracks": "../buildings/barracks.png",
+    "Stable": "../buildings/stable.png",
+    "Farm": "../buildings/farm.png",
+    "LumberMill": "../buildings/lumber.png",
+    "Quarry": "../buildings/quarry.png",
 }
 
 # Building costs
@@ -56,11 +58,11 @@ UNIT_TYPES = {
 # Unit data (images, costs, etc.)
 UNITS = {
     "Swordsman": {
-        "image": "characters/swordsman.png",
+        "image": "../characters/swordsman.png",
         "cost": {"gold": 50, "food": 30, "people": 1},
     },
     "Knight": {
-        "image": "characters/bowman.png",
+        "image": "../characters/bowman.png",
         "cost": {"gold": 60, "food": 40, "people": 1},
     },
 }
@@ -145,6 +147,65 @@ class Unit:
     def draw(self):
         screen.blit(self.image, self.rect)
 
+class TerrainGenerator:
+    def __init__(self, screen_width, screen_height, grid_size):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        self.grid_size = grid_size
+        
+        # Load grass tiles
+        self.grass_tiles = []
+        for i in range(1, 7):  # Assuming tile_1.png to tile_6.png exist
+            try:
+                tile = pygame.image.load(f'../buildings/tile_{i}.png')
+                tile = pygame.transform.scale(tile, (grid_size, grid_size))
+                self.grass_tiles.append(tile)
+            except Exception as e:
+                print(f"Error loading tile_{i}.png: {e}")
+        
+        # Check if tiles were loaded
+        if not self.grass_tiles:
+            self.grass_tiles.append(pygame.Surface((grid_size, grid_size)))
+            self.grass_tiles[0].fill((0, 255, 0))  # Fallback green color
+        
+        # Noise parameters
+        self.scale = 100.0
+        self.octaves = 6
+        self.persistence = 0.5
+        self.lacunarity = 2.0
+
+    def generate_terrain(self):
+        """Generate terrain using Perlin noise"""
+        terrain = []
+        for y in range(0, self.screen_height, self.grid_size):
+            row = []
+            for x in range(0, self.screen_width, self.grid_size):
+                # Generate Perlin noise value
+                noise_value = noise.pnoise2(x / self.scale,
+                                            y / self.scale,
+                                            octaves=self.octaves,
+                                            persistence=self.persistence,
+                                            lacunarity=self.lacunarity,
+                                            repeatx=self.screen_width,
+                                            repeaty=self.screen_height,
+                                            base=0)
+                
+                # Normalize noise value to 0-1 range
+                normalized_noise = (noise_value + 1) / 2
+                
+                # Select tile based on noise value
+                tile_index = int(normalized_noise * (len(self.grass_tiles) - 1))
+                row.append(tile_index)
+            terrain.append(row)
+        return terrain
+    
+    def draw_terrain(self, screen, terrain):
+        """Draw the generated terrain on the given screen"""
+        for y, row in enumerate(terrain):
+            for x, tile_index in enumerate(row):
+                tile = self.grass_tiles[tile_index]
+                screen.blit(tile, (x * self.grid_size, y * self.grid_size))
+
 def draw_grid(color=BLACK, line_width=1):
     for x in range(0, SCREEN_WIDTH, GRID_SIZE):
         for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
@@ -162,17 +223,20 @@ def update_preview_rect(mouse_pos, current_building_type):
     size = GRID_SIZE * 2 if current_building_type == "Castle" else GRID_SIZE
     return pygame.Rect(grid_x, grid_y, size, size)
 
+# def draw_grass_tile(screen):
+#     # Load the grass tile image
+#     grass_tile = pygame.image.load('buildings/tile_1.png')
+
+#     # Scale the grass tile to the size of the GRID_SIZE
+#     scaled_grass_tile = pygame.transform.scale(grass_tile, (GRID_SIZE, GRID_SIZE))
+
+#     # Draw the grass tile onto the screen
+#     for x in range(0, SCREEN_WIDTH, GRID_SIZE):
+#         for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
+#             screen.blit(scaled_grass_tile, (x, y))
+
 def draw_grass_tile(screen):
-    # Load the grass tile image
-    grass_tile = pygame.image.load('buildings/tile_1.png')
-
-    # Scale the grass tile to the size of the GRID_SIZE
-    scaled_grass_tile = pygame.transform.scale(grass_tile, (GRID_SIZE, GRID_SIZE))
-
-    # Draw the grass tile onto the screen
-    for x in range(0, SCREEN_WIDTH, GRID_SIZE):
-        for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
-            screen.blit(scaled_grass_tile, (x, y))
+    terrain_generator.draw_terrain(screen, terrain)
 
 def draw_resources(screen, font, resources, gold):
     resource_text = f"Gold: {int(gold)}"
@@ -248,6 +312,8 @@ selected_unit = None  # Track selected unit
 building_cooldown = 0
 BUILDING_COOLDOWN_TIME = 1000  # 1 second cooldown
 message_duration = 5000  # 5 seconds
+terrain_generator = TerrainGenerator(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE)
+terrain = terrain_generator.generate_terrain()
 
 # Building hotkeys
 building_map = {
@@ -308,6 +374,8 @@ while running:
                 selected_unit = None  # Deselect unit when switching to building mode
             if event.key == pygame.K_ESCAPE:
                 current_building_type = None
+            if event.key == K_t:  # 'T' key to regenerate terrain
+                terrain = terrain_generator.generate_terrain()
 
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:  # Left click
