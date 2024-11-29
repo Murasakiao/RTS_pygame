@@ -53,7 +53,7 @@ BUILDING_COSTS = {
 # Unit types that can be trained in certain buildings
 UNIT_TYPES = {
     "Barracks": "Swordsman",
-    "Stable": "Knight",
+    "Stable": "Archer",
 }
 
 # Unit data (images, costs, etc.)
@@ -64,7 +64,7 @@ UNITS = {
         "hp": 10,
         "atk": 1,
     },
-    "Knight": {
+    "Archer": {
         "image": "characters/bowman.png",
         "cost": {"gold": 60, "food": 40, "people": 1},
         "hp": 8,
@@ -190,8 +190,8 @@ class TerrainGenerator:
         
         # Noise parameters
         self.scale = 100.0
-        self.octaves = 6
-        self.persistence = 0.5
+        self.octaves = 12
+        self.persistence = 0.01
         self.lacunarity = 2.0
 
     def generate_terrain(self):
@@ -232,10 +232,33 @@ def draw_grid(color=BLACK, line_width=1):
             rect = pygame.Rect(x, y, GRID_SIZE, GRID_SIZE)
             pygame.draw.rect(screen, color, rect, line_width)
 
-def add_game_message(message, messages, start_times):
-    messages.append(message)
-    start_times[message] = pygame.time.get_ticks()
-    return messages, start_times
+def add_game_message(message, game_messages, message_duration=3000):
+    current_time = pygame.time.get_ticks()
+    
+    # Reset game_messages if it's not a list of dictionaries
+    if not isinstance(game_messages, list) or not all(isinstance(msg, dict) for msg in game_messages):
+        game_messages = []
+    
+    # Remove expired messages
+    game_messages = [
+        msg for msg in game_messages 
+        if isinstance(msg, dict) and 
+        current_time - msg.get("start_time", 0) < msg.get("duration", message_duration)
+    ]
+    
+    # Check if message already exists and is active
+    if not any(
+        msg.get("text") == message and 
+        current_time - msg.get("start_time", 0) < msg.get("duration", message_duration) 
+        for msg in game_messages
+    ):
+        game_messages.append({
+            "text": message, 
+            "start_time": current_time, 
+            "duration": message_duration
+        })
+    
+    return game_messages
 
 def update_preview_rect(mouse_pos, current_building_type):
     grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
@@ -279,13 +302,21 @@ def draw_building_preview(screen, preview_rect, collision, resources, current_bu
     color = GREEN if not collision and all(resources.get(resource, gold) >= BUILDING_RESOURCES.get(current_building_type, {}).get(resource, 0) for resource in BUILDING_RESOURCES.get(current_building_type, {})) else RED
     pygame.draw.rect(screen, color, preview_rect, 2)
 
-def draw_messages(screen, font, game_messages, message_start_times, message_duration):
+def draw_messages(screen, font, game_messages):
     current_time = pygame.time.get_ticks()
-    game_messages = [msg for msg in game_messages 
-                    if current_time - message_start_times[msg] < message_duration]
-    
-    for i, message in enumerate(game_messages):
-        message_text = font.render(message, True, RED)
+    # Filter out expired messages
+    active_messages = []
+    for msg in game_messages:
+        if isinstance(msg, dict) and "start_time" in msg and "duration" in msg:
+            if current_time - msg["start_time"] < msg["duration"]:
+                active_messages.append(msg)
+        else:
+            print(f"Invalid message: {msg}, type: {type(msg)}")
+    # Sort messages by start time if needed
+    active_messages.sort(key=lambda x: x["start_time"])
+    # Draw the messages
+    for i, msg in enumerate(active_messages):
+        message_text = font.render(msg["text"], True, RED)
         screen.blit(message_text, (10, 30 + i * 20))
 
 def draw_key_bindings(screen, font, building_map, screen_width, screen_height, GRID_SIZE, BUILDING_RESOURCES):
@@ -331,7 +362,7 @@ selected_building = None
 selected_unit = None  # Track selected unit
 building_cooldown = 0
 BUILDING_COOLDOWN_TIME = 1000  # 1 second cooldown
-message_duration = 5000  # 5 seconds
+MESSAGE_DURATION = 3000  # 3 seconds
 terrain_generator = TerrainGenerator(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE)
 terrain = terrain_generator.generate_terrain()
 
@@ -407,13 +438,8 @@ while running:
                         break
 
                 if clicked_unit:
-                    selected_unit = clicked_unit
-                    if f"Selected {clicked_unit.type}" not in [msg[0] for msg in game_messages]:
-                        game_messages, message_start_times = add_game_message(
-                            f"Selected {clicked_unit.type}",
-                            game_messages,
-                            message_start_times
-                        )
+                    selected_unit = clicked_unit  # Assign the selected unit
+                    game_messages = add_game_message(f"Selected {clicked_unit.type}", game_messages, MESSAGE_DURATION)
                     continue  # Skip building placement if we clicked a unit
 
                 # If no unit was clicked, handle building placement
@@ -427,6 +453,7 @@ while running:
                         clicked_building = building
                         break
 
+                # If a building is clicked to train units
                 if clicked_building and clicked_building.type in UNIT_TYPES:
                     unit_type = UNIT_TYPES[clicked_building.type]
                     unit_cost = UNITS[unit_type]["cost"]
@@ -443,16 +470,14 @@ while running:
                             else:
                                 resources[resource] -= amount
                                 
-                        game_messages, message_start_times = add_game_message(
+                        game_messages = add_game_message(
                             f"Trained {unit_type}",
-                            game_messages,
-                            message_start_times
+                            game_messages
                         )
                     else:
-                        game_messages, message_start_times = add_game_message(
+                        game_messages = add_game_message(
                             f"Not enough resources to train {unit_type}",
-                            game_messages,
-                            message_start_times
+                            game_messages
                         )
                 else:
                     # Handle building placement
@@ -461,10 +486,9 @@ while running:
                     affordable = all(resources.get(resource, gold) >= amount for resource, amount in cost.items())
 
                     if current_building_type == "Castle" and castle_exists:
-                        game_messages, message_start_times = add_game_message(
+                        game_messages = add_game_message(
                             "Only one castle can be built.",
-                            game_messages,
-                            message_start_times
+                            game_messages
                         )
                     elif not collision and affordable and building_cooldown <= 0:
                         if current_building_type is not None:
@@ -476,22 +500,15 @@ while running:
                             else:
                                 resources[resource] -= amount
                         building_cooldown = BUILDING_COOLDOWN_TIME
-                        game_messages, message_start_times = add_game_message(
-                            f"Built {current_building_type}",
-                            game_messages,
-                            message_start_times
-                        )
+                        game_messages = add_game_message(f"Built {current_building_type}", game_messages, MESSAGE_DURATION)
 
             elif event.button == 3 and selected_unit:  # Right click to move selected unit
                 grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
                 grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
                 selected_unit.destination = (grid_x, grid_y)
                 selected_unit.moving = True
-                game_messages, message_start_times = add_game_message(
-                    f"Moving {selected_unit.type} to new position",
-                    game_messages,
-                    message_start_times
-                )
+                game_messages = add_game_message(f"Moving {selected_unit.type} to new position", game_messages, MESSAGE_DURATION)
+
 
     # Update all units
     for unit in units:
@@ -501,13 +518,13 @@ while running:
     screen.fill(WHITE)
     # Draw the grass tile
     draw_grass_tile(screen)
-    draw_grid()
+    # draw_grid()
 
     draw_resources(screen, font, resources, gold)
     draw_buildings(screen, buildings)
     draw_units(screen, units, selected_unit)
     draw_building_preview(screen, preview_rect, collision, resources, current_building_type)
-    draw_messages(screen, font, game_messages, message_start_times, message_duration)
+    draw_messages(screen, font, game_messages)
     draw_key_bindings(screen, font, building_map, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, BUILDING_RESOURCES)
 
     pygame.display.flip()
