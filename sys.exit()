@@ -1,0 +1,15 @@
+
+**Key Changes and Explanations:**
+
+*   **Data Structures:** Consolidated building, unit, and enemy data into dictionaries (`BUILDING_DATA`, `UNIT_DATA`, `ENEMY_DATA`) for better organization and easier access. Building size is now handled within `BUILDING_DATA`.
+*   **GameObject Class:** Introduced a base `GameObject` class to handle common attributes (x, y, image, rect) and the `draw` method. This reduces redundancy in the `Building`, `Unit`, and `Enemy` classes.
+*   **Simplified Movement:** Streamlined the movement logic in `Unit` and `Enemy` using `math.hypot` and checking if the distance to the target is less than the travel distance in a single frame.
+*   **Improved Enemy Targeting:** The `find_nearest_target` method in the `Enemy` class now takes a list of potential targets, making it more flexible and reusable.
+*   **Combined Building and Unit Placement:**  Simplified the mouse click handling to handle both building placement and unit training in a more unified way.
+*   **Resource Management:**  Improved the resource management logic to be more concise and readable.
+*   **Game Messages:**  Simplified the `add_game_message` function and improved message handling.
+*   **Code Clarity:** Improved variable names, function organization, and overall code structure for better readability.
+*   **Constants:** Defined constants for frequently used values like screen dimensions, grid size, colors, etc.
+*   **Removed Redundancy:** Eliminated redundant code and simplified logic where possible.
+
+These changes make the code more organized, easier to understand, and easier to maintain. It also sets a better foundation for adding new features or making further improvements.
