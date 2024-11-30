@@ -26,16 +26,27 @@ pygame.display.set_caption("City Builder")
 # Clock to control the frame rate
 clock = pygame.time.Clock()
 
+BUILDING_HP = {
+    "Farm": 250,
+    "LumberMill": 200,
+    "Quarry": 250,
+    "Castle": 275,
+    "House": 200,
+    "Market": 230,
+    "Barracks": 240,
+    "Stable": 225,
+}
+
 # Building types
 BUILDING_TYPES = {
-    "Castle": "../buildings/castle.png",
-    "House": "../buildings/house.png",
-    "Market": "../buildings/market.png",
-    "Barracks": "../buildings/barracks.png",
-    "Stable": "../buildings/stable.png",
-    "Farm": "../buildings/farm.png",
-    "LumberMill": "../buildings/lumber.png",
-    "Quarry": "../buildings/quarry.png",
+    "Castle": "buildings/castle.png",
+    "House": "buildings/house.png",
+    "Market": "buildings/market.png",
+    "Barracks": "buildings/barracks.png",
+    "Stable": "buildings/stable.png",
+    "Farm": "buildings/farm.png",
+    "LumberMill": "buildings/lumber.png",
+    "Quarry": "buildings/quarry.png",
 }
 
 # Building costs
@@ -59,13 +70,13 @@ UNIT_TYPES = {
 # Unit data (images, costs, etc.)
 UNITS = {
     "Swordsman": {
-        "image": "../characters/swordsman.png",
+        "image": "characters/swordsman.png",
         "cost": {"gold": 50, "food": 30, "people": 1},
         "hp": 10,
         "atk": 1,
     },
     "Archer": {
-        "image": "../characters/bowman.png",
+        "image": "characters/bowman.png",
         "cost": {"gold": 60, "food": 40, "people": 1},
         "hp": 8,
         "atk": 2,
@@ -74,13 +85,13 @@ UNITS = {
 
 ENEMY_UNITS = {
     "Goblin": {
-        "image": "../enemies/goblin.png",
+        "image": "characters/bowman.png",
         "speed": 50,  # pixels per second
         "hp": 8,
         "atk": 1,
     },
     "Orc": {
-        "image": "../enemies/orc.png",
+        "image": "characters/swordsman.png",
         "speed": 70,
         "hp": 12,
         "atk": 2,
@@ -107,6 +118,7 @@ class Building:
         self.y = y
         self.type = building_type
         self.size = (GRID_SIZE, GRID_SIZE)
+        self.hp = BUILDING_HP[building_type]
         if building_type == "Castle":
             self.size = (GRID_SIZE * 2, GRID_SIZE * 2)  # Castle occupies 4 grids
         try:
@@ -182,6 +194,76 @@ class Unit:
     def draw(self):
         screen.blit(self.image, self.rect)
 
+class Enemy:
+    def __init__(self, unit_type, x, y, initial_target):
+        self.type = unit_type
+        self.x = x
+        self.y = y
+        self.target = initial_target  # Initial target
+        try:
+            self.image = pygame.transform.scale(pygame.image.load(ENEMY_UNITS[unit_type]["image"]), (GRID_SIZE, GRID_SIZE))
+        except pygame.error:
+            # Fallback if image loading fails
+            self.image = pygame.Surface((GRID_SIZE, GRID_SIZE))
+            self.image.fill((255, 0, 0))  # Red color as fallback
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.speed = ENEMY_UNITS[unit_type]["speed"]
+        self.hp = ENEMY_UNITS[unit_type]["hp"]
+        self.atk = ENEMY_UNITS[unit_type]["atk"]
+
+    def update(self, dt, game_messages=None):
+        if self.target and self.target.hp <= 0:
+            # Find a new target if the current one is destroyed
+            self.target = self.find_nearest_target()
+        
+        if self.target:
+            # Move towards the target
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            distance = math.hypot(dx, dy)
+            if distance > 0:
+                self.x += (dx / distance) * self.speed * (dt / 1000)
+                self.y += (dy / distance) * self.speed * (dt / 1000)
+                self.rect.topleft = (self.x, self.y)
+            
+            # Check for collision with target
+            if self.rect.colliderect(self.target.rect):
+                game_messages = self.attack_target(game_messages)
+        
+        return game_messages
+    
+    def attack_target(self, game_messages=None):
+        if self.target:
+            self.target.hp -= self.atk
+            if self.target.hp <= 0:
+                # Target destroyed, find a new one
+                old_target_type = self.target.type
+                self.target = self.find_nearest_target()
+                if game_messages is not None:
+                    game_messages = add_game_message(f"Enemy {self.type} destroyed {old_target_type}", game_messages, MESSAGE_DURATION)
+        
+        return game_messages
+    
+    def find_nearest_target(self):
+        # Find the nearest building or unit
+        targets = [building for building in buildings if building.type != "Castle" and building.hp > 0]
+        targets.extend([unit for unit in units if unit.hp > 0])
+        if targets:
+            nearest = None
+            min_distance = float('inf')
+            for target in targets:
+                dx = target.x - self.x
+                dy = target.y - self.y
+                distance = math.hypot(dx, dy)
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest = target
+            return nearest
+        return None
+    
+    def draw(self):
+        screen.blit(self.image, self.rect)
+
 class TerrainGenerator:
     def __init__(self, screen_width, screen_height, grid_size):
         self.screen_width = screen_width
@@ -192,7 +274,7 @@ class TerrainGenerator:
         self.grass_tiles = []
         for i in range(1, 7):  # Assuming tile_1.png to tile_6.png exist
             try:
-                tile = pygame.image.load(f'../buildings/tile_{i}.png')
+                tile = pygame.image.load(f'buildings/tile_{i}.png')
                 tile = pygame.transform.scale(tile, (grid_size, grid_size))
                 self.grass_tiles.append(tile)
             except Exception as e:
@@ -345,6 +427,58 @@ def check_collision(preview_rect, buildings):
             return True
     return False
 
+def generate_spawn_point():
+    side = random.choice(["left", "right", "top", "bottom"])
+    if side == "left":
+        x = -GRID_SIZE
+        y = random.randint(0, SCREEN_HEIGHT - GRID_SIZE)
+    elif side == "right":
+        x = SCREEN_WIDTH
+        y = random.randint(0, SCREEN_HEIGHT - GRID_SIZE)
+    elif side == "top":
+        x = random.randint(0, SCREEN_WIDTH - GRID_SIZE)
+        y = -GRID_SIZE
+    else:  # bottom
+        x = random.randint(0, SCREEN_WIDTH - GRID_SIZE)
+        y = SCREEN_HEIGHT
+    return x, y
+
+# Modify your wave spawning logic in the main game loop
+def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
+    print(f"Attempting to spawn wave {current_wave}")
+    print(f"Buildings: {len(buildings)}, Units: {len(units)}")
+    
+    # Find the castle as the primary target
+    castle_target = next((building for building in buildings if building.type == "Castle"), None)
+    
+    # If no specific target, use first building or first unit
+    initial_target = (
+        castle_target or 
+        (buildings[0] if buildings else 
+        (units[0] if units else None))
+    )
+    
+    if not initial_target:
+        print("No valid target for enemies!")
+        return []
+    
+    spawned_enemies = []
+    try:
+        for _ in range(current_wave * enemy_spawn_rate):
+            spawn_x, spawn_y = generate_spawn_point()
+            enemy_type = random.choice(list(ENEMY_UNITS.keys()))
+            
+            print(f"Spawning {enemy_type} at ({spawn_x}, {spawn_y})")
+            
+            enemy = Enemy(enemy_type, spawn_x, spawn_y, initial_target)
+            spawned_enemies.append(enemy)
+        
+        print(f"Spawned {len(spawned_enemies)} enemies")
+    except Exception as e:
+        print(f"Error spawning enemies: {e}")
+    
+    return spawned_enemies
+
 # Initialize game state
 gold = 150
 resources = {"wood": 100, "stone": 100, "food": 100, "people": 3}
@@ -357,6 +491,7 @@ resource_increase_rates = {
 }
 buildings = []
 units = []
+enemies = []
 current_building_type = "Castle"
 font = pygame.font.Font(None, 20)
 game_messages = []
@@ -368,6 +503,11 @@ BUILDING_COOLDOWN_TIME = 1000  # 1 second cooldown
 MESSAGE_DURATION = 3000  # 3 seconds
 terrain_generator = TerrainGenerator(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE)
 terrain = terrain_generator.generate_terrain()
+# Wave system variables
+wave_timer = 0
+wave_interval = 10000  # 10 seconds between waves
+current_wave = 1
+enemy_spawn_rate = 5  # Number of enemies per wave
 
 # Building hotkeys
 building_map = {
@@ -393,6 +533,60 @@ while running:
     building_counts = {}
     for building in buildings:
         building_counts[building.type] = building_counts.get(building.type, 0) + 1
+
+    # Find the castle as the main target
+    castle_target = None
+    for building in buildings:
+        if building.type == "Castle":
+            castle_target = building
+            break
+
+    # Spawn enemies in waves
+    if wave_timer >= wave_interval:
+        # Calculate number of enemies to spawn based on current wave
+        num_enemies = int(current_wave * enemy_spawn_rate)
+        
+        # Find castle target (do this once before spawning enemies)
+        castle_target = None
+        for building in buildings:
+            if building.type == "Castle":
+                castle_target = building
+                break
+        
+        # Only spawn enemies if a castle target exists
+        if castle_target:
+            for _ in range(num_enemies):
+                spawn_x, spawn_y = generate_spawn_point()
+                enemy_type = random.choice(["Goblin", "Orc"])
+                
+                enemy = Enemy(enemy_type, spawn_x, spawn_y, castle_target)
+                enemies.append(enemy)
+        
+        wave_timer = 0
+        current_wave += 1
+    else:
+        wave_timer += dt
+
+    # Update enemies
+    for enemy in enemies:
+        enemy.update(dt)
+        game_messages = enemy.update(dt, game_messages)
+
+    # Draw enemies
+    for enemy in enemies:
+        enemy.draw()
+
+    # Find the castle as the main target
+    castle_target = None
+    for building in buildings:
+        if building.type == "Castle":
+            castle_target = building
+            break
+
+    # # Check if castle is destroyed
+    # if not any(building.type == "Castle" for building in buildings):
+    #     game_messages = add_game_message("You lost!", game_messages)
+    #     running = False
 
     resource_multipliers = {
         "gold": 1 + (building_counts.get("Market", 0) * 0.1) + (building_counts.get("Castle", 0) * 0.2),
@@ -529,6 +723,9 @@ while running:
     draw_building_preview(screen, preview_rect, collision, resources, current_building_type)
     draw_messages(screen, font, game_messages)
     draw_key_bindings(screen, font, building_map, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, BUILDING_RESOURCES)
+
+    spawn_enemies(units, enemies, current_wave, enemy_spawn_rate)
+    generate_spawn_point()
 
     pygame.display.flip()
 
