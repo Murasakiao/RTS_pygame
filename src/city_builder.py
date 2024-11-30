@@ -281,6 +281,7 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
         enemy_type = random.choice(list(ENEMY_DATA.keys()))
         enemy = Enemy(enemy_type, spawn_x, spawn_y, initial_target)
         spawned_enemies.append(enemy)
+    print(spawned_enemies)
     return spawned_enemies
 
 def draw_debug_info(screen, font, debug_info, x=10, y=40):
@@ -329,6 +330,7 @@ while running:
         f"Enemies: {len(enemies)}",
         f"Mouse Position: {mouse_pos}",
         f"Selected Unit: {selected_unit.type if selected_unit else 'None'}",
+        f"Current Wave: {current_wave}",
         # f"Gold: {int(gold)}",
         # f"Resources: {int(resources['gold'])}, {int(resources['wood'])}, {int(resources['stone'])}, {int(resources['food'])}, {int(resources['people'])}",
         # Add more debug variables as needed
