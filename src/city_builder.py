@@ -87,6 +87,7 @@ class Unit(GameObject):
         self.speed = 75
         self.hp = UNIT_DATA[unit_type]["hp"]
         self.atk = UNIT_DATA[unit_type]["atk"]
+        self.target = None
 
     def update(self, dt):
         if self.moving and self.destination:
@@ -103,6 +104,12 @@ class Unit(GameObject):
                 if math.hypot(dx, dy) <= travel_distance:  # Check if close enough to destination
                     self.moving = False
                     self.destination = None
+
+    def draw(self, screen):
+        super().draw(screen)
+        if self.target:
+            target_text = font.render(self.target.type, True, RED)
+            screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, self.rect.top - target_text.get_height() - 5))
 
 class Enemy(GameObject):
     def __init__(self, unit_type, x, y, initial_target):
@@ -152,6 +159,12 @@ class Enemy(GameObject):
         if valid_targets:
             return min(valid_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
         return None
+
+    def draw(self, screen):
+        super().draw(screen)
+        if self.target:
+            target_text = font.render(self.target.type, True, RED)
+            screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, self.rect.top - target_text.get_height() - 5))
 
 class TerrainGenerator:
     def __init__(self, screen_width, screen_height, grid_size):
@@ -440,6 +453,10 @@ while running:
                 grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
                 selected_unit.destination = (grid_x, grid_y)
                 selected_unit.moving = True
+
+                # Find nearest target for the selected unit
+                selected_unit.target = selected_unit.find_nearest_target(enemies)
+
                 add_game_message(f"Moving {selected_unit.type}", game_messages)
 
     # --- Game Updates ---
