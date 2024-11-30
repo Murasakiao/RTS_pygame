@@ -122,6 +122,13 @@ class Unit(GameObject):
 
         if not self.target:
             self.target = self.find_nearest_target(enemies)
+        elif self.target.hp <=0: # Find a new target if current target is dead
+            self.target = self.find_nearest_target(enemies)
+
+
+        if self.target and not self.moving:
+            self.destination = (self.target.x, self.target.y)
+            self.moving = True
 
     def find_nearest_target(self, targets):
         valid_targets = [target for target in targets if target.hp > 0]  # Only target living enemies
@@ -131,7 +138,8 @@ class Unit(GameObject):
 
     def draw(self, screen):
         super().draw(screen)
-        if self.target:
+        # Only draw target indicator if target is alive
+        if self.target and self.target.hp > 0:
             target_text = font.render(self.target.type, True, RED)
             screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, self.rect.top - target_text.get_height() - 5))
 
