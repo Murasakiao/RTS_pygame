@@ -524,7 +524,8 @@ while running:
 
             elif event.button == 3 and selected_unit:  # Move selected unit
                 grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
-                grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+                grid_x = max(0, min(grid_x, SCREEN_WIDTH - GRID_SIZE))
+                grid_y = max(0, min(grid_y, SCREEN_HEIGHT - GRID_SIZE))
                 selected_unit.destination = (grid_x, grid_y)
                 selected_unit.moving = True
 
