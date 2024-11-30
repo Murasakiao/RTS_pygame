@@ -665,3 +665,4 @@ gold = 150
 resources = {"wood": 100, "stone": 100, "food": 100, "people": 3}
 resource_increase_rates = {
     "gold": 3, "wood": 2, "stone": 1, "food": 1, "people": 0.05
+}
