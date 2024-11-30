@@ -64,9 +64,9 @@ class Unit(GameObject):
         now = pygame.time.get_ticks()
         if now - self.last_attack >= UNIT_ATTACK_COOLDOWN:
             self.target.hp -= self.atk
-            add_game_message(f"{self.type} attacked {self.target.type}", game_messages)
+            add_game_message(f"{self.type} attacked {self.target.type}", game_messages) # FIX: add game_messages as parameter
             if self.target.hp <= 0:
-                add_game_message(f"{self.type} killed {self.target.type}", game_messages)
+                add_game_message(f"{self.type} killed {self.target.type}", game_messages) # FIX: add game_messages as parameter
                 enemies.remove(self.target)  # Remove the enemy from the list
                 self.target = None  # Reset target
             self.last_attack = now
@@ -103,6 +103,6 @@ while running:
         unit.update(dt, enemies)  # Pass enemies list to unit update
 
     for enemy in enemies:
-        game_messages = enemy.update(dt, game_messages)
+        game_messages = enemy.update(dt, game_messages) # FIX: added game_messages as a parameter and return
 
     # ... (Rest of the game loop code remains unchanged)
