@@ -33,13 +33,13 @@ font = pygame.font.Font(None, 20)
 # Building data
 BUILDING_DATA = {
     "Castle": {"hp": 2750, "image": "../buildings/castle.png", "cost": 75, "resources": {"gold": 75, "wood": 50, "stone": 100}, "size_multiplier": 2},
-    "House": {"hp": 2000, "image": "../buildings/house.png", "cost": 20, "resources": {"gold": 20, "wood": 15}},
-    "Market": {"hp": 2300, "image": "../buildings/market.png", "cost": 30, "resources": {"gold": 30, "wood": 20, "stone": 25}},
-    "Barracks": {"hp": 2400, "image": "../buildings/barracks.png", "cost": 40, "resources": {"gold": 40, "wood": 20, "stone": 15}, "unit": "Swordsman"},
-    "Stable": {"hp": 2250, "image": "../buildings/stable.png", "cost": 25, "resources": {"gold": 35, "wood": 20, "stone": 15}, "unit": "Archer"},
-    "Farm": {"hp": 2500, "image": "../buildings/farm.png", "cost": 25, "resources": {"gold": 25, "wood": 10}},
-    "LumberMill": {"hp": 2000, "image": "../buildings/lumber.png", "cost": 40, "resources": {"gold": 40, "wood": 30, "stone": 10}},
-    "Quarry": {"hp": 2500, "image": "../buildings/quarry.png", "cost": 50, "resources": {"gold": 20, "wood": 30, "stone": 10}},
+    "House": {"hp": 200, "image": "../buildings/house.png", "cost": 20, "resources": {"gold": 20, "wood": 15}},
+    "Market": {"hp": 230, "image": "../buildings/market.png", "cost": 30, "resources": {"gold": 30, "wood": 20, "stone": 25}},
+    "Barracks": {"hp": 240, "image": "../buildings/barracks.png", "cost": 40, "resources": {"gold": 40, "wood": 20, "stone": 15}, "unit": "Swordsman"},
+    "Stable": {"hp": 225, "image": "../buildings/stable.png", "cost": 25, "resources": {"gold": 35, "wood": 20, "stone": 15}, "unit": "Archer"},
+    "Farm": {"hp": 250, "image": "../buildings/farm.png", "cost": 25, "resources": {"gold": 25, "wood": 10}},
+    "LumberMill": {"hp": 200, "image": "../buildings/lumber.png", "cost": 40, "resources": {"gold": 40, "wood": 30, "stone": 10}},
+    "Quarry": {"hp": 250, "image": "../buildings/quarry.png", "cost": 50, "resources": {"gold": 20, "wood": 30, "stone": 10}},
 }
 
 # Unit data
@@ -298,7 +298,6 @@ resource_increase_rates = {
 buildings = []
 units = []
 enemies = []
-game_messages = [] # Initialize game_messages list
 
 current_building_type = "Castle"
 building_cooldown = 0
@@ -378,6 +377,8 @@ while running:
                 current_building_type = None
             elif event.key == K_t:
                 terrain = terrain_generator.generate_terrain()
+            elif event.key == K_d:  # 'D' key to toggle debug info display
+                show_debug = not show_debug
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
                 # Unit Selection
@@ -454,9 +455,6 @@ while running:
         current_wave += 1
     else:
         wave_timer += dt
-
-    enemies[:] = [enemy for enemy in enemies if enemy.hp > 0]  # Remove dead enemies
-    units[:] = [unit for unit in units if unit.hp > 0] # Remove dead units
 
     # --- Drawing ---
     screen.fill(WHITE)
