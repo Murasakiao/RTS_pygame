@@ -28,14 +28,14 @@ clock = pygame.time.Clock()
 
 # Building types
 BUILDING_TYPES = {
-    "Castle": "buildings/castle.png",
-    "House": "buildings/house.png",
-    "Market": "buildings/market.png",
-    "Barracks": "buildings/barracks.png",
-    "Stable": "buildings/stable.png",
-    "Farm": "buildings/farm.png",
-    "LumberMill": "buildings/lumber.png",
-    "Quarry": "buildings/quarry.png",
+    "Castle": "../buildings/castle.png",
+    "House": "../buildings/house.png",
+    "Market": "../buildings/market.png",
+    "Barracks": "../buildings/barracks.png",
+    "Stable": "../buildings/stable.png",
+    "Farm": "../buildings/farm.png",
+    "LumberMill": "../buildings/lumber.png",
+    "Quarry": "../buildings/quarry.png",
 }
 
 # Building costs
@@ -59,15 +59,30 @@ UNIT_TYPES = {
 # Unit data (images, costs, etc.)
 UNITS = {
     "Swordsman": {
-        "image": "characters/swordsman.png",
+        "image": "../characters/swordsman.png",
         "cost": {"gold": 50, "food": 30, "people": 1},
         "hp": 10,
         "atk": 1,
     },
     "Archer": {
-        "image": "characters/bowman.png",
+        "image": "../characters/bowman.png",
         "cost": {"gold": 60, "food": 40, "people": 1},
         "hp": 8,
+        "atk": 2,
+    },
+}
+
+ENEMY_UNITS = {
+    "Goblin": {
+        "image": "../enemies/goblin.png",
+        "speed": 50,  # pixels per second
+        "hp": 8,
+        "atk": 1,
+    },
+    "Orc": {
+        "image": "../enemies/orc.png",
+        "speed": 70,
+        "hp": 12,
         "atk": 2,
     },
 }
@@ -177,7 +192,7 @@ class TerrainGenerator:
         self.grass_tiles = []
         for i in range(1, 7):  # Assuming tile_1.png to tile_6.png exist
             try:
-                tile = pygame.image.load(f'buildings/tile_{i}.png')
+                tile = pygame.image.load(f'../buildings/tile_{i}.png')
                 tile = pygame.transform.scale(tile, (grid_size, grid_size))
                 self.grass_tiles.append(tile)
             except Exception as e:
@@ -265,18 +280,6 @@ def update_preview_rect(mouse_pos, current_building_type):
     grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
     size = GRID_SIZE * 2 if current_building_type == "Castle" else GRID_SIZE
     return pygame.Rect(grid_x, grid_y, size, size)
-
-# def draw_grass_tile(screen):
-#     # Load the grass tile image
-#     grass_tile = pygame.image.load('buildings/tile_1.png')
-
-#     # Scale the grass tile to the size of the GRID_SIZE
-#     scaled_grass_tile = pygame.transform.scale(grass_tile, (GRID_SIZE, GRID_SIZE))
-
-#     # Draw the grass tile onto the screen
-#     for x in range(0, SCREEN_WIDTH, GRID_SIZE):
-#         for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
-#             screen.blit(scaled_grass_tile, (x, y))
 
 def draw_grass_tile(screen):
     terrain_generator.draw_terrain(screen, terrain)
@@ -518,7 +521,7 @@ while running:
     screen.fill(WHITE)
     # Draw the grass tile
     draw_grass_tile(screen)
-    # draw_grid()
+    draw_grid()
 
     draw_resources(screen, font, resources, gold)
     draw_buildings(screen, buildings)
