@@ -14,7 +14,7 @@ FPS = 30
 BUILDING_COOLDOWN_TIME = 1000
 MESSAGE_DURATION = 3000
 WAVE_INTERVAL = 25000
-ENEMY_SPAWN_RATE = 2
+ENEMY_SPAWN_RATE = 1
 UNIT_ATTACK_RANGE = 50
 UNIT_ATTACK_COOLDOWN = 1000  # 1 second cooldown
 
@@ -46,14 +46,14 @@ BUILDING_DATA = {
 
 # Unit data
 UNIT_DATA = {
-    "Swordsman": {"image": "../characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "hp": 1000, "atk": 1},
-    "Archer": {"image": "../characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "hp": 800, "atk": 2},
+    "Swordsman": {"image": "../characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "hp": 10, "atk": 1},
+    "Archer": {"image": "../characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "hp": 8, "atk": 2},
 }
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"image": "../characters/goblin.png", "speed": 20, "hp": 800, "atk": 1},
-    "Orc": {"image": "../characters/orc.png", "speed": 10, "hp": 1200, "atk": 2},
+    "Goblin": {"image": "../characters/goblin.png", "speed": 20, "hp": 8, "atk": 1},
+    "Orc": {"image": "../characters/orc.png", "speed": 10, "hp": 12, "atk": 2},
 }
 
 # --- Classes ---
@@ -425,6 +425,8 @@ while running:
                 current_building_type = None
             elif event.key == K_t:
                 terrain = terrain_generator.generate_terrain()
+            elif event.key == K_d:  # 'D' key to toggle debug info display
+                show_debug = not show_debug
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
                 # Unit Selection
@@ -512,7 +514,6 @@ while running:
     # --- Drawing ---
     screen.fill(WHITE)
     terrain_generator.draw_terrain(screen, terrain)
-    draw_grid(screen)
 
     draw_resources(screen, font, resources, gold)
 
@@ -535,6 +536,7 @@ while running:
     # Draw debug information if enabled
     if show_debug:
         draw_debug_info(screen, font, debug_info)
+        draw_grid(screen)
 
     pygame.display.flip()
 
