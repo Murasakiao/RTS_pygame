@@ -150,4 +150,4 @@ class Enemy(GameObject):
     def find_nearest_target(self, targets):
         valid_targets = [target for target in targets if target.hp > 0]
         if valid_targets:
-            return min(valid_targets, key=lambda target: math.hypot(target.x - self.x,
+            return min(valid_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
