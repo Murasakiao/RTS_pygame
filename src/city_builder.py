@@ -105,6 +105,12 @@ class Unit(GameObject):
                     self.moving = False
                     self.destination = None
 
+    def find_nearest_target(self, targets):
+        valid_targets = [target for target in targets if target.hp > 0]
+        if valid_targets:
+            return min(valid_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+        return None
+
     def draw(self, screen):
         super().draw(screen)
         if self.target:
