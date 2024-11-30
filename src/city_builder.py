@@ -92,8 +92,8 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
 
-    def update(self, dt, game_messages, units, enemies, buildings):
-        enhanced_unit_movement(self, dt, navigation_grid, game_messages, units, enemies, buildings)
+    def update(self, dt, game_messages):
+        enhanced_unit_movement(self, dt, navigation_grid, game_messages)
 
         if self.moving and self.destination:
             dx = self.destination[0] - self.x
@@ -124,8 +124,11 @@ class Unit(GameObject):
 
         if not self.target:
             self.target = self.find_nearest_target(enemies)
-        elif self.target.hp <= 0:  # Find a new target if current target is dead
+        elif self.target.hp <=0: # Find a new target if current target is dead
             self.target = self.find_nearest_target(enemies)
+
+        for unit in units:
+            unit.update(dt, game_messages, units, enemies, buildings)
 
         if self.target and not self.moving:
             self.destination = (self.target.x, self.target.y)
@@ -155,7 +158,7 @@ class Enemy(GameObject):
 
     def update(self, dt, game_messages=None):
         if self.target and self.target.hp <= 0:
-            self.target = self.find_nearest_target(buildings + units)  # Find new target if the current one is destroyed
+            self.target = self.find_nearest_target(buildings + units)  # Find new target
 
         if self.target:
             dx = self.target.x - self.x
@@ -180,7 +183,7 @@ class Enemy(GameObject):
 
             if self.target.hp <= 0:
                 message = f"Enemy {self.type} destroyed {self.target.type}"
-                self.target = self.find_nearest_target([(building for building in buildings if building.type == "Castle")] + buildings + units)
+                self.target = self.find_nearest_target(buildings + units)
 
             if game_messages is not None:  # Only add message if list is provided
                 add_game_message(message, game_messages)
@@ -263,7 +266,7 @@ class NavigationGrid:
         Create a grid representing navigable areas.
         0 = impassable, 1 = passable
         """
-        grid = [[1 for _ in range(self.width // self.grid_size)]
+        grid = [[1 for _ in range(self.width // self.grid_size)] 
                 for _ in range(self.height // self.grid_size)]
         return grid
 
@@ -275,7 +278,7 @@ class NavigationGrid:
             grid_x = int(building.x // self.grid_size)
             grid_y = int(building.y // self.grid_size)
             size_multiplier = max(1, int(building.rect.width / self.grid_size))
-
+            
             for dx in range(size_multiplier):
                 for dy in range(size_multiplier):
                     try:
@@ -289,12 +292,12 @@ class NavigationGrid:
         """
         grid_x = int(x // self.grid_size)
         grid_y = int(y // self.grid_size)
-
+        
         # Boundary check
-        if (grid_x < 0 or grid_x >= len(self.grid[0]) or
+        if (grid_x < 0 or grid_x >= len(self.grid[0]) or 
             grid_y < 0 or grid_y >= len(self.grid)):
             return False
-
+        
         return self.grid[grid_y][grid_x] == 1
 
     def find_path(self, start, end, max_iterations=100, avoid_objects=None):
@@ -316,64 +319,31 @@ class NavigationGrid:
                 (node[0]+self.grid_size, node[1]-self.grid_size),
                 (node[0]-self.grid_size, node[1]+self.grid_size)
             ]
-
+            
             # Filter neighbors based on passability and object avoidance
             valid_neighbors = []
             for n in neighbors:
                 is_passable = self.is_passable(n[0], n[1])
-
+                
                 # Additional check for object avoidance
                 if avoid_objects:
                     temp_obj = type('TempObject', (), {
-                        'x': n[0],
-                        'y': n[1],
+                        'x': n[0], 
+                        'y': n[1], 
                         'rect': pygame.Rect(n[0], n[1], self.grid_size, self.grid_size)
                     })
-
+                    
                     object_collision = any(
-                        check_object_collision(temp_obj, obj)
+                        check_object_collision(temp_obj, obj) 
                         for obj in avoid_objects
                     )
-
+                    
                     is_passable = is_passable and not object_collision
-
+                
                 if is_passable:
                     valid_neighbors.append(n)
-
+            
             return valid_neighbors
-
-        open_set = {start}
-        came_from = {}
-        g_score = {start: 0}
-        f_score = {start: heuristic(start, end)}
-
-        iterations = 0
-        while open_set and iterations < max_iterations:
-            current = min(open_set, key=lambda node: f_score[node])
-
-            if current == end:
-                path = []
-                while current in came_from:
-                    path.append(current)
-                    current = came_from[current]
-                path.append(start)
-                return path[::-1]  # Return reversed path
-
-            open_set.remove(current)
-
-            for neighbor in get_neighbors(current):
-                temp_g_score = g_score[current] + self.grid_size
-
-                if neighbor not in g_score or temp_g_score < g_score[neighbor]:
-                    came_from[neighbor] = current
-                    g_score[neighbor] = temp_g_score
-                    f_score[neighbor] = temp_g_score + heuristic(neighbor, end)
-                    if neighbor not in open_set:
-                        open_set.add(neighbor)
-
-            iterations += 1
-
-        return None  # No path found
 
 # --- Functions ---
 def draw_grid(screen, color=BLACK, line_width=1):
@@ -406,7 +376,7 @@ def draw_resources(screen, font, resources, gold):
 def draw_building_preview(screen, preview_rect, collision, resources, current_building_type):
     if preview_rect:  # Only draw if preview_rect exists
         building_resources = BUILDING_DATA.get(current_building_type, {}).get("resources", {})
-        affordable = all(resources.get(resource, 0) >= amount for resource, amount in building_resources.items() if resource != "gold") and gold >= building_resources.get("gold", 0)
+        affordable = all(resources.get(resource, gold) >= amount for resource, amount in building_resources.items())
         color = GREEN if not collision and affordable else RED
         pygame.draw.rect(screen, color, preview_rect, 2)
 
@@ -456,6 +426,7 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
         enemy_type = random.choice(list(ENEMY_DATA.keys()))
         enemy = Enemy(enemy_type, spawn_x, spawn_y, initial_target)
         spawned_enemies.append(enemy)
+    print(spawned_enemies)
     return spawned_enemies
 
 def draw_debug_info(screen, font, debug_info, x=10, y=40):
@@ -481,8 +452,8 @@ def enhanced_unit_movement(self, dt, navigation_grid, game_messages, units, enem
             # Check for collisions with other units, enemies, and buildings
             all_objects = units + enemies + buildings
             collision_detected = any(
-                check_object_collision(self, other)
-                for other in all_objects
+                check_object_collision(self, other) 
+                for other in all_objects 
                 if other != self
             )
 
@@ -499,12 +470,12 @@ def enhanced_unit_movement(self, dt, navigation_grid, game_messages, units, enem
             else:
                 # Find an alternative path with collision avoidance
                 path = navigation_grid.find_path(
-                    (self.x, self.y),
+                    (self.x, self.y), 
                     self.destination,
                     max_iterations=200,
                     avoid_objects=all_objects
                 )
-
+                
                 if path and len(path) > 1:
                     # Set next waypoint as destination
                     self.destination = path[1]
@@ -518,31 +489,31 @@ def check_object_collision(obj1, obj2, buffer=GRID_SIZE/2):
     Advanced collision detection with configurable buffer
     Checks if two objects are too close to each other
     """
-    # If obj2 is a list, check collision with each item in the list. This shouldn't happen, but it's a safeguard.
+    # If obj2 is a list, check collision with each item in the list
     if isinstance(obj2, list):
         return any(check_object_collision(obj1, item, buffer) for item in obj2)
-
+    
     # Existing collision check logic
     obj1_rect = pygame.Rect(
-        obj1.x - buffer,
-        obj1.y - buffer,
-        obj1.rect.width + 2*buffer,
+        obj1.x - buffer, 
+        obj1.y - buffer, 
+        obj1.rect.width + 2*buffer, 
         obj1.rect.height + 2*buffer
     )
-
+    
     obj2_rect = pygame.Rect(
-        obj2.x - buffer,
-        obj2.y - buffer,
-        obj2.rect.width + 2*buffer,
+        obj2.x - buffer, 
+        obj2.y - buffer, 
+        obj2.rect.width + 2*buffer, 
         obj2.rect.height + 2*buffer
     )
-
+    
     return obj1_rect.colliderect(obj2_rect)
 
 def find_valid_placement(buildings, units, x, y, building_type=None, unit_type=None, max_search_radius=GRID_SIZE*3):
     """
     Find a valid placement location near the original coordinates with extended search
-
+    
     Args:
     - buildings: List of existing buildings
     - units: List of existing units
@@ -550,12 +521,12 @@ def find_valid_placement(buildings, units, x, y, building_type=None, unit_type=N
     - building_type: Type of building being placed (optional)
     - unit_type: Type of unit being spawned (optional)
     - max_search_radius: Maximum distance to search for a valid placement
-
+    
     Returns:
     - Tuple of (x, y) coordinates for valid placement, or None if no valid location
     """
     all_objects = buildings + units
-
+    
     # Generate a spiral search pattern
     def spiral_search():
         for radius in range(0, max_search_radius // GRID_SIZE + 1):
@@ -564,101 +535,136 @@ def find_valid_placement(buildings, units, x, y, building_type=None, unit_type=N
                     # Skip center point if radius is 0
                     if radius == 0 and dx == 0 and dy == 0:
                         continue
-
+                    
                     # Only continue if we're on the "edge" of the current radius
                     if abs(dx) == radius or abs(dy) == radius:
                         new_x = x + dx * GRID_SIZE
                         new_y = y + dy * GRID_SIZE
-
+                        
                         # Ensure placement is within screen bounds
-                        if (new_x < 0 or new_x >= SCREEN_WIDTH or
+                        if (new_x < 0 or new_x >= SCREEN_WIDTH or 
                             new_y < 0 or new_y >= SCREEN_HEIGHT):
                             continue
-
+                        
                         # Create a temporary object to check collision
                         size = (GRID_SIZE, GRID_SIZE)
                         temp_object = type('TempObject', (), {
-                            'x': new_x,
-                            'y': new_y,
+                            'x': new_x, 
+                            'y': new_y, 
                             'rect': pygame.Rect(new_x, new_y, size[0], size[1])
                         })
-
+                        
                         # If no collision, yield this location
                         if not check_object_collision(temp_object, all_objects):
                             yield (new_x, new_y)
-
+    
     # Convert generator to list and return first valid placement
     valid_placements = list(spiral_search())
-
+    
     # Print debug information if no placements found
     if not valid_placements:
         print(f"DEBUG: No valid placement found near ({x}, {y})")
         print(f"Existing objects: {len(buildings)} buildings, {len(units)} units")
-
+        
         # Additional debug: print locations of existing objects
         for obj in all_objects:
             print(f"Existing object at ({obj.x}, {obj.y})")
-
+    
     # Return first valid placement or None
     return valid_placements[0] if valid_placements else None
+
+def modify_unit_spawning(buildings, units, clicked_building):
+    """
+    Modify unit spawning to prevent collisions
+    
+    Returns:
+    - Tuple (new_unit, message)
+    """
+    unit_type = BUILDING_DATA[clicked_building.type]["unit"]
+    unit_cost = UNIT_DATA[unit_type]["cost"]
+    
+    # Check resource affordability
+    if not all(resources.get(resource, gold) >= amount for resource, amount in unit_cost.items()):
+        return None, f"Not enough resources to train {unit_type}"
+    
+    # Try multiple placement locations around the building
+    placement_attempts = [
+        (clicked_building.x, clicked_building.y + GRID_SIZE),  # Default placement
+        (clicked_building.x + GRID_SIZE, clicked_building.y),
+        (clicked_building.x - GRID_SIZE, clicked_building.y),
+        (clicked_building.x, clicked_building.y - GRID_SIZE)
+    ]
+    
+    for x, y in placement_attempts:
+        placement = find_valid_placement(
+            buildings, 
+            units, 
+            x, 
+            y, 
+            unit_type=unit_type
+        )
+        
+        if placement:
+            new_unit = Unit(unit_type, placement[0], placement[1])
+            return new_unit, None
+    
+    # If all placement attempts fail
+    return None, f"Cannot spawn {unit_type}. Area is too crowded."
 
 def modify_building_placement(buildings, units, current_building_type, grid_x, grid_y):
     """
     Modify building placement to prevent collisions
-
+    
     Returns:
     - Tuple (valid_placement, message)
     """
     # Check for castle uniqueness
     if current_building_type == "Castle" and any(building.type == "Castle" for building in buildings):
         return None, "Only one castle can be built."
-
+    
     cost = BUILDING_DATA[current_building_type].get("resources", {})
-    affordable = all(resources.get(resource, 0) >= amount for resource, amount in cost.items() if resource != "gold") and gold >= cost.get("gold", 0)
-
+    affordable = all(resources.get(resource, gold) >= amount for resource, amount in cost.items())
+    
     if not affordable:
         return None, f"Not enough resources to build {current_building_type}"
-
+    
     # Find valid placement
     placement = find_valid_placement(buildings, units, grid_x, grid_y, building_type=current_building_type)
-
+    
     if placement is None:
         return None, "No valid placement found. Area is too crowded."
-
+    
     return placement, None
 
 def modify_unit_spawning(buildings, units, clicked_building):
     """
     Modify unit spawning to prevent collisions
-
+    
     Returns:
     - Tuple (new_unit, message)
     """
     unit_type = BUILDING_DATA[clicked_building.type]["unit"]
     unit_cost = UNIT_DATA[unit_type]["cost"]
-
+    
     # Check resource affordability
-    if not all(resources.get(resource, 0) >= amount for resource, amount in unit_cost.items() if resource != "gold") and gold >= unit_cost.get("gold", 0) :
-
+    if not all(resources.get(resource, gold) >= amount for resource, amount in unit_cost.items()):
         return None, f"Not enough resources to train {unit_type}"
-
+    
     # Find valid placement near the building
     placement = find_valid_placement(
-        buildings,
-        units,
-        clicked_building.x,
-        clicked_building.y + GRID_SIZE,
+        buildings, 
+        units, 
+        clicked_building.x, 
+        clicked_building.y + GRID_SIZE, 
         unit_type=unit_type
     )
-
+    
     if placement is None:
         return None, "Cannot spawn unit. Area is too crowded."
-
+    
     new_unit = Unit(unit_type, placement[0], placement[1])
-
+    
     return new_unit, None
-
-
 
 # --- Game Initialization ---
 gold = 150
@@ -666,3 +672,234 @@ resources = {"wood": 100, "stone": 100, "food": 100, "people": 3}
 resource_increase_rates = {
     "gold": 3, "wood": 2, "stone": 1, "food": 1, "people": 0.05
 }
+
+buildings = []
+units = []
+enemies = []
+game_messages = [] # Initialize game_messages list
+
+current_building_type = "Castle"
+building_cooldown = 0
+selected_unit = None
+
+terrain_generator = TerrainGenerator(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE)
+terrain = terrain_generator.generate_terrain()
+
+navigation_grid = NavigationGrid(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE)
+navigation_grid.update_grid_from_buildings(buildings)
+
+wave_timer = 0
+current_wave = 1
+
+building_map = {
+    K_1: "Castle", K_2: "House", K_3: "Market", K_4: "Barracks",
+    K_5: "Stable", K_6: "Farm", K_7: "LumberMill", K_8: "Quarry",
+}
+
+# --- Game Loop ---
+game_messages = []
+running = True
+show_debug = True
+while running:
+    dt = clock.tick(FPS)
+    mouse_pos = pygame.mouse.get_pos()
+    debug_info = [
+        f"FPS: {int(clock.get_fps())}",
+        f"Buildings: {len(buildings)}",
+        f"Units: {len(units)}",
+        f"Enemies: {len(enemies)}",
+        f"Mouse Position: {mouse_pos}",
+        f"Selected Unit: {selected_unit.type if selected_unit else 'None'}",
+        f"Current Wave: {current_wave}",
+        # f"Gold: {int(gold)}",
+        # f"Resources: {int(resources['gold'])}, {int(resources['wood'])}, {int(resources['stone'])}, {int(resources['food'])}, {int(resources['people'])}",
+        # Add more debug variables as needed
+    ]
+
+    # --- Resource Management ---
+    building_counts = {}
+    for building in buildings:
+        building_counts[building.type] = building_counts.get(building.type, 0) + 1
+
+    resource_multipliers = {
+        "gold": 1 + (building_counts.get("Market", 0) * 0.1) + (building_counts.get("Castle", 0) * 0.2),
+        "wood": 1 + (building_counts.get("LumberMill", 0) * 0.15) + (building_counts.get("Castle", 0) * 0.1),
+        "stone": 1 + (building_counts.get("Quarry", 0) * 0.12) + (building_counts.get("Castle", 0) * 0.15),
+        "food": 1 + (building_counts.get("Farm", 0) * 0.2) + (building_counts.get("Castle", 0) * 0.1),
+        "people": 1 + (building_counts.get("House", 0) * 0.0005) + (building_counts.get("Castle", 0) * 0.001),
+    }
+
+    for resource, rate in resource_increase_rates.items():
+        multiplier = resource_multipliers.get(resource, 1)
+        increase = rate * multiplier * (dt / 1000)
+        if resource == "gold":
+            gold += increase
+        else:
+            resources[resource] += increase
+
+    # --- Building Cooldown ---
+    building_cooldown = max(0, building_cooldown - dt)
+
+    # --- Preview Rect ---
+    if not selected_unit:
+        preview_rect = update_preview_rect(mouse_pos, current_building_type)
+        collision = check_collision(preview_rect, buildings) if preview_rect else False
+    else:
+        preview_rect = None  # No preview while unit is selected
+        collision = False
+
+    # --- Event Handling ---
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            running = False
+        elif event.type == KEYDOWN:
+            if event.key in building_map:
+                current_building_type = building_map[event.key]
+                selected_unit = None  # Deselect unit when switching building
+            elif event.key == pygame.K_ESCAPE:
+                current_building_type = None
+            elif event.key == K_t:
+                terrain = terrain_generator.generate_terrain()
+            elif event.key == K_d:  # 'D' key to toggle debug info display
+                show_debug = not show_debug
+        elif event.type == MOUSEBUTTONDOWN:
+            if event.button == 1:
+                # Unit Selection
+                clicked_unit = None
+                for unit in units:
+                    if unit.rect.collidepoint(mouse_pos):
+                        clicked_unit = unit
+                        break
+
+                if clicked_unit:
+                    selected_unit = clicked_unit
+                    add_game_message(f"Selected {clicked_unit.type}", game_messages)
+                    continue  # Skip building placement
+
+                # Building Placement / Unit Training
+                grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
+                grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+
+                clicked_building = next((building for building in buildings if building.rect.collidepoint(mouse_pos)), None)
+
+                # Building Placement
+                if current_building_type and not collision and building_cooldown <= 0:
+                    placement, message = modify_building_placement(
+                        buildings, units, current_building_type, grid_x, grid_y
+                    )
+                    
+                    if placement:
+                        new_building = Building(placement[0], placement[1], current_building_type)
+                        buildings.append(new_building)
+                        
+                        # Deduct resources
+                        cost = BUILDING_DATA[current_building_type].get("resources", {})
+                        for resource, amount in cost.items():
+                            if resource == "gold":
+                                gold -= amount
+                            else:
+                                resources[resource] -= amount
+                        
+                        building_cooldown = BUILDING_COOLDOWN_TIME
+                        add_game_message(f"Built {current_building_type}", game_messages)
+                    elif message:
+                        add_game_message(message, game_messages)
+
+                if clicked_building and "unit" in BUILDING_DATA[clicked_building.type]:
+                    new_unit, message = modify_unit_spawning(buildings, units, clicked_building)
+                    
+                    if new_unit:
+                        units.append(new_unit)
+                        
+                        # Deduct resources
+                        unit_cost = UNIT_DATA[new_unit.type]["cost"]
+                        for resource, amount in unit_cost.items():
+                            if resource == "gold":
+                                gold -= amount
+                            else:
+                                resources[resource] -= amount
+                        
+                        add_game_message(f"Trained {new_unit.type}", game_messages)
+                    elif message:
+                        add_game_message(message, game_messages)
+
+                elif current_building_type and not collision and building_cooldown <= 0:
+                    castle_exists = any(building.type == "Castle" for building in buildings)
+                    if current_building_type == "Castle" and castle_exists:
+                        add_game_message("Only one castle can be built.", game_messages)
+                    else:
+                        cost = BUILDING_DATA[current_building_type].get("resources", {})
+                        affordable = all(resources.get(resource, gold) >= amount for resource, amount in cost.items())
+                        if affordable:
+                            new_building = Building(grid_x, grid_y, current_building_type)
+                            buildings.append(new_building)
+                            for resource, amount in cost.items():
+                                if resource == "gold":
+                                    gold -= amount
+                                else:
+                                    resources[resource] -= amount
+                            building_cooldown = BUILDING_COOLDOWN_TIME
+                            add_game_message(f"Built {current_building_type}", game_messages)
+                        else:
+                            add_game_message(f"Not enough resources to build {current_building_type}", game_messages)
+
+            elif event.button == 3 and selected_unit:  # Move selected unit
+                grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
+                grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+                selected_unit.destination = (grid_x, grid_y)
+                selected_unit.moving = True
+
+                # Find nearest target for the selected unit
+                selected_unit.target = selected_unit.find_nearest_target(enemies)
+
+                add_game_message(f"Moving {selected_unit.type}", game_messages)
+
+    # --- Game Updates ---
+    for unit in units:
+        unit.update(dt, game_messages)
+
+    for enemy in enemies:
+        game_messages = enemy.update(dt, game_messages)  # Pass game_messages to enemy update
+
+    if wave_timer >= WAVE_INTERVAL:
+        new_enemies = spawn_enemies(buildings, units, current_wave, ENEMY_SPAWN_RATE)
+        enemies.extend(new_enemies)
+        wave_timer = 0
+        current_wave += 1
+    else:
+        wave_timer += dt
+
+    enemies[:] = [enemy for enemy in enemies if enemy.hp > 0]  # Remove dead enemies
+    units[:] = [unit for unit in units if unit.hp > 0] # Remove dead units
+
+    # --- Drawing ---
+    screen.fill(WHITE)
+    terrain_generator.draw_terrain(screen, terrain)
+
+    draw_resources(screen, font, resources, gold)
+
+    for building in buildings:
+        building.draw(screen)
+
+    for unit in units:
+        unit.draw(screen)
+        if unit == selected_unit:
+            pygame.draw.rect(screen, GREEN, unit.rect, 2)
+
+    for enemy in enemies:
+        enemy.draw(screen)
+
+    draw_building_preview(screen, preview_rect, collision, resources, current_building_type)
+    draw_messages(screen, font, game_messages)
+    draw_key_bindings(screen, font, building_map, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, BUILDING_DATA)
+
+    print(wave_timer, current_wave)
+    # Draw debug information if enabled
+    if show_debug:
+        draw_debug_info(screen, font, debug_info)
+        draw_grid(screen)
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
