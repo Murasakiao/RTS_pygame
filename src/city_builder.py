@@ -90,8 +90,9 @@ class Unit(GameObject):
         self.hp = UNIT_DATA[unit_type]["hp"]
         self.atk = UNIT_DATA[unit_type]["atk"]
         self.target = None
+        self.attack_cooldown = 0
 
-    def update(self, dt):
+    def update(self, dt, game_messages):
         if self.moving and self.destination:
             dx = self.destination[0] - self.x
             dy = self.destination[1] - self.y
@@ -107,8 +108,23 @@ class Unit(GameObject):
                     self.moving = False
                     self.destination = None
 
+        if self.target:
+            if self.attack_cooldown <= 0:
+                if math.hypot(self.target.x - self.x, self.target.y - self.y) <= UNIT_ATTACK_RANGE:
+                    self.target.hp -= self.atk
+                    add_game_message(f"{self.type} attacked {self.target.type}", game_messages)
+                    if self.target.hp <= 0:
+                        add_game_message(f"{self.type} killed {self.target.type}", game_messages)
+                        self.target = None  # Reset target if killed
+                    self.attack_cooldown = UNIT_ATTACK_COOLDOWN
+            else:
+                self.attack_cooldown -= dt
+
+        if not self.target:
+            self.target = self.find_nearest_target(enemies)
+
     def find_nearest_target(self, targets):
-        valid_targets = [target for target in targets if target.hp > 0]
+        valid_targets = [target for target in targets if target.hp > 0]  # Only target living enemies
         if valid_targets:
             return min(valid_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
         return None
@@ -469,7 +485,7 @@ while running:
 
     # --- Game Updates ---
     for unit in units:
-        unit.update(dt)
+        unit.update(dt, game_messages)
 
     for enemy in enemies:
         game_messages = enemy.update(dt, game_messages)  # Pass game_messages to enemy update
