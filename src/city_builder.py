@@ -105,6 +105,9 @@ class Unit(GameObject):
                 self.rect.topleft = (self.x, self.y)
 
                 if math.hypot(dx, dy) <= travel_distance:  # Check if close enough to destination
+                    self.x = self.destination[0]
+                    self.y = self.destination[1]
+                    self.rect.topleft = (self.x, self.y)
                     self.moving = False
                     self.destination = None
 
@@ -127,8 +130,32 @@ class Unit(GameObject):
 
 
         if self.target and not self.moving:
-            self.destination = (self.target.x, self.target.y)
-            self.moving = True
+            # Calculate the grid coordinates the unit wants to move to
+            target_grid_x = self.target.x // GRID_SIZE
+            target_grid_y = self.target.y // GRID_SIZE
+            unit_grid_x = self.x // GRID_SIZE
+            unit_grid_y = self.y // GRID_SIZE
+
+            # Check if the target grid cell is occupied
+            if not any((obj.x // GRID_SIZE == target_grid_x and obj.y // GRID_SIZE == target_grid_y) for obj in buildings + units + enemies if obj != self):
+                self.destination = (self.target.x, self.target.y)
+                self.moving = True
+            else: # Find a nearby free cell
+                found_free_cell = False
+                for offset_x in [-1, 0, 1]:
+                    for offset_y in [-1, 0, 1]:
+                        if offset_x == 0 and offset_y == 0:
+                            continue # Skip the current cell
+                        check_x = unit_grid_x + offset_x
+                        check_y = unit_grid_y + offset_y
+                        if not any((obj.x // GRID_SIZE == check_x and obj.y // GRID_SIZE == check_y) for obj in buildings + units + enemies if obj != self):
+                            self.destination = (check_x * GRID_SIZE, check_y * GRID_SIZE)
+                            self.moving = True
+                            found_free_cell = True
+                            break
+                    if found_free_cell:
+                        break
+
 
     def find_nearest_target(self, targets):
         valid_targets = [target for target in targets if target.hp > 0]  # Only target living enemies
@@ -163,9 +190,22 @@ class Enemy(GameObject):
 
             if distance > 0:
                 travel_distance = self.speed * (dt / 1000)
-                self.x += (dx / distance) * travel_distance
-                self.y += (dy / distance) * travel_distance
-                self.rect.topleft = (self.x, self.y)
+
+                new_x = self.x + (dx / distance) * travel_distance
+                new_y = self.y + (dy / distance) * travel_distance
+
+                # Check for collisions before moving
+                temp_rect = self.rect.copy()
+                temp_rect.topleft = (new_x, new_y)
+
+                collisions = [obj for obj in buildings + units + enemies if obj != self and temp_rect.colliderect(obj.rect)]
+                
+                if not collisions:
+                    self.x = new_x
+                    self.y = new_y
+                    self.rect.topleft = (self.x, self.y)
+                else:
+                    self.moving = False # Stop moving if collision detected
 
                 if self.rect.colliderect(self.target.rect):
                     game_messages = self.attack_target(game_messages)
@@ -299,8 +339,8 @@ def draw_key_bindings(screen, font, building_map, screen_width, screen_height, g
         screen.blit(text_surface, (x, y))
         y += 20
 
-def check_collision(preview_rect, buildings):
-    return any(building.rect.colliderect(preview_rect) for building in buildings)
+def check_collision(preview_rect, buildings, units):
+    return any(building.rect.colliderect(preview_rect) for building in buildings) or any(unit.rect.colliderect(preview_rect) for unit in units)
 
 def generate_spawn_point():
     side = random.choice(["left", "right", "top", "bottom"])
@@ -408,7 +448,7 @@ while running:
     # --- Preview Rect ---
     if not selected_unit:
         preview_rect = update_preview_rect(mouse_pos, current_building_type)
-        collision = check_collision(preview_rect, buildings) if preview_rect else False
+        collision = check_collision(preview_rect, buildings, units) if preview_rect else False # Check collision with buildings and units
     else:
         preview_rect = None  # No preview while unit is selected
         collision = False
