@@ -78,6 +78,24 @@ def check_collision(preview_rect, buildings, units):
             return True
     return False
 
+def check_collision_with_building(unit, buildings):
+    for building in buildings:
+        if unit.colliderect(building.rect):
+            return True
+    return False
+
+def check_collision_with_unit(unit, units, exclude_unit=None):
+    for other_unit in units:
+        if other_unit is not exclude_unit and unit.colliderect(other_unit.rect):
+            return True
+    return False
+
+def check_collision_with_enemy(unit, enemies):
+    for enemy in enemies:
+        if unit.colliderect(enemy.rect):
+            return True
+    return False
+
 def generate_spawn_point():
     side = random.choice(["left", "right", "top", "bottom"])
     if side == "left":

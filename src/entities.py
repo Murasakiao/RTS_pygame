@@ -36,7 +36,7 @@ class Building(GameObject):
         self.font = pygame.font.Font(None, 15)
 
 class Unit(GameObject):
-    def __init__(self, unit_type, x, y, enemies, font):
+    def __init__(self, unit_type, x, y, enemies, font, buildings, units):
         super().__init__(x, y, UNIT_DATA[unit_type]["image"])
         self.type = unit_type
         self.moving = False
@@ -48,6 +48,8 @@ class Unit(GameObject):
         self.attack_cooldown = 0
         self.enemies = enemies
         self.font = pygame.font.Font(None, 15)
+        self.buildings = buildings
+        self.units = units
 
     def update(self, dt, game_messages):
         if self.moving and self.destination:
@@ -99,6 +101,12 @@ class Unit(GameObject):
         if self.target and self.target.hp > 0:
             target_text = self.font.render(self.target.type, True, RED)
             screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, self.rect.top - target_text.get_height() - 5))
+        collided_with_building = check_collision_with_building(self.rect, self.buildings)
+        collided_with_unit = check_collision_with_unit(self.rect, self.units, exclude_unit=self)
+        collided_with_enemy = check_collision_with_enemy(self.rect, self.enemies)
+        collided = collided_with_building or collided_with_unit or collided_with_enemy
+        col = self.font.render("COLLIDED" if collided else "not", True, RED)
+        screen.blit(col, (self.rect.centerx - col.get_width() // 2, self.rect.top - col.get_height() - 10))
 
 class Enemy(GameObject):
     def __init__(self, unit_type, x, y, initial_target, buildings, units, font):
@@ -157,6 +165,11 @@ class Enemy(GameObject):
         if self.target:
             target_text = self.font.render(self.target.type, True, RED)
             screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, self.rect.top - target_text.get_height() - 5))
+        # collided_with_building = check_collision_with_building(self.rect, self.buildings)
+        # collided_with_unit = check_collision_with_unit(self.rect, self.units, exclude_unit=self)
+        # collided = collided_with_building or collided_with_unit
+        # col = self.font.render("COLLIDED" if collided else "not", True, RED)
+        # screen.blit(col, (self.rect.centerx - col.get_width() // 2, self.rect.top - col.get_height() - 10))
 
 class TerrainGenerator:
     def __init__(self, screen_width, screen_height, grid_size, noise):
