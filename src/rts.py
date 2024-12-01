@@ -90,7 +90,7 @@ while running:
     # --- Preview Rect ---
     if not selected_unit:
         preview_rect = update_preview_rect(mouse_pos, current_building_type)
-        collision = check_collision(preview_rect, buildings) if preview_rect else False
+        collision = check_collision(preview_rect, buildings, units) if preview_rect else False
     else:
         preview_rect = None  # No preview while unit is selected
         collision = False

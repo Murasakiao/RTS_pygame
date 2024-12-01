@@ -69,8 +69,14 @@ def draw_key_bindings(screen, font, building_map, screen_width, screen_height, g
         screen.blit(text_surface, (x, y))
         y += 20
 
-def check_collision(preview_rect, buildings):
-    return any(building.rect.colliderect(preview_rect) for building in buildings)
+def check_collision(preview_rect, buildings, units):
+    for building in buildings:
+        if preview_rect.colliderect(building.rect):
+            return True
+    for unit in units:
+        if preview_rect.colliderect(unit.rect):
+            return True
+    return False
 
 def generate_spawn_point():
     side = random.choice(["left", "right", "top", "bottom"])
