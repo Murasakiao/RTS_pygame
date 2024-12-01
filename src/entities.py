@@ -21,6 +21,9 @@ class GameObject:
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
+        hp = self.font.render(f"HP: {self.hp}", True, BLACK)
+        screen.blit(hp, (self.rect.centerx - hp.get_width() // 2, self.rect.top + self.rect.height + 5))
+
 
 class Building(GameObject):
     def __init__(self, x, y, building_type):
@@ -30,6 +33,7 @@ class Building(GameObject):
         size = (GRID_SIZE * size_multiplier, GRID_SIZE * size_multiplier)
         super().__init__(x, y, data["image"], size)
         self.hp = data["hp"]
+        self.font = pygame.font.Font(None, 15)
 
 class Unit(GameObject):
     def __init__(self, unit_type, x, y, enemies, font):
@@ -43,7 +47,7 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
         self.enemies = enemies
-        self.font = font
+        self.font = pygame.font.Font(None, 15)
 
     def update(self, dt, game_messages):
         if self.moving and self.destination:
@@ -106,7 +110,7 @@ class Enemy(GameObject):
         self.atk = ENEMY_DATA[unit_type]["atk"]
         self.buildings = buildings
         self.units = units
-        self.font = font
+        self.font = pygame.font.Font(None, 15)
 
     def update(self, dt, game_messages=None):
         if self.target and self.target.hp <= 0:
