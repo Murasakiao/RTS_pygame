@@ -121,6 +121,7 @@ while running:
                 if clicked_unit:
                     selected_unit = clicked_unit
                     add_game_message(f"Selected {clicked_unit.type}", game_messages)
+                    current_building_type = None
                     continue  # Skip building placement
 
                 # Building Placement / Unit Training
