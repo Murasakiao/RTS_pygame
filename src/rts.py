@@ -201,6 +201,9 @@ while running:
 
     for building in buildings:
         building.draw(screen)
+        # Update the building's HP here...
+        if building.hp <= 0:
+            buildings.remove(building)
 
     for unit in units:
         unit.draw(screen)
