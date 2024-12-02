@@ -42,17 +42,16 @@ class Building(GameObject):
         self.hp = data["hp"]
 
 class Unit(GameObject):
-    def __init__(self, unit_data, x, y, targets, font=None):
+    def __init__(self, unit_type, x, y, targets, font=None):
         # Get unit data based on type
-        if isinstance(unit_data, str):
-            unit_data = ALLY_DATA.get(unit_data) or ENEMY_DATA.get(unit_data)
-            if unit_data is None:
-                raise ValueError(f"Invalid unit_type: {unit_data}")
+        unit_data = ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)
+        if unit_data is None:
+            raise ValueError(f"Invalid unit_type: {unit_type}")
         
         super().__init__(x, y, unit_data["image"])
         
-        self.name = unit_data['name'] # Store the name separately
-        self.type = unit_data  # Keep the type for other data
+        self.name = unit_data['name']  # Store the name separately
+        self.type = unit_type  # Store the unit type as a string
         self.destination = None
         self.speed = unit_data.get("speed", 75)
         self.hp = unit_data.get("hp", 100)
