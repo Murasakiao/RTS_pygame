@@ -228,11 +228,15 @@ class EnemyUnit(Unit):
         """
         return self.target and self.rect.colliderect(self.target.rect)
 
+    def get_attack_range(self):
+        return GRID_SIZE
+
     def get_attack_cooldown(self):
         """
         Get the attack cooldown for enemy units
         """
         return ENEMY_ATTACK_COOLDOWN
+
 
 # Optional: Terrain Generator remains the same as in the original code
 class TerrainGenerator:
