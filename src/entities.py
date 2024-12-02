@@ -42,37 +42,20 @@ class Building(GameObject):
         self.hp = data["hp"]
 
 class Unit(GameObject):
-    def __init__(self, unit_type, x, y, targets, font=None):
-        # Handle different input types for unit_type
-        if isinstance(unit_type, dict):
-            # If already a dictionary, use as-is
-            unit_data = unit_type
-        elif isinstance(unit_type, str):
-            # Try to look up in multiple dictionaries
-            try:
-                # First try ALLY_DATA
-                unit_data = ALLY_DATA.get(unit_type)
-                if unit_data is None:
-                    # Then try ENEMY_DATA
-                    unit_data = ENEMY_DATA.get(unit_type)
-                
-                if unit_data is None:
-                    raise KeyError(f"Unit type '{unit_type}' not found in ALLY_DATA or ENEMY_DATA")
-            except NameError:
-                # Fallback if dictionaries are not defined
-                print(f"Warning: ALLY_DATA or ENEMY_DATA not found. Using default unit data.")
-                unit_data = ALLY_DATA.get("Swordsman")
-        else:
-            raise ValueError(f"Invalid unit_type: {unit_type}. Must be a string or dictionary.")
+    def __init__(self, unit_data, x, y, targets, font=None):
+        # Get unit data based on type
+        if isinstance(unit_data, str):
+            unit_data = ALLY_DATA.get(unit_data) or ENEMY_DATA.get(unit_data)
+            if unit_data is None:
+                raise ValueError(f"Invalid unit_type: {unit_data}")
         
-        super().__init__(x, y, unit_type["image"])  
+        super().__init__(x, y, unit_data["image"])
         
-        self.type = unit_type
-        # self.moving = False
+        self.type = unit_data
         self.destination = None
-        self.speed = unit_type.get("speed", 75)
-        self.hp = unit_type.get("hp", 100)
-        self.atk = unit_type.get("atk", 10)
+        self.speed = unit_data.get("speed", 75)
+        self.hp = unit_data.get("hp", 100)
+        self.attack = unit_data.get("atk", 10)  # Renamed to 'attack'
         
         self.font = font or pygame.font.Font(None, 15)
         
@@ -162,11 +145,10 @@ class Unit(GameObject):
             # Use the unit type name instead of the entire dictionary
             unit_name = self.type.get('name', 'Unit')
             target_name = self.target.type.get('name', 'Target')
-            
-            self.target.hp -= self.atk
-            message = f"{unit_name} attacked {target_name}"
-            
-            if self.target.hp <= 0:
+            self.target.hp -= self.attack
+            message = f"{unit_name} attacked {target_name} for {self.attack} damage."
+
+            if self.target and self.target.hp <= 0:  # Check if target still exists
                 message = f"{unit_name} destroyed {target_name}"
                 # Automatically find a new target after destroying current one
                 self.target = None
