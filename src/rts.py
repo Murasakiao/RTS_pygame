@@ -132,9 +132,10 @@ while running:
 
                 if clicked_building and "unit" in BUILDING_DATA[clicked_building.type]:
                     unit_type = BUILDING_DATA[clicked_building.type]["unit"]
-                    unit_cost = UNIT_DATA[unit_type]["cost"]
+                    unit_cost = ALLY_DATA[unit_type]["cost"]
+                    speed = 50
                     if all(resources.get(resource, gold) >= amount for resource, amount in unit_cost.items()):
-                        new_unit = Unit(unit_type, clicked_building.x, clicked_building.y + GRID_SIZE, enemies, font, buildings, units)
+                        new_unit = AlliedUnit(ALLY_DATA[unit_type], clicked_building.x, clicked_building.y + GRID_SIZE, speed)
                         units.append(new_unit)
                         for resource, amount in unit_cost.items():
                             if resource == "gold":
@@ -172,7 +173,7 @@ while running:
                 selected_unit.moving = True
 
                 # Find nearest target for the selected unit
-                selected_unit.target = selected_unit.find_nearest_target(enemies)
+                selected_unit.target = selected_unit.find_nearest_target()
 
                 add_game_message(f"Moving {selected_unit.type}", game_messages)
 

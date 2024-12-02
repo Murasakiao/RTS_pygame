@@ -9,7 +9,8 @@ import pygame
 # Add the rts_pygame directory to the sys.path list
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from src.entities import Enemy
+from src.entities import EnemyUnit
+from src.entities import AlliedUnit
 from constants import *
 
 pygame.init()
@@ -118,9 +119,10 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
     for _ in range(current_wave * enemy_spawn_rate):
         spawn_x, spawn_y = generate_spawn_point()
         enemy_type = random.choice(list(ENEMY_DATA.keys()))
-        enemy = Enemy(enemy_type, spawn_x, spawn_y, initial_target, buildings, units, font)
+        enemy = EnemyUnit(ENEMY_DATA[enemy_type], spawn_x, spawn_y, buildings, units, font)
         spawned_enemies.append(enemy)
     print(spawned_enemies)
+
     return spawned_enemies
 
 def draw_debug_info(screen, font, debug_info, x=10, y=40):
