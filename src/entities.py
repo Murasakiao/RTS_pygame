@@ -203,7 +203,8 @@ class AlliedUnit(Unit):
         dx = self.target.x - self.x
         dy = self.target.y - self.y
         distance = math.hypot(dx, dy)
-        unit_range = ALLY_DATA[self.type].get("range", UNIT_ATTACK_RANGE) # Get range, default to UNIT_ATTACK_RANGE
+        unit_range = ALLY_DATA[self.type].get("range", UNIT_ATTACK_RANGE)  # Get range, default to UNIT_ATTACK_RANGE
+        return distance <= unit_range
 
     def get_attack_range(self):
         """
