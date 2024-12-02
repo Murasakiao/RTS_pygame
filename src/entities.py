@@ -45,7 +45,7 @@ class Unit(GameObject):
         self.hp = UNIT_DATA[unit_type]["hp"]
         self.atk = UNIT_DATA[unit_type]["atk"]
         self.target = None
-        self.attack_cooldown = 0
+        self.attack_cooldown = 9000
         self.enemies = enemies
         self.font = pygame.font.Font(None, 15)
         self.buildings = buildings
@@ -119,6 +119,7 @@ class Enemy(GameObject):
         self.buildings = buildings
         self.units = units
         self.font = pygame.font.Font(None, 15)
+        self.attack_cooldown = 2000  
 
     def update(self, dt, game_messages=None):
         if self.target and self.target.hp <= 0:
@@ -140,17 +141,19 @@ class Enemy(GameObject):
 
         return game_messages
 
-    def attack_target(self, game_messages=None):
-        if self.target:
-            self.target.hp -= self.atk
-            message = f"Enemy {self.type} attacked {self.target.type}"
-
-            if self.target.hp <= 0:
-                message = f"Enemy {self.type} destroyed {self.target.type}"
-                self.target = self.find_nearest_target(self.buildings + self.units)
-
-            if game_messages is not None:  # Only add message if list is provided
-                add_game_message(message, game_messages)
+    def attack_target(self, game_messages=None, dt=0):
+        if self.attack_cooldown <= 0:
+            if self.target:
+                self.target.hp -= self.atk
+                message = f"Enemy {self.type} attacked {self.target.type}"
+                if self.target.hp <= 0:
+                    message = f"Enemy {self.type} destroyed {self.target.type}"
+                    self.target = self.find_nearest_target(self.buildings + self.units)
+                if game_messages is not None:
+                    add_game_message(message, game_messages)
+                self.attack_cooldown = 2000  # reset cooldown
+        else:
+            self.attack_cooldown -= dt  # decrement cooldown
 
         return game_messages
 
@@ -187,13 +190,13 @@ class TerrainGenerator:
         grass_tiles = []
         for i in range(1, 7):
             try:
-                tile = pygame.image.load(f'../buildings/tile_{i}.png')
+                tile = pygame.image.load(f'buildings/tile_{i}.png')
                 tile = pygame.transform.scale(tile, (self.grid_size, self.grid_size))
                 grass_tiles.append(tile)
             except Exception as e:
                 print(f"Error loading tile_{i}.png: {e}")
 
-        if not grass_tiles:  # Fallback if no tiles loaded
+        if not grass_tiles:  # Fallback if no tiles loaded 
             grass_tiles.append(pygame.Surface((self.grid_size, self.grid_size)))
             grass_tiles[0].fill((0, 255, 0))
         return grass_tiles
