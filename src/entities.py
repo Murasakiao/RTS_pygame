@@ -53,7 +53,7 @@ class Unit(GameObject):
         self.name = unit_data['name']  # Store the name separately
         self.type = unit_type  # Store the unit type as a string
         self.destination = None
-        self.speed = unit_data.get("speed", 75)
+        self.speed = unit_data.get("speed")
         self.hp = unit_data.get("hp", 100)
         self.attack = unit_data.get("atk", 10)  # Renamed to 'attack'
         
