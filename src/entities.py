@@ -51,7 +51,8 @@ class Unit(GameObject):
         
         super().__init__(x, y, unit_data["image"])
         
-        self.type = unit_data
+        self.name = unit_data['name'] # Store the name separately
+        self.type = unit_data  # Keep the type for other data
         self.destination = None
         self.speed = unit_data.get("speed", 75)
         self.hp = unit_data.get("hp", 100)
@@ -143,8 +144,8 @@ class Unit(GameObject):
         """
         if self.target:
             # Use the unit type name instead of the entire dictionary
-            unit_name = self.type['name']  # Access directly
-            target_name = self.target.type['name'] # Access directly
+            unit_name = self.name  # Use the stored name
+            target_name = self.target.name # Use the stored name
             self.target.hp -= self.attack
             message = f"{unit_name} attacked {target_name} for {self.attack} damage."
 
