@@ -44,7 +44,7 @@ class Unit(GameObject):
         self.hp = UNIT_DATA[unit_type]["hp"]
         self.atk = UNIT_DATA[unit_type]["atk"]
         self.target = None
-        self.attack_cooldown = 9000
+        self.attack_cooldown = 0
         self.enemies = enemies
         self.font = pygame.font.Font(None, 15)
         self.buildings = buildings
