@@ -109,16 +109,11 @@ def generate_spawn_point():
         return random.randint(0, SCREEN_WIDTH - GRID_SIZE), SCREEN_HEIGHT
 
 def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
-    initial_target = next((building for building in buildings if building.type == "Castle"), None) or next((unit for unit in units), None)
-
-    if not initial_target:
-        return []
-
     spawned_enemies = []
     for _ in range(current_wave * enemy_spawn_rate):
         spawn_x, spawn_y = generate_spawn_point()
         enemy_type = random.choice(list(ENEMY_DATA.keys()))
-        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units) # Pass enemy_type as string
+        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings + units)  # Combine targets
         spawned_enemies.append(enemy)
 
     return spawned_enemies
