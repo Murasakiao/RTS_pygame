@@ -90,40 +90,39 @@ class Unit(GameObject):
 
     def move_towards_target(self, dt):
         """
-        Move the unit towards its current target
+        Move the unit towards its current target, or stop if in attack range.
         """
-        if self.destination:
-            dx = self.destination[0] - self.x
-            dy = self.destination[1] - self.y
+        if self.target:
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
             distance = math.hypot(dx, dy)
-        
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
-                
-                # If we can reach the destination in this frame
-                if distance <= travel_distance:
-                    self.x = self.destination[0]
-                    self.y = self.destination[1]
-                    self.moving = False
-                    self.destination = None
-                else:
-                    # Move towards destination
-                    self.x += (dx / distance) * travel_distance
-                    self.y += (dy / distance) * travel_distance
-                
-                self.rect.topleft = (self.x, self.y)
-        else:
-            # If no destination, then move towards target if exists
-            if self.target:
-                dx = self.target.x - self.x
-                dy = self.target.y - self.y
+            unit_range = self.get_attack_range()  # Abstract range calculation
+
+            if distance <= unit_range:
+                self.destination = None  # Stop moving when in range
+            elif self.destination:
+                dx = self.destination[0] - self.x
+                dy = self.destination[1] - self.y
                 distance = math.hypot(dx, dy)
-            
+
                 if distance > 0:
                     travel_distance = self.speed * (dt / 1000)
-                    self.x += (dx / distance) * travel_distance
-                    self.y += (dy / distance) * travel_distance
+
+                    if distance <= travel_distance:
+                        self.x = self.destination[0]
+                        self.y = self.destination[1]
+                        self.destination = None
+                    else:
+                        self.x += (dx / distance) * travel_distance
+                        self.y += (dy / distance) * travel_distance
+
                     self.rect.topleft = (self.x, self.y)
+            elif distance > unit_range:  # Move towards target if not in range and no destination
+                travel_distance = self.speed * (dt / 1000)
+                self.x += (dx / distance) * travel_distance
+                self.y += (dy / distance) * travel_distance
+                self.rect.topleft = (self.x, self.y)
+
 
     def handle_attack(self, dt, game_messages):
         """
@@ -205,7 +204,12 @@ class AlliedUnit(Unit):
         dy = self.target.y - self.y
         distance = math.hypot(dx, dy)
         unit_range = ALLY_DATA[self.type].get("range", UNIT_ATTACK_RANGE) # Get range, default to UNIT_ATTACK_RANGE
-        return distance <= unit_range
+
+    def get_attack_range(self):
+        """
+        Get the attack range for this unit.
+        """
+        return ALLY_DATA.get(self.type, {}).get("range", UNIT_ATTACK_RANGE)
 
     def get_attack_cooldown(self):
         """
