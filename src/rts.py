@@ -26,7 +26,7 @@ resource_increase_rates = {
 buildings = []
 units = []
 enemies = []
-game_messages = [] # Initialize game_messages list
+game_messages = []
 
 current_building_type = "Castle"
 building_cooldown = 0
@@ -44,12 +44,13 @@ building_map = {
 }
 
 # --- Game Loop ---
-game_messages = []
 running = True
 show_debug = True
+
 while running:
     dt = clock.tick(FPS)
     mouse_pos = pygame.mouse.get_pos()
+
     debug_info = [
         f"FPS: {int(clock.get_fps())}",
         f"Buildings: {len(buildings)}",
@@ -58,9 +59,6 @@ while running:
         f"Mouse Position: {mouse_pos}",
         f"Selected Unit: {selected_unit.type if selected_unit else 'None'}",
         f"Current Wave: {current_wave}",
-        # f"Gold: {int(gold)}",
-        # f"Resources: {int(resources['gold'])}, {int(resources['wood'])}, {int(resources['stone'])}, {int(resources['food'])}, {int(resources['people'])}",
-        # Add more debug variables as needed
     ]
 
     # --- Resource Management ---
@@ -78,22 +76,18 @@ while running:
 
     for resource, rate in resource_increase_rates.items():
         multiplier = resource_multipliers.get(resource, 1)
-        increase = rate * multiplier * (dt / 1000)
-        if resource == "gold":
-            gold += increase
-        else:
-            resources[resource] += increase
+        resources[resource] += rate * multiplier * (dt / 1000)
+    gold += resource_increase_rates["gold"] * resource_multipliers.get("gold", 1) * (dt/1000)
 
     # --- Building Cooldown ---
     building_cooldown = max(0, building_cooldown - dt)
 
     # --- Preview Rect ---
-    if not selected_unit:
+    preview_rect = None
+    collision = False
+    if not selected_unit and current_building_type:
         preview_rect = update_preview_rect(mouse_pos, current_building_type)
         collision = check_collision(preview_rect, buildings, units) if preview_rect else False
-    else:
-        preview_rect = None  # No preview while unit is selected
-        collision = False
 
     # --- Event Handling ---
     for event in pygame.event.get():
@@ -111,7 +105,7 @@ while running:
                 show_debug = not show_debug
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
-                # Unit Selection
+                # ... (rest of event handling)
                 clicked_unit = None
                 for unit in units:
                     if unit.rect.collidepoint(mouse_pos):
@@ -120,47 +114,36 @@ while running:
 
                 if clicked_unit:
                     selected_unit = clicked_unit
-                    add_game_message(f"Selected {clicked_unit.type}", game_messages)
+                    add_game_message(f"Selected {clicked_unit.type['name']}", game_messages) # Use unit name
                     current_building_type = None
                     continue  # Skip building placement
 
-                # Building Placement / Unit Training
                 grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
                 grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
 
                 clicked_building = next((building for building in buildings if building.rect.collidepoint(mouse_pos)), None)
 
                 if clicked_building and "unit" in BUILDING_DATA[clicked_building.type]:
-                    unit_type = BUILDING_DATA[clicked_building.type]["unit"]
-                    unit_cost = ALLY_DATA[unit_type]["cost"]
-                    speed = 50
-                    if all(resources.get(resource, gold) >= amount for resource, amount in unit_cost.items()):
-                        new_unit = AlliedUnit(ALLY_DATA[unit_type], clicked_building.x, clicked_building.y + GRID_SIZE, speed)
+                    unit_type_name = BUILDING_DATA[clicked_building.type]["unit"]
+                    unit_data = ALLY_DATA[unit_type_name]
+                    unit_cost = unit_data["cost"]
+                    if can_afford(resources, gold, unit_cost):
+                        new_unit = AlliedUnit(unit_data, clicked_building.rect.centerx, clicked_building.rect.bottom, enemies)
                         units.append(new_unit)
-                        for resource, amount in unit_cost.items():
-                            if resource == "gold":
-                                gold -= amount
-                            else:
-                                resources[resource] -= amount
-                        add_game_message(f"Trained {unit_type}", game_messages)
+                        deduct_cost(resources, gold, unit_cost)
+                        add_game_message(f"Trained {unit_type_name}", game_messages)
                     else:
-                        add_game_message(f"Not enough resources to train {unit_type}", game_messages)
+                        add_game_message(f"Not enough resources to train {unit_type_name}", game_messages)
 
                 elif current_building_type and not collision and building_cooldown <= 0:
-                    castle_exists = any(building.type == "Castle" for building in buildings)
-                    if current_building_type == "Castle" and castle_exists:
+                    if current_building_type == "Castle" and any(building.type == "Castle" for building in buildings):
                         add_game_message("Only one castle can be built.", game_messages)
                     else:
                         cost = BUILDING_DATA[current_building_type].get("resources", {})
-                        affordable = all(resources.get(resource, gold) >= amount for resource, amount in cost.items())
-                        if affordable:
+                        if can_afford(resources, gold, cost):
                             new_building = Building(grid_x, grid_y, current_building_type)
                             buildings.append(new_building)
-                            for resource, amount in cost.items():
-                                if resource == "gold":
-                                    gold -= amount
-                                else:
-                                    resources[resource] -= amount
+                            deduct_cost(resources, gold, cost)
                             building_cooldown = BUILDING_COOLDOWN_TIME
                             add_game_message(f"Built {current_building_type}", game_messages)
                         else:
@@ -169,31 +152,26 @@ while running:
             elif event.button == 3 and selected_unit:  # Move selected unit
                 grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
                 grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
-                selected_unit.destination = (grid_x, grid_y)
-                selected_unit.moving = True
-
-                # Find nearest target for the selected unit
-                selected_unit.target = selected_unit.find_nearest_target()
-
-                add_game_message(f"Moving {selected_unit.type}", game_messages)
+                selected_unit.set_destination((grid_x, grid_y)) # Use setter method
+                add_game_message(f"Moving {selected_unit.type['name']}", game_messages) # Use unit name
 
     # --- Game Updates ---
     for unit in units:
-        unit.update(dt, game_messages)
-
+        unit.update(dt, game_messages, enemies) # Pass enemies as argument
     for enemy in enemies:
-        game_messages = enemy.update(dt, game_messages)  # Pass game_messages to enemy update
+        enemy.update(dt, game_messages, buildings, units) # Pass buildings and units as arguments
 
     if wave_timer >= WAVE_INTERVAL:
-        new_enemies = spawn_enemies(buildings, units, current_wave, ENEMY_SPAWN_RATE)
+        new_enemies = spawn_enemies(current_wave, ENEMY_SPAWN_RATE)
         enemies.extend(new_enemies)
         wave_timer = 0
         current_wave += 1
     else:
         wave_timer += dt
 
-    enemies[:] = [enemy for enemy in enemies if enemy.hp > 0]  # Remove dead enemies
-    units[:] = [unit for unit in units if unit.hp > 0] # Remove dead units
+    # Remove dead units and enemies
+    units[:] = [unit for unit in units if unit.hp > 0]
+    enemies[:] = [enemy for enemy in enemies if enemy.hp > 0]
 
     # --- Drawing ---
     screen.fill(WHITE)
@@ -203,7 +181,6 @@ while running:
 
     for building in buildings:
         building.draw(screen)
-        # Update the building's HP here...
         if building.hp <= 0:
             buildings.remove(building)
 
@@ -219,8 +196,6 @@ while running:
     draw_messages(screen, font, game_messages)
     draw_key_bindings(screen, font, building_map, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, BUILDING_DATA)
 
-    print(wave_timer, current_wave)
-    # Draw debug information if enabled
     if show_debug:
         draw_debug_info(screen, font, debug_info)
         draw_grid(screen)
