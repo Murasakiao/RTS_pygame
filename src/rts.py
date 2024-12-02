@@ -20,7 +20,7 @@ font = pygame.font.Font(None, 20)
 gold = 150
 resources = {"wood": 1000, "stone": 1000, "food": 1000, "people": 3}
 resource_increase_rates = {
-    "gold": 3, "wood": 2, "stone": 1, "food": 1, "people": 0.05
+    "gold": 3, "wood": 2, "stone": 1, "food": 1, "people": 0.1
 }
 
 buildings = []
@@ -179,7 +179,7 @@ while running:
 
     # --- Game Updates ---
     for unit in units:
-        unit.targets = enemies + buildings  # Update targets for allied units
+        unit.targets = enemies  # Update targets for allied units
         unit.update(dt, game_messages)
 
     for enemy in enemies:
