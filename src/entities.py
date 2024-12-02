@@ -144,7 +144,12 @@ class Unit(GameObject):
         if self.target:
             # Use the unit type name instead of the entire dictionary
             unit_name = self.name  # Use the stored name
-            target_name = self.target.name # Use the stored name
+            # Use the unit type name instead of the entire dictionary
+            unit_name = self.name  # Use the stored name
+            if hasattr(self.target, 'name'):
+                target_name = self.target.name
+            else:
+                target_name = self.target.type  # Use type if no name attribute
             self.target.hp -= self.attack
             message = f"{unit_name} attacked {target_name} for {self.attack} damage."
 
