@@ -39,6 +39,6 @@ UNIT_DATA = {
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1},
-    "Orc": {"image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2},
+    "Goblin": {"image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "attack_cooldown": 1500},
+    "Orc": {"image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "attack_cooldown": 2500},
 }
