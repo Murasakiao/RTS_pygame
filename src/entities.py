@@ -80,8 +80,76 @@ class Unit(GameObject):
 
         if not self.target:
             self.target = self.find_nearest_target(self.enemies)
-        elif self.target.hp <=0: # Find a new target if current target is dead
+        elif self.target.hp <= 0: # Find a new target if current target is dead
             self.target = self.find_nearest_target(self.enemies)
 
         if self.target and not self.moving:
-            self.destination = (self.target.x
+            self.destination = (self.target.x, self.target.y)
+
+    def find_nearest_target(self, enemies):
+        # Find the nearest enemy
+        nearest_enemy = None
+        min_distance = float('inf')
+
+        for enemy in enemies:
+            distance = math.hypot(enemy.x - self.x, enemy.y - self.y)
+            if distance < min_distance:
+                min_distance = distance
+                nearest_enemy = enemy
+        return nearest_enemy
+
+class Enemy(GameObject):
+    def __init__(self, enemy_type, x, y, buildings, units, font):
+        super().__init__(x, y, ENEMY_DATA[enemy_type]["image"])
+        self.type = enemy_type
+        self.speed = ENEMY_DATA[enemy_type]["speed"]
+        self.hp = ENEMY_DATA[enemy_type]["hp"]
+        self.atk = ENEMY_DATA[enemy_type]["atk"]
+        self.attack_cooldown = 0
+        self.target = self.find_nearest_target(buildings)  # Initially target buildings
+        if not self.target:
+            self.target = self.find_nearest_target(units)
+        self.font = font
+
+    def update(self, dt, game_messages):
+        if self.target:
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            distance = math.hypot(dx, dy)
+
+            if distance > 0:
+                travel_distance = self.speed * (dt / 1000)
+                self.x += (dx / distance) * travel_distance
+                self.y += (dy / distance) * travel_distance
+                self.rect.topleft = (self.x, self.y)
+
+            if self.attack_cooldown <= 0:
+                if distance <= GRID_SIZE:  # Attack if close enough
+                    self.target.hp -= self.atk
+                    add_game_message(f"{self.type} attacked {self.target.type}", game_messages)
+                    if self.target.hp <= 0:
+                        add_game_message(f"{self.type} destroyed {self.target.type}", game_messages)
+                        if isinstance(self.target, Building):
+                            self.target = self.find_nearest_target(buildings)
+                            if not self.target:
+                                self.target = self.find_nearest_target(units)
+                        else:
+                            self.target = self.find_nearest_target(units)
+                            if not self.target:
+                                self.target = self.find_nearest_target(buildings)
+                    self.attack_cooldown = ENEMY_DATA[self.type]["attack_cooldown"]
+            else:
+                self.attack_cooldown -= dt
+        return game_messages
+
+    def find_nearest_target(self, targets):
+        nearest_target = None
+        min_distance = float('inf')
+
+        for target in targets:
+            distance = math.hypot(target.x - self.x, target.y - self.y)
+            if distance < min_distance:
+                min_distance = distance
+                nearest_target = target
+
+        return nearest_target
