@@ -113,7 +113,7 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
     for _ in range(current_wave * enemy_spawn_rate):
         spawn_x, spawn_y = generate_spawn_point()
         enemy_type = random.choice(list(ENEMY_DATA.keys()))
-        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings + units)  # Combine targets
+        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)  # Pass buildings and units separately
         spawned_enemies.append(enemy)
 
     return spawned_enemies
