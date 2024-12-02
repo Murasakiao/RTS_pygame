@@ -143,8 +143,8 @@ class Unit(GameObject):
         """
         if self.target:
             # Use the unit type name instead of the entire dictionary
-            unit_name = self.type.get('name', 'Unit')
-            target_name = self.target.type.get('name', 'Target')
+            unit_name = self.type['name']  # Access directly
+            target_name = self.target.type['name'] # Access directly
             self.target.hp -= self.attack
             message = f"{unit_name} attacked {target_name} for {self.attack} damage."
 
