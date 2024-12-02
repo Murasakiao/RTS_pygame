@@ -24,7 +24,6 @@ class GameObject:
         hp = self.font.render(f"HP: {self.hp}", True, BLACK)
         screen.blit(hp, (self.rect.centerx - hp.get_width() // 2, self.rect.top + self.rect.height + 5))
 
-
 class Building(GameObject):
     def __init__(self, x, y, building_type):
         self.type = building_type
@@ -84,7 +83,6 @@ class Unit(GameObject):
         elif self.target.hp <=0: # Find a new target if current target is dead
             self.target = self.find_nearest_target(self.enemies)
 
-
         if self.target and not self.moving:
             self.destination = (self.target.x, self.target.y)
             self.moving = True
@@ -119,7 +117,7 @@ class Enemy(GameObject):
         self.buildings = buildings
         self.units = units
         self.font = pygame.font.Font(None, 15)
-        self.attack_cooldown = 2000  
+        self.attack_cooldown = 0  # Initialize cooldown to 0
 
     def update(self, dt, game_messages=None):
         if self.target and self.target.hp <= 0:
@@ -137,11 +135,14 @@ class Enemy(GameObject):
                 self.rect.topleft = (self.x, self.y)
 
                 if self.rect.colliderect(self.target.rect):
-                    game_messages = self.attack_target(game_messages)
+                    game_messages = self.attack_target(dt, game_messages) # Pass dt to attack_target
+
+        if self.attack_cooldown > 0:  # Decrement cooldown outside the target check
+            self.attack_cooldown -= dt
 
         return game_messages
 
-    def attack_target(self, game_messages=None, dt=0):
+    def attack_target(self, dt, game_messages=None):
         if self.attack_cooldown <= 0:
             if self.target:
                 self.target.hp -= self.atk
@@ -151,9 +152,7 @@ class Enemy(GameObject):
                     self.target = self.find_nearest_target(self.buildings + self.units)
                 if game_messages is not None:
                     add_game_message(message, game_messages)
-                self.attack_cooldown = 2000  # reset cooldown
-        else:
-            self.attack_cooldown -= dt  # decrement cooldown
+                self.attack_cooldown = 2000  # Reset cooldown after attacking
 
         return game_messages
 
@@ -168,11 +167,6 @@ class Enemy(GameObject):
         if self.target:
             target_text = self.font.render(self.target.type, True, RED)
             screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, self.rect.top - target_text.get_height() - 5))
-        # collided_with_building = check_collision_with_building(self.rect, self.buildings)
-        # collided_with_unit = check_collision_with_unit(self.rect, self.units, exclude_unit=self)
-        # collided = collided_with_building or collided_with_unit
-        # col = self.font.render("COLLIDED" if collided else "not", True, RED)
-        # screen.blit(col, (self.rect.centerx - col.get_width() // 2, self.rect.top - col.get_height() - 10))
 
 class TerrainGenerator:
     def __init__(self, screen_width, screen_height, grid_size, noise):
