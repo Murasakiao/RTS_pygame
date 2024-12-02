@@ -135,7 +135,7 @@ while running:
                     unit_cost = ALLY_DATA[unit_type]["cost"]
                     speed = 50
                     if all(resources.get(resource, gold) >= amount for resource, amount in unit_cost.items()):
-                        new_unit = AlliedUnit(ALLY_DATA[unit_type], clicked_building.x, clicked_building.y + GRID_SIZE, speed)
+                        new_unit = AlliedUnit(unit_type, clicked_building.x, clicked_building.y + GRID_SIZE, enemies)
                         units.append(new_unit)
                         for resource, amount in unit_cost.items():
                             if resource == "gold":

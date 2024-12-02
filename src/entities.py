@@ -187,8 +187,8 @@ class Unit(GameObject):
                                       self.rect.top - target_text.get_height() - 5))
 
 class AlliedUnit(Unit):
-    def __init__(self, unit_type, x, y, targets, font=None):  # Changed to targets
-        super().__init__(unit_type, x, y, targets, font)  # Pass targets to superclass
+    def __init__(self, unit_type, x, y, targets, font=None):
+        super().__init__(unit_type, x, y, targets, font)
 
     def should_attack(self):
         """
