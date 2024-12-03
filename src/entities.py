@@ -107,16 +107,26 @@ class Unit(GameObject):
 
                 if distance > 0:
                     travel_distance = self.speed * (dt / 1000)
+                    new_x = self.x + (dx / distance) * travel_distance
+                    new_y = self.y + (dy / distance) * travel_distance
+                    new_rect = self.rect.copy()
+                    new_rect.topleft = (new_x, new_y)
+
+                    # Check for collisions with buildings
+                    collision = False
+                    for building in [b for b in self.targets if isinstance(b, Building)]:  # Filter for buildings
+                        if new_rect.colliderect(building.rect):
+                            collision = True
+                            break
+
+                    if not collision:
+                        self.x = new_x
+                        self.y = new_y
+                        self.rect.topleft = (self.x, self.y)
 
                     if distance <= travel_distance:
-                        self.x = self.destination[0]
-                        self.y = self.destination[1]
-                        self.destination = None
-                    else:
-                        self.x += (dx / distance) * travel_distance
-                        self.y += (dy / distance) * travel_distance
+                        self.destination = None  # Reach destination
 
-                    self.rect.topleft = (self.x, self.y)
             elif distance > unit_range:  # Move towards target if not in range and no destination
                 travel_distance = self.speed * (dt / 1000)
                 new_x = self.x + (dx / distance) * travel_distance
