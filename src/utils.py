@@ -10,6 +10,7 @@ import pygame
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from constants import *
+from entities import EnemyUnit
 
 pygame.init()
 font = pygame.font.Font(None, 20)
