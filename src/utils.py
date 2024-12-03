@@ -19,6 +19,10 @@ font = pygame.font.Font(None, 20)
 
 # --- Functions ---
 def draw_grid(screen, color=BLACK, line_width=1):
+    for x in range(0, SCREEN_WIDTH, GRID_SIZE):
+        for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
+            rect = pygame.Rect(x, y, GRID_SIZE, GRID_SIZE)
+            pygame.draw.rect(screen, color, rect, line_width)
 
 def update_grid(buildings, grid, grid_width, grid_height):
     """Updates the grid based on building positions."""
@@ -30,11 +34,6 @@ def update_grid(buildings, grid, grid_width, grid_height):
             for y in range(building.rect.top // GRID_SIZE, building.rect.bottom // GRID_SIZE):
                 if 0 <= x < grid_width and 0 <= y < grid_height:
                     grid[y][x] = 1  # Mark cells occupied by buildings
-
-    for x in range(0, SCREEN_WIDTH, GRID_SIZE):
-        for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
-            rect = pygame.Rect(x, y, GRID_SIZE, GRID_SIZE)
-            pygame.draw.rect(screen, color, rect, line_width)
 
 def add_game_message(message, game_messages, duration=MESSAGE_DURATION):
     current_time = pygame.time.get_ticks()
