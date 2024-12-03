@@ -3,7 +3,7 @@
 import math
 import pygame
 from constants import *
-from utils import *
+from utils import add_game_message
 
 pygame.init()
 
