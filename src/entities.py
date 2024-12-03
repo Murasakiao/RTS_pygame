@@ -70,15 +70,16 @@ class Unit(GameObject):
         
         self.target = None
         self.attack_cooldown = 0
+        self.path = []  # Initialize path
 
-    def update(self, dt, game_messages=None):
+    def update(self, dt, game_messages=None, grid=None, buildings=None):  # Add grid and buildings parameters
         """
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
         """
         self.handle_target_selection()
-        self.move_towards_target(dt)
-        self.handle_attack(dt, game_messages)
+        self.move_towards_target(dt, grid, buildings)  # Pass grid and buildings to move_towards_target
+        self.handle_attack(dt, game_messages, grid, buildings)  # Pass grid and buildings to handle_attack
         return game_messages
 
     def handle_target_selection(self):
@@ -88,8 +89,8 @@ class Unit(GameObject):
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
 
-    def move_towards_target(self, dt):
-        if self.destination and not self.path:
+    def move_towards_target(self, dt, grid, buildings):
+        if self.destination and not self.path:  # Only calculate path if destination exists and path is empty
             start = (self.x // GRID_SIZE, self.y // GRID_SIZE)
             end = (self.destination[0] // GRID_SIZE, self.destination[1] // GRID_SIZE)
             self.path = astar(grid, start, end, buildings)
