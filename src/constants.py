@@ -12,8 +12,16 @@ ENEMY_ATTACK_RANGE = 50
 UNIT_ATTACK_COOLDOWN = 2000  
 ENEMY_ATTACK_COOLDOWN = 2000
 
+import pygame
 # Colors
 WHITE = (255, 255, 255)
+
+def add_game_message(message, game_messages, duration=MESSAGE_DURATION):
+    current_time = pygame.time.get_ticks()
+    game_messages[:] = [msg for msg in game_messages if current_time - msg["start_time"] < msg["duration"]]  # Remove expired messages
+
+    if not any(msg["text"] == message for msg in game_messages):  # Add new message if not a duplicate
+        game_messages.append({"text": message, "start_time": current_time, "duration": duration})
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)

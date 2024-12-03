@@ -9,9 +9,8 @@ import pygame
 # Add the rts_pygame directory to the sys.path list
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from src.entities import EnemyUnit
-from src.entities import AlliedUnit
 from constants import *
+
 pygame.init()
 font = pygame.font.Font(None, 20)
 
