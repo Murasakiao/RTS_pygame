@@ -10,8 +10,6 @@ import pygame
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from constants import *
-from entities import Unit
-
 pygame.init()
 font = pygame.font.Font(None, 20)
 
@@ -162,7 +160,6 @@ def astar(grid, start, end, buildings):
                     heapq.heappush(oheap, (fscore[neighbor], neighbor))
     return False
 
-class EnemyUnit(Unit):  # Moved from entities.py
     def __init__(self, unit_type, x, y, buildings, units, font=None):
         targets = buildings + units
         super().__init__(unit_type, x, y, targets, font)
@@ -186,14 +183,7 @@ class EnemyUnit(Unit):  # Moved from entities.py
         """
         return ENEMY_DATA.get(self.type, {}).get("range", ENEMY_ATTACK_RANGE)
 
-    def get_attack_cooldown(self):
-        """
-        Get the attack cooldown for enemy units
-        """
-        return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
-
-
-def draw_debug_info(screen, font, debug_info, x=10, y=40): # Keep this function in utils.py
+def draw_debug_info(screen, font, debug_info, x=10, y=40):
     for i, line in enumerate(debug_info):
         text_surface = font.render(line, True, BLACK)
         screen.blit(text_surface, (x, y + i * 20))

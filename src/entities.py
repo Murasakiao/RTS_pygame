@@ -4,12 +4,13 @@ import math
 import pygame
 from constants import *
 from constants import add_game_message
-from utils import astar, EnemyUnit  # Import astar and EnemyUnit
+from utils import astar
 
 pygame.init()
 
 # --- Classes ---
-class GameObject: # Keep GameObject in entities.py
+
+class GameObject:
     def __init__(self, x, y, image_path, size=(GRID_SIZE, GRID_SIZE)):
         self.x = x
         self.y = y
@@ -186,6 +187,36 @@ class Unit(GameObject):
             target_text = self.font.render(str(self.target.type), True, RED)
             screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, 
                                       self.rect.top - target_text.get_height() - 5))
+class EnemyUnit(Unit):
+    def __init__(self, unit_type, x, y, buildings, units, font=None):
+        targets = buildings + units
+        super().__init__(unit_type, x, y, targets, font)
+
+    def should_attack(self):
+        """
+        Determine if the unit should attack based on rect collision
+        """
+        if not self.target:
+            return False
+
+        dx = self.target.x - self.x
+        dy = self.target.y - self.y
+        distance = math.hypot(dx, dy)
+        unit_range = ENEMY_DATA[self.type].get("range", ENEMY_ATTACK_RANGE)  # Get range, default to UNIT_ATTACK_RANGE
+        return distance <= unit_range
+
+    def get_attack_range(self):
+        """
+        Get the attack range for this unit.
+        """
+        return ENEMY_DATA.get(self.type, {}).get("range", ENEMY_ATTACK_RANGE)
+
+
+    def get_attack_cooldown(self):
+        """
+        Get the attack cooldown for enemy units
+        """
+        return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
 
 class AlliedUnit(Unit):
     def __init__(self, unit_type, x, y, targets, font=None):
@@ -197,7 +228,7 @@ class AlliedUnit(Unit):
         """
         if not self.target:
             return False
-        
+
         dx = self.target.x - self.x
         dy = self.target.y - self.y
         distance = math.hypot(dx, dy)
@@ -216,7 +247,6 @@ class AlliedUnit(Unit):
         """
         return UNIT_ATTACK_COOLDOWN
 
-    def __init__(self, screen_width, screen_height, grid_size, noise):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.grid_size = grid_size
