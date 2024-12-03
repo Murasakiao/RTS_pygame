@@ -4,6 +4,7 @@ import math
 import pygame
 from constants import *
 from constants import add_game_message
+from utils import astar  # Import astar
 
 pygame.init()
 
