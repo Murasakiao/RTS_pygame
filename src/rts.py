@@ -50,16 +50,23 @@ grid_width = SCREEN_WIDTH // GRID_SIZE
 grid_height = SCREEN_HEIGHT // GRID_SIZE
 grid = [[0 for _ in range(grid_width)] for _ in range(grid_height)]
 
-def update_grid(buildings):
-    """Updates the grid based on building positions."""
+def update_grid(buildings, units):  # Include units in the grid update
+    """Updates the grid based on building and unit positions."""
     for y in range(grid_height):
         for x in range(grid_width):
             grid[y][x] = 0  # Clear the grid
+
     for building in buildings:
         for x in range(building.rect.left // GRID_SIZE, building.rect.right // GRID_SIZE):
             for y in range(building.rect.top // GRID_SIZE, building.rect.bottom // GRID_SIZE):
                 if 0 <= x < grid_width and 0 <= y < grid_height:
                     grid[y][x] = 1  # Mark cells occupied by buildings
+
+    for unit in units:
+        grid_x = unit.rect.centerx // GRID_SIZE
+        grid_y = unit.rect.centery // GRID_SIZE
+        if 0 <= grid_x < grid_width and 0 <= grid_y < grid_height:
+            grid[grid_y][grid_x] = 1  # Mark cells occupied by units
 
 
 # --- Game Loop ---
@@ -68,8 +75,8 @@ running = True
 show_debug = True
 
 while running:
-    # Update the grid at the beginning of the game loop
-    update_grid(buildings)
+    # Update the grid at the beginning of the game loop, including units
+    update_grid(buildings, units)
     dt = clock.tick(FPS)
     mouse_pos = pygame.mouse.get_pos()
     debug_info = [
