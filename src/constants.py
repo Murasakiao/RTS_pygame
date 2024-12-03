@@ -5,9 +5,10 @@ GRID_SIZE = 25
 FPS = 30
 BUILDING_COOLDOWN_TIME = 1000
 MESSAGE_DURATION = 3000
-WAVE_INTERVAL = 25000
+WAVE_INTERVAL = 5000
 ENEMY_SPAWN_RATE = 1
 UNIT_ATTACK_RANGE = 50
+ENEMY_ATTACK_RANGE = 50
 UNIT_ATTACK_COOLDOWN = 2000  
 ENEMY_ATTACK_COOLDOWN = 2000
 
@@ -34,12 +35,12 @@ BUILDING_DATA = {
 
 # Unit data
 ALLY_DATA = {
-    "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 40, "hp": 10, "atk": 1, "range": 30},
-    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 50, "hp": 8, "atk": 2, "range": 150},  # Increased range for Archer
+    "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 40, "hp": 10, "atk": 1, "range": 30, "attack_cooldown": 1500},
+    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 50, "hp": 8, "atk": 2, "range": 150, "attack_cooldown": 2000}, 
 }
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "attack_cooldown": 1500},
-    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "attack_cooldown": 2500},
+    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "range": 50, "attack_cooldown": 1500},
+    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "range": 30, "attack_cooldown": 2000},
 }

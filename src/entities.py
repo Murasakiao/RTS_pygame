@@ -227,16 +227,26 @@ class EnemyUnit(Unit):
         """
         Determine if the unit should attack based on rect collision
         """
-        return self.target and self.rect.colliderect(self.target.rect)
+        if not self.target:
+            return False
+        
+        dx = self.target.x - self.x
+        dy = self.target.y - self.y
+        distance = math.hypot(dx, dy)
+        unit_range = ENEMY_DATA[self.type].get("range", ENEMY_ATTACK_RANGE)  # Get range, default to UNIT_ATTACK_RANGE
+        return distance <= unit_range
 
     def get_attack_range(self):
-        return GRID_SIZE
+        """
+        Get the attack range for this unit.
+        """
+        return ENEMY_DATA.get(self.type, {}).get("range", ENEMY_ATTACK_RANGE)
 
     def get_attack_cooldown(self):
         """
         Get the attack cooldown for enemy units
         """
-        return ENEMY_ATTACK_COOLDOWN
+        return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
 
 
 # Optional: Terrain Generator remains the same as in the original code
