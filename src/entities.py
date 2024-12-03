@@ -298,5 +298,3 @@ class TerrainGenerator:
                 tile = self.grass_tiles[tile_index]
                 screen.blit(tile, (x * self.grid_size, y * self.grid_size))
 
-# Import add_game_message after Enemy class is defined
-from src.utils import add_game_message
