@@ -117,6 +117,52 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
 
     return spawned_enemies
 
+import heapq
+
+def heuristic(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def astar(grid, start, end, buildings):
+    neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+    close_set = set()
+    came_from = {}
+    gscore = {start: 0}
+    fscore = {start: heuristic(start, end)}
+    oheap = []
+    heapq.heappush(oheap, (fscore[start], start))
+
+    grid_width = len(grid[0])
+    grid_height = len(grid)
+
+    while oheap:
+        current = heapq.heappop(oheap)[1]
+
+        if current == end:
+            data = []
+            while current in came_from:
+                data.append(current)
+                current = came_from[current]
+            data.append(start)
+            return data[::-1]  # Return reversed path
+
+        close_set.add(current)
+        for i, j in neighbors:
+            neighbor = current[0] + i, current[1] + j
+            tentative_g_score = gscore[current] + heuristic(current, neighbor)
+            if 0 <= neighbor[0] < grid_width and 0 <= neighbor[1] < grid_height:
+                if any(building.rect.collidepoint(neighbor[0] * GRID_SIZE, neighbor[1] * GRID_SIZE) for building in buildings):
+                    continue  # Skip if cell is occupied by a building
+                if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
+                    continue
+
+                if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
+                    came_from[neighbor] = current
+                    gscore[neighbor] = tentative_g_score
+                    fscore[neighbor] = tentative_g_score + heuristic(neighbor, end)
+                    heapq.heappush(oheap, (fscore[neighbor], neighbor))
+    return False
+
+
 def draw_debug_info(screen, font, debug_info, x=10, y=40):
     for i, line in enumerate(debug_info):
         text_surface = font.render(line, True, BLACK)

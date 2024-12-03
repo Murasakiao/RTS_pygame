@@ -89,65 +89,38 @@ class Unit(GameObject):
             self.target = self.find_nearest_target()
 
     def move_towards_target(self, dt):
-        """
-        Move the unit towards its current target, or stop if in attack range.
-        """
-        if self.target:
-            dx = self.target.x - self.x
-            dy = self.target.y - self.y
+        if self.destination and not self.path:
+            start = (self.x // GRID_SIZE, self.y // GRID_SIZE)
+            end = (self.destination[0] // GRID_SIZE, self.destination[1] // GRID_SIZE)
+            self.path = astar(grid, start, end, buildings)
+            if not self.path:
+                self.destination = None  # No path found, clear destination
+                return
+
+        if self.path:
+            next_cell = self.path[0]
+            target_x = next_cell[0] * GRID_SIZE
+            target_y = next_cell[1] * GRID_SIZE
+            dx = target_x - self.x
+            dy = target_y - self.y
             distance = math.hypot(dx, dy)
-            unit_range = self.get_attack_range()  # Abstract range calculation
 
-            if distance <= unit_range:
-                self.destination = None  # Stop moving when in range
-            elif self.destination:
-                dx = self.destination[0] - self.x
-                dy = self.destination[1] - self.y
-                distance = math.hypot(dx, dy)
-
-                if distance > 0:
-                    travel_distance = self.speed * (dt / 1000)
-                    new_x = self.x + (dx / distance) * travel_distance
-                    new_y = self.y + (dy / distance) * travel_distance
-                    new_rect = self.rect.copy()
-                    new_rect.topleft = (new_x, new_y)
-
-                    # Check for collisions with buildings
-                    collision = False
-                    for building in [b for b in self.targets if isinstance(b, Building)]:  # Filter for buildings
-                        if new_rect.colliderect(building.rect):
-                            collision = True
-                            break
-
-                    if not collision:
-                        self.x = new_x
-                        self.y = new_y
-                        self.rect.topleft = (self.x, self.y)
-
-                    if distance <= travel_distance:
-                        self.destination = None  # Reach destination
-
-            elif distance > unit_range:  # Move towards target if not in range and no destination
+            if distance > 0:
                 travel_distance = self.speed * (dt / 1000)
                 new_x = self.x + (dx / distance) * travel_distance
                 new_y = self.y + (dy / distance) * travel_distance
-                new_rect = self.rect.copy()
-                new_rect.topleft = (new_x, new_y)
 
-                # Check for collisions with buildings
-                collision = False
-                for building in [b for b in self.targets if isinstance(b, Building)]:  # Filter for buildings
-                    if new_rect.colliderect(building.rect):
-                        collision = True
-                        break
+                self.x = new_x
+                self.y = new_y
+                self.rect.topleft = (self.x, self.y)
 
-                if not collision:
-                    self.x = new_x
-                    self.y = new_y
-                    self.rect.topleft = (self.x, self.y)
+                if distance <= travel_distance:
+                    self.path.pop(0)  # Move to the next cell in the path
+                    if not self.path:
+                        self.destination = None  # Reached destination
 
 
-    def handle_attack(self, dt, game_messages):
+    def handle_attack(self, dt, game_messages, grid, buildings):
         """
         Handle attack cooldown and attacking
         """
