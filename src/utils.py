@@ -12,8 +12,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from src.entities import EnemyUnit
 from src.entities import AlliedUnit
 from constants import *
-from src.rts import grid, grid_width, grid_height # Import grid variables
-
 pygame.init()
 font = pygame.font.Font(None, 20)
 
@@ -23,17 +21,6 @@ def draw_grid(screen, color=BLACK, line_width=1):
         for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
             rect = pygame.Rect(x, y, GRID_SIZE, GRID_SIZE)
             pygame.draw.rect(screen, color, rect, line_width)
-
-def update_grid(buildings, grid, grid_width, grid_height):
-    """Updates the grid based on building positions."""
-    for y in range(grid_height):
-        for x in range(grid_width):
-            grid[y][x] = 0  # Clear the grid
-    for building in buildings:
-        for x in range(building.rect.left // GRID_SIZE, building.rect.right // GRID_SIZE):
-            for y in range(building.rect.top // GRID_SIZE, building.rect.bottom // GRID_SIZE):
-                if 0 <= x < grid_width and 0 <= y < grid_height:
-                    grid[y][x] = 1  # Mark cells occupied by buildings
 
 def add_game_message(message, game_messages, duration=MESSAGE_DURATION):
     current_time = pygame.time.get_ticks()
