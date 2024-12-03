@@ -6,6 +6,7 @@ import noise
 
 from constants import *
 from entities import *
+from utils import *
 from terrain import TerrainGenerator
 
 from pygame.locals import *
