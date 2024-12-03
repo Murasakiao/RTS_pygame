@@ -10,7 +10,7 @@ import pygame
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from constants import *
-from entities import EnemyUnit
+# from entities import EnemyUnit  No longer needed
 
 pygame.init()
 font = pygame.font.Font(None, 20)
@@ -162,8 +162,38 @@ def astar(grid, start, end, buildings):
                     heapq.heappush(oheap, (fscore[neighbor], neighbor))
     return False
 
+class EnemyUnit(Unit):  # Moved from entities.py
+    def __init__(self, unit_type, x, y, buildings, units, font=None):
+        targets = buildings + units
+        super().__init__(unit_type, x, y, targets, font)
 
-def draw_debug_info(screen, font, debug_info, x=10, y=40):
+    def should_attack(self):
+        """
+        Determine if the unit should attack based on rect collision
+        """
+        if not self.target:
+            return False
+        
+        dx = self.target.x - self.x
+        dy = self.target.y - self.y
+        distance = math.hypot(dx, dy)
+        unit_range = ENEMY_DATA[self.type].get("range", ENEMY_ATTACK_RANGE)  # Get range, default to UNIT_ATTACK_RANGE
+        return distance <= unit_range
+
+    def get_attack_range(self):
+        """
+        Get the attack range for this unit.
+        """
+        return ENEMY_DATA.get(self.type, {}).get("range", ENEMY_ATTACK_RANGE)
+
+    def get_attack_cooldown(self):
+        """
+        Get the attack cooldown for enemy units
+        """
+        return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
+
+
+def draw_debug_info(screen, font, debug_info, x=10, y=40): # Keep this function in utils.py
     for i, line in enumerate(debug_info):
         text_surface = font.render(line, True, BLACK)
         screen.blit(text_surface, (x, y + i * 20))

@@ -4,12 +4,12 @@ import math
 import pygame
 from constants import *
 from constants import add_game_message
-from utils import astar  # Import astar
+from utils import astar, EnemyUnit  # Import astar and EnemyUnit
 
 pygame.init()
 
 # --- Classes ---
-class GameObject:
+class GameObject: # Keep GameObject in entities.py
     def __init__(self, x, y, image_path, size=(GRID_SIZE, GRID_SIZE)):
         self.x = x
         self.y = y
@@ -216,39 +216,6 @@ class AlliedUnit(Unit):
         """
         return UNIT_ATTACK_COOLDOWN
 
-class EnemyUnit(Unit):
-    def __init__(self, unit_type, x, y, buildings, units, font=None):
-        targets = buildings + units
-        super().__init__(unit_type, x, y, targets, font)
-
-    def should_attack(self):
-        """
-        Determine if the unit should attack based on rect collision
-        """
-        if not self.target:
-            return False
-        
-        dx = self.target.x - self.x
-        dy = self.target.y - self.y
-        distance = math.hypot(dx, dy)
-        unit_range = ENEMY_DATA[self.type].get("range", ENEMY_ATTACK_RANGE)  # Get range, default to UNIT_ATTACK_RANGE
-        return distance <= unit_range
-
-    def get_attack_range(self):
-        """
-        Get the attack range for this unit.
-        """
-        return ENEMY_DATA.get(self.type, {}).get("range", ENEMY_ATTACK_RANGE)
-
-    def get_attack_cooldown(self):
-        """
-        Get the attack cooldown for enemy units
-        """
-        return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
-
-
-# Optional: Terrain Generator remains the same as in the original code
-class TerrainGenerator:
     def __init__(self, screen_width, screen_height, grid_size, noise):
         self.screen_width = screen_width
         self.screen_height = screen_height
