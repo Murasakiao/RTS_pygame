@@ -193,8 +193,19 @@ while running:
                 selected_unit.destination = (grid_x, grid_y)
                 selected_unit.moving = True
 
-                print(selected_unit.destination)
-                print(grid)
+                # --- A* Grid Update ---
+                start_grid_x = selected_unit.x // GRID_SIZE
+                start_grid_y = selected_unit.y // GRID_SIZE
+                end_grid_x = grid_x // GRID_SIZE
+                end_grid_y = grid_y // GRID_SIZE
+
+                # Update grid with start and end points (2)
+                if 0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height:
+                    grid[start_grid_y][start_grid_x] = 2
+
+                if 0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height:
+                    grid[end_grid_y][end_grid_x] = 2
+                # --- End A* Grid Update ---
 
                 # Find nearest target for the selected unit
                 selected_unit.target = selected_unit.find_nearest_target()
