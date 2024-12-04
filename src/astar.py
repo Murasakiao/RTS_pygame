@@ -30,11 +30,19 @@ class Node:
 
 def create_grid(rows, cols, obstacles=None):
     grid = [[Node(x, y, None) for x in range(cols)] for y in range(rows)]
+
+    # Set the grid for all nodes
+    for row in grid:
+        for node in row:
+            node.grid = grid
+
     if obstacles:
         for x, y in obstacles:
             grid[y][x].type = 'wall'
     return grid
 
+
+# Example usage (you can remove this later)
 rows = 4
 cols = 4
 obstacles = [(1, 1), (2, 2)]  # Example obstacles
@@ -43,11 +51,8 @@ grid = create_grid(rows, cols, obstacles)
 start_coords = (0, 0)
 end_coords = (3, 3)
 start = grid[start_coords[1]][start_coords[0]]
-start.grid = grid # Set grid for start node
 end = grid[end_coords[1]][end_coords[0]]
-end.grid = grid # Set grid for end node
 
-# g score, estimated distance
 
 # returns distance between two nodes
 def distance(node1, node2):
