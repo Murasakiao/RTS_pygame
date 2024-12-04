@@ -182,7 +182,7 @@ class Unit(GameObject):
         """
         Find the nearest valid target
         """
-        print(self.destination)
+        # print(self.destination)
         # More robust target filtering
         valid_targets = [
             target for target in self.targets 
