@@ -27,36 +27,36 @@ class Node:
                         neighbors.append(Node(nx, ny, self.grid))
         return neighbors
 
-def create_grid(rows, cols):
-    grid = [[0 for _ in range(cols)] for _ in range(rows)]
+def create_grid(rows, cols, obstacles=None):
+    grid = [[Node(x, y, None) for x in range(cols)] for y in range(rows)]
+    if obstacles:
+        for x, y in obstacles:
+            grid[y][x].type = 'wall'
     return grid
 
 rows = 4
 cols = 4
-grid = create_grid(rows, cols)
+obstacles = [(1, 1), (2, 2)]  # Example obstacles
+grid = create_grid(rows, cols, obstacles)
 
-# Example obstacles (replace with your actual obstacle generation)
-grid[1][1] = 1
-grid[2][2] = 1
-
-start = Node(0, 0, grid)
-end = Node(3, 3, grid)
+start_coords = (0, 0)
+end_coords = (3, 3)
+start = grid[start_coords[1]][start_coords[0]]
+start.grid = grid # Set grid for start node
+end = grid[end_coords[1]][end_coords[0]]
+end.grid = grid # Set grid for end node
 
 # g score, estimated distance
 
 # returns distance between two nodes
 def distance(node1, node2):
-    return math.sqrt(math.pow(node1.x - node2.x, 2) + math.pow(node1.y - node2.y, 2))
+    return math.sqrt((node1.x - node2.x)**2 + (node1.y - node2.y)**2)
 
-# Measures distance from node to endpoint
+# Measures distance from node to endpoint using Manhattan distance
 def h_score(start, end):
-    x_dist = abs(end.x - start.x)
-    y_dist = abs(end.y - start.y)
-    diagonal_steps = min(x_dist, y_dist)
-    straight_steps = y_dist + x_dist - 2 * diagonal_steps
-    return diagonal_steps * math.sqrt(2) + straight_steps
+    return abs(start.x - end.x) + abs(start.y - end.y)
 
-def reconstruct_path(grid, came_from, current):
+def reconstruct_path(came_from, current):
     path = [current]
     current_key = str(current.x) + ' ' + str(current.y)
     while current_key in came_from:
@@ -89,11 +89,6 @@ def a_star(grid, start, end):
 
         for neighbor in current.get_neighbors():
             if neighbor in closed_set or neighbor.type == 'wall':
-                continue
-            # If both adjacent nodes are walls, dont let it be searched
-            adj_node_1 = grid[current.y][neighbor.x]
-            adj_node_2 = grid[neighbor.y][current.x]
-            if adj_node_1.type == 'wall' and adj_node_2.type == 'wall':
                 continue
             tentative_g_score = current.g_score + distance(current, neighbor)
             if neighbor not in open_set:

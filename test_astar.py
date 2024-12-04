@@ -5,14 +5,12 @@ class TestAStar(unittest.TestCase):
 
     def test_pathfinding(self):
         # Example grid (0: passable, 1: obstacle)
-        grid = [
-            [0, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 0],
-        ]
-        start = Node(0, 0, grid)
-        end = Node(3, 3, grid)
+        from src.astar import create_grid
+        grid = create_grid(4, 4, [(1, 1), (2, 2)])
+        start = grid[0][0]
+        end = grid[3][3]
+        start.grid = grid
+        end.grid = grid
 
         path = a_star(grid, start, end)
 
