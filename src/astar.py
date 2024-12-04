@@ -93,8 +93,9 @@ def a_star(grid, start, end):
 
             if neighbor not in open_set:
                 open_set.append(neighbor)
-            elif tentative_g_score >= neighbor.g_score:
-                continue
+            elif tentative_g_score < neighbor.g_score:
+                neighbor.g_score = tentative_g_score
+                neighbor.f_score = neighbor.g_score + h_score(neighbor, end)
 
             came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
             neighbor.g_score = tentative_g_score
