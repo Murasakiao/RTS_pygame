@@ -1,12 +1,14 @@
 import math
 
 class Node:
-    def __init__(self, x, y, grid):
+    def __init__(self, x, y, grid, node_type='empty'):
         self.x = x
         self.y = y
         self.grid = grid
+        self.type = node_type
         self.g_score = float('inf')
         self.f_score = float('inf')
+
 
     def get_neighbors(self):
         neighbors = []
@@ -25,35 +27,20 @@ class Node:
                         neighbors.append(Node(nx, ny, self.grid))
         return neighbors
 
+def create_grid(rows, cols):
+    grid = [[0 for _ in range(cols)] for _ in range(rows)]
+    return grid
 
-rows = 40
-cols = 40
-grid = []
+rows = 4
+cols = 4
+grid = create_grid(rows, cols)
 
-file = open('src/test_data/a_star.in', 'r')
-lines = file.read().split('\n')
-file.close()
+# Example obstacles (replace with your actual obstacle generation)
+grid[1][1] = 1
+grid[2][2] = 1
 
-start = None
-end = None
-
-# set test data
-for i in range(rows):
-    row = list(map(int, lines[i].split()))
-    row_nodes = []
-    for j in range(len(row)):
-        node = Node(grid, j, i)
-        element = row[j]
-        if element == 1:
-            node.type = 'wall'
-        elif element == 2:
-            if not start:
-                start = node
-            elif not end:
-                end = node
-
-        row_nodes.append(node)
-    grid.append(row_nodes)
+start = Node(0, 0, grid)
+end = Node(3, 3, grid)
 
 # g score, estimated distance
 
@@ -61,7 +48,7 @@ for i in range(rows):
 def distance(node1, node2):
     return math.sqrt(math.pow(node1.x - node2.x, 2) + math.pow(node1.y - node2.y, 2))
 
-# Measures distance from node to endpoint with nodes only being able to travel vertically, horizontally, or diagonally
+# Measures distance from node to endpoint
 def h_score(start, end):
     x_dist = abs(end.x - start.x)
     y_dist = abs(end.y - start.y)
