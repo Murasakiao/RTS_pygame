@@ -1,62 +1,72 @@
 import math
 
 class Node:
-    def __init__(self, x, y, grid, node_type='empty'):
+    def __init__(self, grid, x, y):
         self.x = x
         self.y = y
         self.grid = grid
-        self.type = node_type
+        self.type = 'road'
         self.g_score = float('inf')
         self.f_score = float('inf')
 
-
     def get_neighbors(self):
+        # Collection of arrays representing the x and y displacement
+        rows = len(self.grid)
+        cols = len(self.grid[0])
+        directions = [[1, 0], [1, 1], [0, 1], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]
         neighbors = []
-        for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:  # Only allow up, down, left, right
-            nx = self.x + dx
-            ny = self.y + dy
-
-            if 0 <= nx < len(self.grid[0]) and 0 <= ny < len(self.grid):
-                neighbor = self.grid[ny][nx]
-                if neighbor.type != 'wall':
-                    neighbors.append(neighbor)
+        for direction in directions:
+            neighbor_x = self.x  + direction[0]
+            neighbor_y = self.y + direction[1]
+            if neighbor_x >= 0 and neighbor_y >= 0 and neighbor_x < cols and neighbor_y < rows:
+                neighbors.append(self.grid[neighbor_y][neighbor_x])
         return neighbors
 
-def create_grid(rows, cols, obstacles=None):
-    grid = [[Node(x, y, None) for x in range(cols)] for y in range(rows)]
 
-    # Set the grid for all nodes
-    for row in grid:
-        for node in row:
-            node.grid = grid
+rows = 40
+cols = 40
+grid = []
 
-    if obstacles:
-        for x, y in obstacles:
-            grid[y][x].type = 'wall'  # Correct indexing
-    return grid
+file = open('./test_data/a_star.in', 'r')
+lines = file.read().split('\n')
+file.close()
 
+start = None
+end = None
 
-# Example usage (you can remove this later)
-rows = 4
-cols = 4
-obstacles = [(1, 1), (2, 2)]  # Example obstacles
-grid = create_grid(rows, cols, obstacles)
+# set test data
+for i in range(rows):
+    row = list(map(int, lines[i].split()))
+    row_nodes = []
+    for j in range(len(row)):
+        node = Node(grid, j, i)
+        element = row[j]
+        if element == 1:
+            node.type = 'wall'
+        elif element == 2:
+            if not start:
+                start = node
+            elif not end:
+                end = node
 
-start_coords = (0, 0)
-end_coords = (3, 3)
-start = grid[start_coords[1]][start_coords[0]]
-end = grid[end_coords[1]][end_coords[0]]
+        row_nodes.append(node)
+    grid.append(row_nodes)
 
+# g score, estimated distance
 
 # returns distance between two nodes
 def distance(node1, node2):
-    return math.sqrt((node1.x - node2.x)**2 + (node1.y - node2.y)**2)
+    return math.sqrt(math.pow(node1.x - node2.x, 2) + math.pow(node1.y - node2.y, 2))
 
-# Measures distance from node to endpoint using Manhattan distance
+# Measures distance from node to endpoint with nodes only being able to travel vertically, horizontally, or diagonally
 def h_score(start, end):
-    return abs(start.x - end.x) + abs(start.y - end.y)
+    x_dist = abs(end.x - start.x)
+    y_dist = abs(end.y - start.y)
+    diagonal_steps = min(x_dist, y_dist)
+    straight_steps = y_dist + x_dist - 2 * diagonal_steps
+    return diagonal_steps * math.sqrt(2) + straight_steps
 
-def reconstruct_path(came_from, current):
+def reconstruct_path(grid, came_from, current):
     path = [current]
     current_key = str(current.x) + ' ' + str(current.y)
     while current_key in came_from:
@@ -77,31 +87,34 @@ def a_star(grid, start, end):
 
     open_set.append(start)
 
-    while open_set:
+    i = 0
+    while len(open_set) > 0:
+        i += 1
         current = lowest_f_score(open_set)
-        if current == end:
-            return reconstruct_path(came_from, current)
-
         open_set.remove(current)
         closed_set.append(current)
+
+        if current == end:
+            return reconstruct_path(grid, came_from, current)
 
         for neighbor in current.get_neighbors():
             if neighbor in closed_set or neighbor.type == 'wall':
                 continue
-
+            # If both adjacent nodes are walls, dont let it be searched
+            adj_node_1 = grid[current.y][neighbor.x]
+            adj_node_2 = grid[neighbor.y][current.x]
+            if adj_node_1.type == 'wall' and adj_node_2.type == 'wall':
+                continue
             tentative_g_score = current.g_score + distance(current, neighbor)
-
             if neighbor not in open_set:
                 open_set.append(neighbor)
-            elif tentative_g_score < neighbor.g_score:
-                neighbor.g_score = tentative_g_score
-                neighbor.f_score = neighbor.g_score + h_score(neighbor, end)
-
+            elif tentative_g_score > neighbor.g_score:
+                # Not a better path
+                continue
+            # Found a better path
             came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
             neighbor.g_score = tentative_g_score
             neighbor.f_score = neighbor.g_score + h_score(neighbor, end)
-
-    return None  # No path found
 
 
 def lowest_f_score(node_list):

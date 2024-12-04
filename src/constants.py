@@ -2,6 +2,9 @@
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 GRID_SIZE = 25
+# SCREEN_WIDTH = 768
+# SCREEN_HEIGHT = 576
+# GRID_SIZE = 16
 FPS = 30
 BUILDING_COOLDOWN_TIME = 1000
 MESSAGE_DURATION = 3000
@@ -36,7 +39,7 @@ BUILDING_DATA = {
 # Unit data
 ALLY_DATA = {
     "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 40, "hp": 10, "atk": 1, "range": 30, "attack_cooldown": 1500},
-    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 50, "hp": 8, "atk": 2, "range": 70, "attack_cooldown": 2000}, 
+    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 50, "hp": 8, "atk": 2, "range": 100, "attack_cooldown": 2000}, 
 }
 
 # Enemy data

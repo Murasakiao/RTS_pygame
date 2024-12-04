@@ -207,6 +207,9 @@ while running:
                     grid[end_grid_y][end_grid_x] = 2
                 # --- End A* Grid Update ---
 
+                print(selected_unit.destination)
+                print(grid)
+
                 # Find nearest target for the selected unit
                 selected_unit.target = selected_unit.find_nearest_target()
 
