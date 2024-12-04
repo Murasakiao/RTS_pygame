@@ -193,6 +193,9 @@ while running:
                 selected_unit.destination = (grid_x, grid_y)
                 selected_unit.moving = True
 
+                print(selected_unit.destination)
+                print(grid)
+
                 # Find nearest target for the selected unit
                 selected_unit.target = selected_unit.find_nearest_target()
 
