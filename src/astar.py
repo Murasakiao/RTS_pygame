@@ -23,8 +23,9 @@ class Node:
                 # Check grid boundaries
                 if 0 <= nx < len(self.grid[0]) and 0 <= ny < len(self.grid):
                     # Check for collision with buildings or other units
-                    if self.grid[ny][nx] == 0:  # Assuming 0 represents passable terrain
-                        neighbors.append(Node(nx, ny, self.grid))
+                    neighbor = self.grid[ny][nx]
+                    if neighbor.type != 'wall':
+                        neighbors.append(neighbor)
         return neighbors
 
 def create_grid(rows, cols, obstacles=None):
