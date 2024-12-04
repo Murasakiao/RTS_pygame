@@ -92,6 +92,7 @@ class Unit(GameObject):
         """
         Move the unit towards its current target, or stop if in attack range.
         """
+        
         if self.target:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
@@ -164,6 +165,7 @@ class Unit(GameObject):
         """
         Find the nearest valid target
         """
+        print(self.destination)
         # More robust target filtering
         valid_targets = [
             target for target in self.targets 
@@ -216,7 +218,7 @@ class AlliedUnit(Unit):
         """
         Get the attack cooldown for allied units
         """
-        return UNIT_ATTACK_COOLDOWN
+        return ALLY_DATA.get(self.type, {}).get("attack_cooldown", UNIT_ATTACK_COOLDOWN)
 
 class EnemyUnit(Unit):
     def __init__(self, unit_type, x, y, buildings, units, font=None):
