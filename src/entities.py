@@ -198,8 +198,6 @@ class Unit(GameObject):
 
         if priority_targets:
             return min(priority_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-        elif other_targets:
-            return min(other_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
         else:
             return None
 
