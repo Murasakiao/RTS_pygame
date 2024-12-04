@@ -123,6 +123,23 @@ class Unit(GameObject):
                 self.x += (dx / distance) * travel_distance
                 self.y += (dy / distance) * travel_distance
                 self.rect.topleft = (self.x, self.y)
+        elif self.destination:  # Move towards destination even if no target
+            dx = self.destination[0] - self.x
+            dy = self.destination[1] - self.y
+            distance = math.hypot(dx, dy)
+
+            if distance > 0:
+                travel_distance = self.speed * (dt / 1000)
+
+                if distance <= travel_distance:
+                    self.x = self.destination[0]
+                    self.y = self.destination[1]
+                    self.destination = None
+                else:
+                    self.x += (dx / distance) * travel_distance
+                    self.y += (dy / distance) * travel_distance
+
+                self.rect.topleft = (self.x, self.y)
 
 
     def handle_attack(self, dt, game_messages):
