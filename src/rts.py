@@ -24,6 +24,22 @@ resource_increase_rates = {
     "gold": 3, "wood": 2, "stone": 1, "food": 1, "people": 0.1
 }
 
+# --- Grid Setup ---
+grid_width = SCREEN_WIDTH // GRID_SIZE
+grid_height = SCREEN_HEIGHT // GRID_SIZE
+grid = [[0 for _ in range(grid_width)] for _ in range(grid_height)]
+
+def update_grid(buildings):
+    """Updates the grid based on building positions."""
+    for y in range(grid_height):
+        for x in range(grid_width):
+            grid[y][x] = 0  # Clear the grid
+    for building in buildings:
+        for x in range(building.rect.left // GRID_SIZE, building.rect.right // GRID_SIZE):
+            for y in range(building.rect.top // GRID_SIZE, building.rect.bottom // GRID_SIZE):
+                if 0 <= x < grid_width and 0 <= y < grid_height:
+                    grid[y][x] = 1  # Mark cells occupied by buildings
+
 buildings = []
 units = []
 enemies = []
@@ -49,6 +65,9 @@ game_messages = []
 running = True
 show_debug = True
 while running:
+    # Update the grid at the beginning of the game loop
+    update_grid(buildings)
+
     dt = clock.tick(FPS)
     mouse_pos = pygame.mouse.get_pos()
     debug_info = [
@@ -110,6 +129,7 @@ while running:
                 terrain = terrain_generator.generate_terrain()
             elif event.key == K_d:  # 'D' key to toggle debug info display
                 show_debug = not show_debug
+                print(grid)
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
                 # Unit Selection
@@ -223,7 +243,7 @@ while running:
     draw_messages(screen, font, game_messages)
     draw_key_bindings(screen, font, building_map, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, BUILDING_DATA)
 
-    print(wave_timer, current_wave)
+    # print(wave_timer, current_wave)
     # Draw debug information if enabled
     if show_debug:
         draw_debug_info(screen, font, debug_info)
