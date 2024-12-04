@@ -30,7 +30,7 @@ rows = 40
 cols = 40
 grid = []
 
-file = open('./test_data/a_star.in', 'r')
+file = open('src/test_data/a_star.in', 'r')
 lines = file.read().split('\n')
 file.close()
 
