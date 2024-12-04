@@ -32,7 +32,7 @@ def create_grid(rows, cols, obstacles=None):
 
     if obstacles:
         for x, y in obstacles:
-            grid[y][x].type = 'wall'
+            grid[y][x].type = 'wall'  # Correct indexing
     return grid
 
 
