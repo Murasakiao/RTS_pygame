@@ -180,21 +180,28 @@ class Unit(GameObject):
 
     def find_nearest_target(self):
         """
-        Find the nearest valid target
+        Find the nearest valid target, prioritizing based on enemy type.
         """
-        # print(self.destination)
-        # More robust target filtering
-        valid_targets = [
-            target for target in self.targets 
-            if (hasattr(target, 'hp') and 
-                hasattr(target, 'x') and 
-                hasattr(target, 'y') and 
-                target.hp > 0)
-        ]
-        
-        if valid_targets:
-            return min(valid_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-        return None
+        priority_targets = []
+        other_targets = []
+
+        for target in self.targets:
+            if (hasattr(target, 'hp') and hasattr(target, 'x') and hasattr(target, 'y') and target.hp > 0):
+                if isinstance(self, EnemyUnit) and hasattr(self, 'target_priority'):  # Check if it's an enemy unit
+                    if (self.target_priority == "building" and isinstance(target, Building)) or \
+                       (self.target_priority == "unit" and isinstance(target, Unit)):
+                        priority_targets.append(target)
+                    else:
+                        other_targets.append(target)
+                else:  # If not an enemy unit or no priority, treat all as other targets
+                    other_targets.append(target)
+
+        if priority_targets:
+            return min(priority_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+        elif other_targets:
+            return min(other_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+        else:
+            return None
 
     def draw(self, screen):
         """

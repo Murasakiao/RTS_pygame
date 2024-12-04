@@ -41,6 +41,6 @@ ALLY_DATA = {
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "range": 30, "attack_cooldown": 1500},
-    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "range": 10, "attack_cooldown": 2000},
+    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "range": 30, "attack_cooldown": 1500, "target_priority": "building"},
+    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "range": 10, "attack_cooldown": 2000, "target_priority": "unit"},
 }
