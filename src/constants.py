@@ -12,16 +12,8 @@ ENEMY_ATTACK_RANGE = 50
 UNIT_ATTACK_COOLDOWN = 2000  
 ENEMY_ATTACK_COOLDOWN = 2000
 
-import pygame
 # Colors
 WHITE = (255, 255, 255)
-
-def add_game_message(message, game_messages, duration=MESSAGE_DURATION):
-    current_time = pygame.time.get_ticks()
-    game_messages[:] = [msg for msg in game_messages if current_time - msg["start_time"] < msg["duration"]]  # Remove expired messages
-
-    if not any(msg["text"] == message for msg in game_messages):  # Add new message if not a duplicate
-        game_messages.append({"text": message, "start_time": current_time, "duration": duration})
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
@@ -44,11 +36,11 @@ BUILDING_DATA = {
 # Unit data
 ALLY_DATA = {
     "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 40, "hp": 10, "atk": 1, "range": 30, "attack_cooldown": 1500},
-    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 50, "hp": 8, "atk": 2, "range": 150, "attack_cooldown": 2000}, 
+    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 50, "hp": 8, "atk": 2, "range": 70, "attack_cooldown": 2000}, 
 }
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "range": 50, "attack_cooldown": 1500},
-    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "range": 30, "attack_cooldown": 2000},
+    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "range": 30, "attack_cooldown": 1500},
+    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "range": 10, "attack_cooldown": 2000},
 }

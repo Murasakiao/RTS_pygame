@@ -9,6 +9,8 @@ import pygame
 # Add the rts_pygame directory to the sys.path list
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+from src.entities import EnemyUnit
+from src.entities import AlliedUnit
 from constants import *
 
 pygame.init()
@@ -120,6 +122,3 @@ def draw_debug_info(screen, font, debug_info, x=10, y=40):
     for i, line in enumerate(debug_info):
         text_surface = font.render(line, True, BLACK)
         screen.blit(text_surface, (x, y + i * 20))
-
-
-from entities import EnemyUnit
