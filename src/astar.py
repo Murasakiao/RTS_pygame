@@ -12,20 +12,14 @@ class Node:
 
     def get_neighbors(self):
         neighbors = []
-        for x in range(-1, 2):
-            for y in range(-1, 2):
-                if (x, y) == (0, 0):  # Skip the current node
-                    continue
+        for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:  # Only allow up, down, left, right
+            nx = self.x + dx
+            ny = self.y + dy
 
-                nx = self.x + x
-                ny = self.y + y
-
-                # Check grid boundaries
-                if 0 <= nx < len(self.grid[0]) and 0 <= ny < len(self.grid):
-                    # Check for collision with buildings or other units
-                    neighbor = self.grid[ny][nx]
-                    if neighbor.type != 'wall':
-                        neighbors.append(neighbor)
+            if 0 <= nx < len(self.grid[0]) and 0 <= ny < len(self.grid):
+                neighbor = self.grid[ny][nx]
+                if neighbor.type != 'wall':
+                    neighbors.append(neighbor)
         return neighbors
 
 def create_grid(rows, cols, obstacles=None):
