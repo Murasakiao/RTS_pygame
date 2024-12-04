@@ -83,29 +83,30 @@ def a_star(grid, start, end):
 
     open_set.append(start)
 
-    i = 0
-    while len(open_set) > 0:
-        i += 1
+    while open_set:
         current = lowest_f_score(open_set)
+        if current == end:
+            return reconstruct_path(came_from, current)
+
         open_set.remove(current)
         closed_set.append(current)
-
-        if current == end:
-            return reconstruct_path(grid, came_from, current)
 
         for neighbor in current.get_neighbors():
             if neighbor in closed_set or neighbor.type == 'wall':
                 continue
+
             tentative_g_score = current.g_score + distance(current, neighbor)
+
             if neighbor not in open_set:
                 open_set.append(neighbor)
-            elif tentative_g_score > neighbor.g_score:
-                # Not a better path
+            elif tentative_g_score >= neighbor.g_score:
                 continue
-            # Found a better path
+
             came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
             neighbor.g_score = tentative_g_score
             neighbor.f_score = neighbor.g_score + h_score(neighbor, end)
+
+    return None  # No path found
 
 
 def lowest_f_score(node_list):
