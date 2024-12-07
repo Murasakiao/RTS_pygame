@@ -62,9 +62,12 @@ building_map = {
 
 # --- Menu ---
 
-def draw_button(screen, text, color, rect, border_color=BLACK, border_width=2):
-    pygame.draw.rect(screen, border_color, rect, border_width)  # Border
-    pygame.draw.rect(screen, color, (rect[0] + border_width, rect[1] + border_width, rect[2] - 2 * border_width, rect[3] - 2 * border_width))  # Button background
+def draw_button(screen, text, color, rect, border_color=BLACK, border_width=2, opacity=255): # Add opacity parameter with default value
+    button_surface = pygame.Surface((rect[2], rect[3]), pygame.SRCALPHA) # Create a surface with per-pixel alpha
+    pygame.draw.rect(button_surface, border_color, (0, 0, rect[2], rect[3]), border_width)  # Border
+    pygame.draw.rect(button_surface, color, (border_width, border_width, rect[2] - 2 * border_width, rect[3] - 2 * border_width))  # Button background
+    button_surface.set_alpha(opacity) # Set opacity of the button surface
+    screen.blit(button_surface, (rect[0], rect[1])) # Blit the button surface onto the screen
     button_text = font.render(text, True, BLACK)
     text_rect = button_text.get_rect(center=(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2))
     screen.blit(button_text, text_rect)
@@ -110,8 +113,8 @@ while menu_running:
 
 
     # Draw menu elements with styling
-    draw_button(screen, "Start New Game", GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30))
-    draw_button(screen, "Exit", RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30))
+    draw_button(screen, "Start New Game", GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30), opacity=128) # Example opacity value
+    draw_button(screen, "Exit", RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30), opacity=128) # Example opacity value
 
     pygame.display.flip()
 
