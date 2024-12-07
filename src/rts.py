@@ -194,8 +194,8 @@ while running:
                 selected_unit.moving = True
 
                 # --- A* Grid Update ---
-                start_grid_x = selected_unit.x // GRID_SIZE
-                start_grid_y = selected_unit.y // GRID_SIZE
+                start_grid_x = int(selected_unit.x // GRID_SIZE)
+                start_grid_y = int(selected_unit.y // GRID_SIZE)
                 end_grid_x = grid_x // GRID_SIZE
                 end_grid_y = grid_y // GRID_SIZE
 
