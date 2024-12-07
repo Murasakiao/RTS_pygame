@@ -13,7 +13,7 @@ from pygame.locals import *
 # Initialize Pygame
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("City Builder")
+pygame.display.set_caption("Real-Time Strategy Game")
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 20)
 
