@@ -146,7 +146,7 @@ while game_running:
     # --- Event Handling ---
     for event in pygame.event.get():
         if event.type == QUIT:
-            running = False
+            game_running = False
         elif event.type == KEYDOWN:
             if event.key in building_map:
                 current_building_type = building_map[event.key]
