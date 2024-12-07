@@ -61,6 +61,11 @@ building_map = {
 }
 
 # --- Menu ---
+
+# Create terrain background
+terrain_background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+terrain_generator.draw_terrain(terrain_background)
+
 menu_running = True
 game_running = False
 
@@ -75,7 +80,7 @@ while menu_running:
             elif exit_button.collidepoint(event.pos):
                 menu_running = False
 
-    screen.fill(WHITE)
+    screen.blit(terrain_background, (0, 0))
 
     # Draw menu elements
     start_button = pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 - 35, 120, 30))
