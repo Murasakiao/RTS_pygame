@@ -92,7 +92,8 @@ class Unit(GameObject):
         """
         Move the unit towards its current target, or stop if in attack range.
         """
-        
+        prev_x = self.x
+        prev_y = self.y
         if self.target:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
@@ -122,7 +123,14 @@ class Unit(GameObject):
                 travel_distance = self.speed * (dt / 1000)
                 self.x += (dx / distance) * travel_distance
                 self.y += (dy / distance) * travel_distance
-                self.rect.topleft = (int(self.x), int(self.y))  # Ensure integer coordinates for rect
+                self.rect.topleft = (int(self.x), int(self.y))
+
+                if check_collision_with_unit(self.rect, units + enemies, exclude_unit=self):
+                    self.x = prev_x
+                    self.y = prev_y
+                    self.rect.topleft = (int(self.x), int(self.y))
+                    return
+
         elif self.destination:  # Move towards destination even if no target
             dx = self.destination[0] - self.x
             if abs(dx) < 1:
