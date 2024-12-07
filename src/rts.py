@@ -13,7 +13,7 @@ from pygame.locals import *
 # Initialize Pygame
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Real-Time Strategy Game")
+pygame.display.set_caption("Kingdom Conquer")
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 20)
 
@@ -73,7 +73,7 @@ menu_running = True
 game_running = False
 
 title_font = pygame.font.Font(None, 50)  # Larger font for title
-title_text = title_font.render("Kingdom Conquer", True, BLACK)
+title_text = title_font.render("KINGDOM CONQUER", True, BLACK)
 title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4))
 logo_rect = logo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
 
