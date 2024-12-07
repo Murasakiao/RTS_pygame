@@ -144,27 +144,16 @@ class Unit(GameObject):
             if distance > 0:
                 travel_distance = self.speed * (dt / 1000)
                 # Adjust position if colliding with another unit
-                new_x = self.x + (dx / distance) * travel_distance
-                new_y = self.y + (dy / distance) * travel_distance
-                temp_rect = self.rect.copy()
-                temp_rect.topleft = (int(new_x), int(new_y))
-
-                collided_with_unit = check_collision_with_unit(temp_rect, units + enemies, exclude_unit=self)
-                if collided_with_unit:
-                    # Stop moving if collision detected
-                    self.destination = None
-                    return
-
-                if distance <= travel_distance:
-
-                    self.x = self.destination[0]
-                    self.y = self.destination[1]
-                    self.destination = None  # Stop moving when reaching the destination
-                else:
-                    self.x = new_x  # Update position
-                    self.y = new_y
+                self.x += (dx / distance) * travel_distance
+                self.y += (dy / distance) * travel_distance
 
                 self.rect.topleft = (int(self.x), int(self.y))
+
+                if check_collision_with_unit(self.rect, units + enemies, exclude_unit=self):
+                    self.x = prev_x
+                    self.y = prev_y
+                    self.rect.topleft = (int(self.x), int(self.y))
+                    return
 
 
     def handle_attack(self, dt, game_messages):
