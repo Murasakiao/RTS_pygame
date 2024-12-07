@@ -27,17 +27,17 @@ rows = 40
 cols = 40
 grid = []
 
-file = open('./test_data/a_star.in', 'r')
-lines = file.read().split('\n')
-file.close()
-
-start = None
-end = None
-
-# set test data
+# Initialize grid with default values (all 'road' tiles)
 for i in range(rows):
-    row = list(map(int, lines[i].split()))
     row_nodes = []
+    for j in range(cols):
+        node = Node(grid, j, i)
+        row_nodes.append(node)
+    grid.append(row_nodes)
+
+# Set start and end points (example)
+start = grid[0][0]
+end = grid[rows - 1][cols - 1]
     for j in range(len(row)):
         node = Node(grid, j, i)
         element = row[j]
