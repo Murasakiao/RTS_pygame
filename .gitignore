@@ -3,3 +3,4 @@
 venv
 others
 src/__pycache__/
+sys.exit()
