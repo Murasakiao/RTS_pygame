@@ -3,7 +3,7 @@
 import math
 import pygame
 from constants import *
-from utils import *
+from utils import check_collision_with_unit, check_collision_with_building
 
 pygame.init()
 
