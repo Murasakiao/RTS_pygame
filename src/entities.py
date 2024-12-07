@@ -4,6 +4,9 @@ import math
 import pygame
 from constants import *
 from utils import check_collision_with_unit, check_collision_with_building
+import pygame
+from constants import *
+
 
 pygame.init()
 
@@ -153,11 +156,11 @@ class Unit(GameObject):
         
         if self.attack_cooldown > 0:
             self.attack_cooldown -= dt
-
     def attack_target(self, game_messages):
         """
         Attack the current target and generate game messages
         """
+        from src.utils import add_game_message  # Import here
         if self.target:
             # Use the unit type name instead of the entire dictionary
             unit_name = self.name  # Use the stored name
@@ -282,5 +285,3 @@ class EnemyUnit(Unit):
         """
         return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
 
-# Import add_game_message after Enemy class is defined
-from src.utils import add_game_message
