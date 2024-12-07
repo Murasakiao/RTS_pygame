@@ -38,18 +38,18 @@ for i in range(rows):
 # Set start and end points (example)
 start = grid[0][0]
 end = grid[rows - 1][cols - 1]
-    for j in range(len(row)):
-        node = Node(grid, j, i)
-        element = row[j]
-        if element == 1:
-            node.type = 'wall'
-        elif element == 2:
-            if not start:
-                start = node
-            elif not end:
-                end = node
+for j in range(len(row)):
+    node = Node(grid, j, i)
+    element = row[j]
+    if element == 1:
+        node.type = 'wall'
+    elif element == 2:
+        if not start:
+            start = node
+        elif not end:
+            end = node
 
-        row_nodes.append(node)
+    row_nodes.append(node)
     grid.append(row_nodes)
 
 # g score, estimated distance
