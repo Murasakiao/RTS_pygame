@@ -47,7 +47,9 @@ class Unit(GameObject):
         unit_data = ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)
         if unit_data is None:
             raise ValueError(f"Invalid unit_type: {unit_type}")
-        
+
+        self.x = x
+        self.y = y
         super().__init__(x, y, unit_data["image"])
         
         self.name = unit_data['name']  # Store the name separately
@@ -121,9 +123,9 @@ class Unit(GameObject):
                     self.rect.topleft = (int(self.x), int(self.y))
             elif distance > unit_range:  # Move towards target if not in range and no destination
                 travel_distance = self.speed * (dt / 1000)
-                self.x += (dx / distance) * travel_distance
-                self.y += (dy / distance) * travel_distance
-                self.rect.topleft = (int(self.x), int(self.y))
+                self.x = int(self.x + (dx / distance) * travel_distance)
+                self.y = int(self.y + (dy / distance) * travel_distance)
+                self.rect.topleft = (self.x, self.y)
 
                 if check_collision_with_unit(self.rect, units + enemies, exclude_unit=self):
                     self.x = prev_x
@@ -144,10 +146,10 @@ class Unit(GameObject):
             if distance > 0:
                 travel_distance = self.speed * (dt / 1000)
                 # Adjust position if colliding with another unit
-                self.x += (dx / distance) * travel_distance
-                self.y += (dy / distance) * travel_distance
+                self.x = int(self.x + (dx / distance) * travel_distance)
+                self.y = int(self.y + (dy / distance) * travel_distance)
 
-                self.rect.topleft = (int(self.x), int(self.y))
+                self.rect.topleft = (self.x, self.y)
 
                 if check_collision_with_unit(self.rect, units + enemies, exclude_unit=self):
                     self.x = prev_x
