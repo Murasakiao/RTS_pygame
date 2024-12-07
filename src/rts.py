@@ -79,9 +79,6 @@ terrain_generator.draw_terrain(terrain_background)
 # Load and scale logo
 logo = pygame.transform.scale(pygame.image.load("buildings/castle.png"), (150, 150))
 
-menu_running = True
-game_running = False
-
 title_font = pygame.font.Font(None, 50)  # Larger font for title
 title_text = title_font.render("KINGDOM CONQUER", True, BLACK)
 title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4))
@@ -116,7 +113,6 @@ while menu_running:
 # --- Game Loop ---
 
 game_messages = []
-show_debug = True
 while game_running:
     # Update the grid at the beginning of the game loop
     update_grid(buildings)
