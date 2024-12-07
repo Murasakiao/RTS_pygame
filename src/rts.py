@@ -211,7 +211,12 @@ while running:
                 # --- End A* Grid Update ---
 
                 print(selected_unit.destination)
-                print(grid)
+                # --- A* Pathfinding ---
+                from src.astar import a_star, grid as astar_grid  # Import a_star and grid
+                path = a_star(astar_grid, astar_grid[start_grid_y][start_grid_x], astar_grid[end_grid_y][end_grid_x])
+                if path:
+                    selected_unit.path = path[1:]  # Set the unit's path, excluding the starting point
+                # --- End A* Pathfinding ---
 
                 # Find nearest target for the selected unit
                 selected_unit.target = selected_unit.find_nearest_target()
@@ -220,6 +225,12 @@ while running:
 
     # --- Game Updates ---
     for unit in units:
+        # Reset the grid before each A* call
+        from src.astar import grid as astar_grid
+        for row in astar_grid:
+            for node in row:
+                if node.type != 'wall':
+                    node.type = 'road'
         unit.targets = enemies  # Update targets for allied units
         unit.update(dt, game_messages)
 
