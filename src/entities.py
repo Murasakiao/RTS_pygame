@@ -71,13 +71,13 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
 
-    def update(self, dt, game_messages=None):
+    def update(self, dt, game_messages=None, units=None, enemies=None):  # Add units and enemies parameters
         """
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
         """
         self.handle_target_selection()
-        self.move_towards_target(dt)
+        self.move_towards_target(dt, units, enemies)  # Pass units and enemies to move_towards_target
         self.handle_attack(dt, game_messages)
         return game_messages
 
@@ -88,7 +88,7 @@ class Unit(GameObject):
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
 
-    def move_towards_target(self, dt):
+    def move_towards_target(self, dt, units=None, enemies=None):  # Add units and enemies parameters
         """
         Move the unit towards its current target, or stop if in attack range.
         """
