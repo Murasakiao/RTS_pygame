@@ -118,7 +118,7 @@ class Unit(GameObject):
                         self.x += (dx / distance) * travel_distance
                         self.y += (dy / distance) * travel_distance
 
-                    self.rect.topleft = (self.x, self.y)
+                    self.rect.topleft = (int(self.x), int(self.y))
             elif distance > unit_range:  # Move towards target if not in range and no destination
                 travel_distance = self.speed * (dt / 1000)
                 self.x += (dx / distance) * travel_distance
