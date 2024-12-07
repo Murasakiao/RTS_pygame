@@ -104,7 +104,10 @@ while menu_running:
 
     screen.blit(terrain_background, (0, 0))
     screen.blit(logo, logo_rect)  # Draw logo
+    start_button = pygame.Rect(SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30)
+    exit_button = pygame.Rect(SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30)
     screen.blit(title_text, title_text_rect)  # Draw title
+
 
     # Draw menu elements with styling
     draw_button(screen, "Start New Game", GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30))
