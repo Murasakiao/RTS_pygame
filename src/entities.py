@@ -209,8 +209,8 @@ class Unit(GameObject):
         """
         super().draw(screen)
         
-        # Draw collision information
         if show_debug:
+            # Draw collision information
             collided_with_unit = check_collision_with_unit(self.rect, units, exclude_unit=self)
             collided_with_building = check_collision_with_building(self.rect, buildings)
             collided_with_enemy = check_collision_with_unit(self.rect, enemies, exclude_unit=self)
@@ -219,11 +219,11 @@ class Unit(GameObject):
                 screen.blit(collide_text, (self.rect.centerx - collide_text.get_width() // 2, 
                                             self.rect.top + collide_text.get_height() + 5))
         
-        # Draw target information if a target exists
-        if self.target and self.target.hp > 0:
-            target_text = self.font.render(str(self.target.type), True, RED)
-            screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, 
-                                      self.rect.top - target_text.get_height() - 5))
+            # Draw target information if a target exists
+            if self.target and self.target.hp > 0:
+                target_text = self.font.render(str(self.target.type), True, RED)
+                screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, 
+                                        self.rect.top - target_text.get_height() - 5))
 
 class AlliedUnit(Unit):
     def __init__(self, unit_type, x, y, targets, font=None):

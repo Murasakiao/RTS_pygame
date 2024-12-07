@@ -1,10 +1,10 @@
 # Constants
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-GRID_SIZE = 25
-# SCREEN_WIDTH = 768
-# SCREEN_HEIGHT = 576
-# GRID_SIZE = 16
+# SCREEN_WIDTH = 800
+# SCREEN_HEIGHT = 600
+# GRID_SIZE = 25
+SCREEN_WIDTH = 768
+SCREEN_HEIGHT = 576
+GRID_SIZE = 16
 FPS = 30
 BUILDING_COOLDOWN_TIME = 1000
 MESSAGE_DURATION = 3000
@@ -21,6 +21,10 @@ BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 
+# Game loops
+show_debug = True
+menu_running = True
+game_running = False
 
 
 # --- Data ---
@@ -38,12 +42,12 @@ BUILDING_DATA = {
 
 # Unit data
 ALLY_DATA = {
-    "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 40, "hp": 10, "atk": 1, "range": 30, "attack_cooldown": 1500},
-    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 50, "hp": 8, "atk": 2, "range": 100, "attack_cooldown": 2000}, 
+    "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 20, "hp": 10, "atk": 1, "range": 30, "attack_cooldown": 1500},
+    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 30, "hp": 8, "atk": 2, "range": 100, "attack_cooldown": 2000}, 
 }
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 20, "hp": 8, "atk": 1, "range": 30, "attack_cooldown": 1500, "target_priority": "building"},
-    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 10, "hp": 12, "atk": 2, "range": 10, "attack_cooldown": 2000, "target_priority": "unit"},
+    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 10, "hp": 8, "atk": 1, "range": 30, "attack_cooldown": 1500, "target_priority": "building"},
+    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 5, "hp": 12, "atk": 2, "range": 10, "attack_cooldown": 2000, "target_priority": "unit"},
 }
