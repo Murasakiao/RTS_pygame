@@ -60,15 +60,43 @@ building_map = {
     K_5: "Stable", K_6: "Farm", K_7: "LumberMill", K_8: "Quarry",
 }
 
+# --- Menu ---
+menu_running = True
+game_running = False
+
+while menu_running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            menu_running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if start_button.collidepoint(event.pos):
+                game_running = True
+                menu_running = False  # Exit menu loop
+            elif exit_button.collidepoint(event.pos):
+                menu_running = False
+
+    screen.fill(WHITE)
+
+    # Draw menu elements
+    start_button = pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 - 30, 100, 20))
+    exit_button = pygame.draw.rect(screen, RED, (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 + 10, 100, 20))
+
+    start_text = font.render("Start New Game", True, BLACK)
+    exit_text = font.render("Exit", True, BLACK)
+    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
+    screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, SCREEN_HEIGHT // 2 + 20))
+
+    pygame.display.flip()
+
 # --- Game Loop ---
 game_messages = []
-running = True
 show_debug = True
-while running:
+while game_running:
     # Update the grid at the beginning of the game loop
     update_grid(buildings)
 
     dt = clock.tick(FPS)
+    mouse_pos = pygame.mouse.get_pos()
     mouse_pos = pygame.mouse.get_pos()
     debug_info = [
         f"FPS: {int(clock.get_fps())}",
