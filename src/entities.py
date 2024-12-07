@@ -203,7 +203,7 @@ class Unit(GameObject):
         else:
             return None
 
-    def draw(self, screen):
+    def draw(self, screen, units, buildings, enemies):  # Add parameters here
         """
         Draw the unit with additional information
         """
@@ -211,7 +211,7 @@ class Unit(GameObject):
 
         collided_with_unit = check_collision_with_unit(self.rect, units, exclude_unit=self)
         collided_with_building = check_collision_with_building(self.rect, buildings)
-        collided_with_enemy = check_collision_with_unit(self.rect, enemies)  # Use check_collision_with_unit for enemies as well
+        collided_with_enemy = check_collision_with_unit(self.rect, enemies)
         if collided_with_unit or collided_with_building or collided_with_enemy:
             collide_text = self.font.render("COLLIDING", True, RED)
             screen.blit(collide_text, (self.rect.centerx - collide_text.get_width() // 2, 
