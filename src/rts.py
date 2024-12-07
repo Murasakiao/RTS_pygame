@@ -218,11 +218,11 @@ while running:
     # --- Game Updates ---
     for unit in units:
         unit.targets = enemies  # Update targets for allied units
-        unit.update(dt, game_messages, units, enemies)  # Pass units and enemies
+        unit.update(dt, game_messages)
 
     for enemy in enemies:
         enemy.targets = units + buildings  # Update targets for enemy units
-        game_messages = enemy.update(dt, game_messages, units, enemies)  # Pass units and enemies
+        game_messages = enemy.update(dt, game_messages)
 
     if wave_timer >= WAVE_INTERVAL:
         new_enemies = spawn_enemies(buildings, units, current_wave, ENEMY_SPAWN_RATE)

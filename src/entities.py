@@ -47,9 +47,7 @@ class Unit(GameObject):
         unit_data = ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)
         if unit_data is None:
             raise ValueError(f"Invalid unit_type: {unit_type}")
-
-        self.x = x
-        self.y = y
+        
         super().__init__(x, y, unit_data["image"])
         
         self.name = unit_data['name']  # Store the name separately
@@ -73,13 +71,13 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
 
-    def update(self, dt, game_messages=None, units=[], enemies=[]):  # Add units and enemies parameters
+    def update(self, dt, game_messages=None):
         """
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
         """
         self.handle_target_selection()
-        self.move_towards_target(dt, units, enemies)  # Pass units and enemies to move_towards_target
+        self.move_towards_target(dt)
         self.handle_attack(dt, game_messages)
         return game_messages
 
@@ -90,12 +88,11 @@ class Unit(GameObject):
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
 
-    def move_towards_target(self, dt, units=None, enemies=None):  # Add units and enemies parameters
+    def move_towards_target(self, dt):
         """
         Move the unit towards its current target, or stop if in attack range.
         """
-        prev_x = self.x
-        prev_y = self.y
+        
         if self.target:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
@@ -120,42 +117,29 @@ class Unit(GameObject):
                         self.x += (dx / distance) * travel_distance
                         self.y += (dy / distance) * travel_distance
 
-                    self.rect.topleft = (int(self.x), int(self.y))
+                    self.rect.topleft = (self.x, self.y)
             elif distance > unit_range:  # Move towards target if not in range and no destination
                 travel_distance = self.speed * (dt / 1000)
-                self.x = int(self.x + (dx / distance) * travel_distance)
-                self.y = int(self.y + (dy / distance) * travel_distance)
+                self.x += (dx / distance) * travel_distance
+                self.y += (dy / distance) * travel_distance
                 self.rect.topleft = (self.x, self.y)
-
-                if check_collision_with_unit(self.rect, units + enemies, exclude_unit=self):
-                    self.x = prev_x
-                    self.y = prev_y
-                    self.rect.topleft = (int(self.x), int(self.y))
-                    return
-
         elif self.destination:  # Move towards destination even if no target
             dx = self.destination[0] - self.x
-            if abs(dx) < 1:
-                self.x = self.destination[0]
             dy = self.destination[1] - self.y
-            if abs(dy) < 1:
-                self.y = self.destination[1]
             distance = math.hypot(dx, dy)
-
 
             if distance > 0:
                 travel_distance = self.speed * (dt / 1000)
-                # Adjust position if colliding with another unit
-                self.x = int(self.x + (dx / distance) * travel_distance)
-                self.y = int(self.y + (dy / distance) * travel_distance)
+
+                if distance <= travel_distance:
+                    self.x = self.destination[0]
+                    self.y = self.destination[1]
+                    self.destination = None
+                else:
+                    self.x += (dx / distance) * travel_distance
+                    self.y += (dy / distance) * travel_distance
 
                 self.rect.topleft = (self.x, self.y)
-
-                if check_collision_with_unit(self.rect, units + enemies, exclude_unit=self):
-                    self.x = prev_x
-                    self.y = prev_y
-                    self.rect.topleft = (int(self.x), int(self.y))
-                    return
 
 
     def handle_attack(self, dt, game_messages):
