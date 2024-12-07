@@ -299,12 +299,12 @@ while game_running:
             buildings.remove(building)
 
     for unit in units:
-        unit.draw(screen, units, buildings, enemies)  # Pass the lists here
+        unit.draw(screen, units, buildings, enemies, show_debug)  # Pass show_debug here
         if unit == selected_unit:
             pygame.draw.rect(screen, GREEN, unit.rect, 2)
 
     for enemy in enemies:
-        enemy.draw(screen, units, buildings, enemies)  # Pass the lists here as well
+        enemy.draw(screen, units, buildings, enemies, show_debug)  # Pass show_debug here as well
 
     draw_building_preview(screen, preview_rect, collision, resources, gold, current_building_type)
     draw_messages(screen, font, game_messages)

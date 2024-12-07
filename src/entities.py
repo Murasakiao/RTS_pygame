@@ -203,7 +203,7 @@ class Unit(GameObject):
         else:
             return None
 
-    def draw(self, screen, units, buildings, enemies):  # Add parameters here
+    def draw(self, screen, units, buildings, enemies, show_debug):  # Add show_debug parameter
         """
         Draw the unit with additional information
         """
