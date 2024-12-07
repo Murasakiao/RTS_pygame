@@ -62,43 +62,6 @@ building_map = {
 
 # --- Menu ---
 
-# Create terrain background
-terrain_background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-terrain_generator.draw_terrain(terrain_background)
-
-# Load and scale logo
-logo = pygame.transform.scale(pygame.image.load("buildings/castle.png"), (150, 150))
-
-menu_running = True
-game_running = False
-
-title_font = pygame.font.Font(None, 50)  # Larger font for title
-title_text = title_font.render("KINGDOM CONQUER", True, BLACK)
-title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4))
-logo_rect = logo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
-
-while menu_running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            menu_running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if start_button.collidepoint(event.pos):
-                game_running = True
-                menu_running = False  # Exit menu loop
-            elif exit_button.collidepoint(event.pos):
-                menu_running = False
-
-    screen.blit(terrain_background, (0, 0))
-    screen.blit(logo, logo_rect)  # Draw logo
-    screen.blit(title_text, title_text_rect)  # Draw title
-
-    # Draw menu elements
-    # Draw menu elements with styling
-    draw_button(screen, "Start New Game", GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30))
-    draw_button(screen, "Exit", RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30))
-
-# --- Menu ---
-
 def draw_button(screen, text, color, rect, border_color=BLACK, border_width=2):
     pygame.draw.rect(screen, border_color, rect, border_width)  # Border
     pygame.draw.rect(screen, color, (rect[0] + border_width, rect[1] + border_width, rect[2] - 2 * border_width, rect[3] - 2 * border_width))  # Button background
