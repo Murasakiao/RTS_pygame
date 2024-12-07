@@ -66,8 +66,16 @@ building_map = {
 terrain_background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 terrain_generator.draw_terrain(terrain_background)
 
+# Load and scale logo
+logo = pygame.transform.scale(pygame.image.load("buildings/castle.png"), (150, 150))
+
 menu_running = True
 game_running = False
+
+title_font = pygame.font.Font(None, 50)  # Larger font for title
+title_text = title_font.render("Kingdom Conquer", True, BLACK)
+title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4))
+logo_rect = logo.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
 
 while menu_running:
     for event in pygame.event.get():
@@ -81,15 +89,18 @@ while menu_running:
                 menu_running = False
 
     screen.blit(terrain_background, (0, 0))
+    screen.blit(logo, logo_rect)  # Draw logo
+    screen.blit(title_text, title_text_rect)  # Draw title
 
     # Draw menu elements
-    start_button = pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 - 35, 120, 30))
-    exit_button = pygame.draw.rect(screen, RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 5, 120, 30))
+    start_button = pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30))  # Adjusted button position
+    exit_button = pygame.draw.rect(screen, RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30))  # Adjusted button position
+
 
     start_text = font.render("Start New Game", True, BLACK)
     exit_text = font.render("Exit", True, BLACK)
-    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT // 2 - 25))
-    screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, SCREEN_HEIGHT // 2 + 10))
+    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT // 2 + 70))  # Adjusted text position
+    screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, SCREEN_HEIGHT // 2 + 110));  # Adjusted text position
 
     pygame.display.flip()
 
