@@ -88,8 +88,8 @@ while menu_running:
 
     start_text = font.render("Start New Game", True, BLACK)
     exit_text = font.render("Exit", True, BLACK)
-    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
-    screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, SCREEN_HEIGHT // 2 + 20))
+    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT // 2 - 25))
+    screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, SCREEN_HEIGHT // 2 + 10))
 
     pygame.display.flip()
 
