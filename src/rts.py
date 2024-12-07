@@ -93,18 +93,21 @@ while menu_running:
     screen.blit(title_text, title_text_rect)  # Draw title
 
     # Draw menu elements
-    start_button = pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30))  # Adjusted button position
-    exit_button = pygame.draw.rect(screen, RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30))  # Adjusted button position
-
-
-    start_text = font.render("Start New Game", True, BLACK)
-    exit_text = font.render("Exit", True, BLACK)
-    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, SCREEN_HEIGHT // 2 + 70))  # Adjusted text position
-    screen.blit(exit_text, (SCREEN_WIDTH // 2 - exit_text.get_width() // 2, SCREEN_HEIGHT // 2 + 110));  # Adjusted text position
+    # Draw menu elements with styling
+    draw_button(screen, "Start New Game", GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30))
+    draw_button(screen, "Exit", RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30))
 
     pygame.display.flip()
 
 # --- Game Loop ---
+
+def draw_button(screen, text, color, rect, border_color=BLACK, border_width=2):
+    pygame.draw.rect(screen, border_color, rect, border_width)  # Border
+    pygame.draw.rect(screen, color, (rect[0] + border_width, rect[1] + border_width, rect[2] - 2 * border_width, rect[3] - 2 * border_width))  # Button background
+    button_text = font.render(text, True, BLACK)
+    text_rect = button_text.get_rect(center=(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2))
+    screen.blit(button_text, text_rect)
+
 game_messages = []
 show_debug = True
 while game_running:
