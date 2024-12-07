@@ -24,7 +24,7 @@ class GameObject:
             self.image = pygame.Surface(size)
             self.image.fill(BLACK)  # Fallback image
         
-        self.rect = pygame.Rect(x + GRID_SIZE // 4, y + GRID_SIZE // 4, GRID_SIZE // 2, GRID_SIZE // 2)
+        self.rect = self.image.get_rect(topleft=(x, y))
         self.font = pygame.font.Font(None, 15)
 
     def draw(self, screen):
