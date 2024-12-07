@@ -71,7 +71,7 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
 
-    def update(self, dt, game_messages=None, units=None, enemies=None):  # Add units and enemies parameters
+    def update(self, dt, game_messages=None, units=[], enemies=[]):  # Add units and enemies parameters
         """
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
