@@ -78,8 +78,8 @@ while menu_running:
     screen.fill(WHITE)
 
     # Draw menu elements
-    start_button = pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 - 30, 100, 20))
-    exit_button = pygame.draw.rect(screen, RED, (SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 + 10, 100, 20))
+    start_button = pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 - 35, 120, 30))
+    exit_button = pygame.draw.rect(screen, RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 5, 120, 30))
 
     start_text = font.render("Start New Game", True, BLACK)
     exit_text = font.render("Exit", True, BLACK)
