@@ -108,8 +108,8 @@ while menu_running:
 
 
     # Draw menu elements with styling
-    draw_button(screen, "Start New Game", GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30), opacity=128) # Example opacity value
-    draw_button(screen, "Exit", RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30), opacity=128) # Example opacity value
+    draw_button(screen, "Start New Game", GREEN, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 60, 120, 30), opacity=50) # Example opacity value
+    draw_button(screen, "Exit", RED, (SCREEN_WIDTH // 2 - 60, SCREEN_HEIGHT // 2 + 100, 120, 30), opacity=150) # Example opacity value
 
     pygame.display.flip()
 
