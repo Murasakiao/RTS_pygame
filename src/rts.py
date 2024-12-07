@@ -126,7 +126,8 @@ while running:
             elif event.key == pygame.K_ESCAPE:
                 current_building_type = None
             elif event.key == K_t:
-                terrain = terrain_generator.generate_terrain()
+                terrain = terrain_generator.generate_terrain()  # Regenerate terrain data
+                terrain_generator.terrain = terrain # Update the terrain in the terrain generator
             elif event.key == K_d:  # 'D' key to toggle debug info display
                 show_debug = not show_debug
                 print(grid)
@@ -238,7 +239,7 @@ while running:
 
     # --- Drawing ---
     screen.fill(WHITE)
-    terrain_generator.draw_terrain(screen, terrain)
+    terrain_generator.draw_terrain(screen) # Use updated draw_terrain
 
     draw_resources(screen, font, resources, gold)
 

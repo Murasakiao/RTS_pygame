@@ -12,6 +12,7 @@ class TerrainGenerator:
         self.persistence = 0.01
         self.lacunarity = 2.0
         self.noise = noise
+        self.terrain = self.generate_terrain()
 
     def load_grass_tiles(self):
         grass_tiles = []
@@ -43,8 +44,8 @@ class TerrainGenerator:
             terrain.append(row)
         return terrain
 
-    def draw_terrain(self, screen, terrain):
-        for y, row in enumerate(terrain):
+    def draw_terrain(self, screen):
+        for y, row in enumerate(self.terrain):
             for x, tile_index in enumerate(row):
                 tile = self.grass_tiles[tile_index]
                 screen.blit(tile, (x * self.grid_size, y * self.grid_size))
