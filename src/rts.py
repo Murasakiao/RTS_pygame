@@ -72,11 +72,6 @@ def draw_button(screen, text, color, rect, border_color=BLACK, border_width=2, o
     text_rect = button_text.get_rect(center=(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2))
     screen.blit(button_text, text_rect)
 
-    button_text = font.render(text, True, BLACK)
-    text_rect = button_text.get_rect(center=(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2))
-    screen.blit(button_text, text_rect)
-
-
 # Create terrain background
 terrain_background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 terrain_generator.draw_terrain(terrain_background)
