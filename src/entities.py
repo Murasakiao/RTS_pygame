@@ -3,10 +3,7 @@
 import math
 import pygame
 from constants import *
-from utils import check_collision_with_unit, check_collision_with_building
-import pygame
-from constants import *
-
+from utils import *
 
 pygame.init()
 
@@ -156,11 +153,11 @@ class Unit(GameObject):
         
         if self.attack_cooldown > 0:
             self.attack_cooldown -= dt
+
     def attack_target(self, game_messages):
         """
         Attack the current target and generate game messages
         """
-        from src.utils import add_game_message  # Import here
         if self.target:
             # Use the unit type name instead of the entire dictionary
             unit_name = self.name  # Use the stored name
@@ -214,7 +211,7 @@ class Unit(GameObject):
 
         collided_with_unit = check_collision_with_unit(self.rect, units, exclude_unit=self)
         collided_with_building = check_collision_with_building(self.rect, buildings)
-        collided_with_enemy = check_collision_with_unit(self.rect, enemies)
+        collided_with_enemy = check_collision_with_unit(self.rect, enemies, exclude_unit=self)
         if collided_with_unit or collided_with_building or collided_with_enemy:
             collide_text = self.font.render("COLLIDING", True, RED)
             screen.blit(collide_text, (self.rect.centerx - collide_text.get_width() // 2, 
@@ -284,4 +281,25 @@ class EnemyUnit(Unit):
         Get the attack cooldown for enemy units
         """
         return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
+    
+# --- other Funtions --- 
+def check_collision_with_building(unit, buildings):
+    for building in buildings:
+        if unit.colliderect(building.rect):
+            return True
+    return False
 
+def check_collision_with_unit(unit, units, exclude_unit=None):
+    for other_unit in units:
+        if other_unit is not exclude_unit and unit.colliderect(other_unit.rect):
+            return True
+    return False
+
+def check_collision_with_enemy(unit, enemies):
+    for enemy in enemies:
+        if unit.colliderect(enemy.rect):
+            return True
+    return False
+
+# Import add_game_message after Enemy class is defined
+from src.utils import add_game_message
