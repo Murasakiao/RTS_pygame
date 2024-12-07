@@ -126,10 +126,7 @@ while running:
             elif event.key == pygame.K_ESCAPE:
                 current_building_type = None
             elif event.key == K_t:
-                terrain_generator.terrain = terrain_generator.generate_terrain()  # Regenerate and update terrain
-                screen.fill(WHITE)  # Clear the screen
-                terrain_generator.draw_terrain(screen) # Redraw the terrain
-                pygame.display.flip() # Update the display
+                terrain = terrain_generator.generate_terrain()
             elif event.key == K_d:  # 'D' key to toggle debug info display
                 show_debug = not show_debug
                 print(grid)
@@ -211,12 +208,7 @@ while running:
                 # --- End A* Grid Update ---
 
                 print(selected_unit.destination)
-                # --- A* Pathfinding ---
-                from src.astar import a_star, grid as astar_grid  # Import a_star and grid
-                path = a_star(astar_grid, astar_grid[start_grid_y][start_grid_x], astar_grid[end_grid_y][end_grid_x])
-                if path:
-                    selected_unit.path = path[1:]  # Set the unit's path, excluding the starting point
-                # --- End A* Pathfinding ---
+                print(grid)
 
                 # Find nearest target for the selected unit
                 selected_unit.target = selected_unit.find_nearest_target()
@@ -225,12 +217,6 @@ while running:
 
     # --- Game Updates ---
     for unit in units:
-        # Reset the grid before each A* call
-        from src.astar import grid as astar_grid
-        for row in astar_grid:
-            for node in row:
-                if node.type != 'wall':
-                    node.type = 'road'
         unit.targets = enemies  # Update targets for allied units
         unit.update(dt, game_messages)
 
@@ -252,7 +238,7 @@ while running:
 
     # --- Drawing ---
     screen.fill(WHITE)
-    terrain_generator.draw_terrain(screen) # Use updated draw_terrain
+    terrain_generator.draw_terrain(screen)
 
     draw_resources(screen, font, resources, gold)
 

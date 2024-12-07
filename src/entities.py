@@ -76,9 +76,8 @@ class Unit(GameObject):
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
         """
-        self.path = []  # Initialize path as an empty list
         self.handle_target_selection()
-        self.follow_path(dt)  # Use follow_path instead of move_towards_target
+        self.move_towards_target(dt)
         self.handle_attack(dt, game_messages)
         return game_messages
 
@@ -88,23 +87,10 @@ class Unit(GameObject):
         """
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
-    def follow_path(self, dt):
-        """
-        Follow the calculated path.
-        """
-        if self.path:
-            next_node = self.path[0]
-            self.destination = (next_node.x * GRID_SIZE, next_node.y * GRID_SIZE)
-            self.move_towards_target(dt)  # Use move_towards_target for basic movement
-
-            if (self.x, self.y) == self.destination:  # If reached the next node
-                self.path.pop(0)  # Remove the reached node from the path
-        elif self.target:  # If no path but has a target, move directly towards it
-            self.move_towards_target(dt)
 
     def move_towards_target(self, dt):
         """
-        Move the unit towards its current destination.
+        Move the unit towards its current target, or stop if in attack range.
         """
         
         if self.target:
