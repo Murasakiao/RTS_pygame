@@ -78,7 +78,7 @@ terrain_background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 terrain_generator.draw_terrain(terrain_background)
 
 # Load and scale logo
-logo = pygame.transform.scale(pygame.image.load("buildings/castle.png"), (150, 150))
+logo = pygame.transform.scale(pygame.image.load("assets/buildings/castle.png"), (150, 150))
 
 title_font = pygame.font.Font(None, 50)  # Larger font for title
 title_text = title_font.render("KINGDOM CONQUER", True, BLACK)

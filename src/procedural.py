@@ -18,7 +18,7 @@ class TerrainGenerator:
         grass_tiles = []
         for i in range(1, 7):
             try:
-                tile = pygame.image.load(f'buildings/tile_{i}.png')
+                tile = pygame.image.load(f'assets/tiles/plains/grass_{i}.png')
                 tile = pygame.transform.scale(tile, (self.grid_size, self.grid_size))
                 grass_tiles.append(tile)
             except Exception as e:

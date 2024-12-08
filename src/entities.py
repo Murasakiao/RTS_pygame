@@ -94,56 +94,39 @@ class Unit(GameObject):
         Move the unit towards its current target or along a path, or stop if in attack range.
         """
 
-        # if self.target:
-        #     dx = self.target.x - self.x
-        #     dy = self.target.y - self.y
-        #     distance = math.hypot(dx, dy)
-        #     unit_range = self.get_attack_range()  # Abstract range calculation
+        if self.target:
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            distance = math.hypot(dx, dy)
+            unit_range = self.get_attack_range()  # Abstract range calculation
 
-        #     if distance <= unit_range:
-        #         self.destination = None  # Stop moving when in range
-        #     elif self.destination:
-        #         dx = self.destination[0] - self.x
-        #         dy = self.destination[1] - self.y
-        #         distance = math.hypot(dx, dy)
+            if distance <= unit_range:
+                self.destination = None  # Stop moving when in range
+            elif self.destination:
+                dx = self.destination[0] - self.x
+                dy = self.destination[1] - self.y
+                distance = math.hypot(dx, dy)
 
-        #         if distance > 0:
-        #             travel_distance = self.speed * (dt / 1000)
+                if distance > 0:
+                    travel_distance = self.speed * (dt / 1000)
 
-        #             if distance <= travel_distance:
-        #                 self.x = self.destination[0]
-        #                 self.y = self.destination[1]
-        #                 self.destination = None
-        #             else:
-        #                 self.x += (dx / distance) * travel_distance
-        #                 self.y += (dy / distance) * travel_distance
+                    if distance <= travel_distance:
+                        self.x = self.destination[0]
+                        self.y = self.destination[1]
+                        self.destination = None
+                    else:
+                        self.x += (dx / distance) * travel_distance
+                        self.y += (dy / distance) * travel_distance
 
-        #             self.rect.topleft = (self.x, self.y)
-        #     elif distance > unit_range:  # Move towards target if not in range and no destination
-        #         travel_distance = self.speed * (dt / 1000)
-        #         self.x += (dx / distance) * travel_distance
-        #         self.y += (dy / distance) * travel_distance
-        #         self.rect.topleft = (self.x, self.y)
-        # elif self.destination:  # Move towards destination even if no target
-        #     dx = self.destination[0] - self.x
-        #     dy = self.destination[1] - self.y
-        #     distance = math.hypot(dx, dy)
-
-        #     if distance > 0:
-        #         travel_distance = self.speed * (dt / 1000)
-
-        #         if distance <= travel_distance:
-        #             self.x = self.destination[0]
-        #             self.y = self.destination[1]
-        #             self.destination = None
-        #         else:
-        #             self.x += (dx / distance) * travel_distance
-        #             self.y += (dy / distance) * travel_distance
-
-        #         self.rect.topleft = (self.x, self.y)
+                    self.rect.topleft = (self.x, self.y)
+            elif distance > unit_range:  # Move towards target if not in range and no destination
+                travel_distance = self.speed * (dt / 1000)
+                self.x += (dx / distance) * travel_distance
+                self.y += (dy / distance) * travel_distance
+                self.rect.topleft = (self.x, self.y)
 
         # print(f"Moving {self.type} to {self.destination}")
-        if self.path and len(self.path) > 1:  # Follow path if available
+        elif self.path and len(self.path) > 1:  # Follow path if available
             next_node = self.path[1]  # Target the next node in the path
             dx = next_node.x * GRID_SIZE - self.x
             dy = next_node.y * GRID_SIZE - self.y
@@ -206,6 +189,24 @@ class Unit(GameObject):
                     self.y = new_y
 
                 self.rect.topleft = (self.x, self.y) # Update rect after position change
+        
+        # elif self.destination:  # Move towards destination even if no target
+        #     dx = self.destination[0] - self.x
+        #     dy = self.destination[1] - self.y
+        #     distance = math.hypot(dx, dy)
+
+        #     if distance > 0:
+        #         travel_distance = self.speed * (dt / 1000)
+
+        #         if distance <= travel_distance:
+        #             self.x = self.destination[0]
+        #             self.y = self.destination[1]
+        #             self.destination = None
+        #         else:
+        #             self.x += (dx / distance) * travel_distance
+        #             self.y += (dy / distance) * travel_distance
+
+        #         self.rect.topleft = (self.x, self.y)
         
         # print(f"New position: {self.x}, {self.y}")
 
