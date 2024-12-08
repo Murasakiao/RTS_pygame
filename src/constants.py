@@ -42,12 +42,12 @@ BUILDING_DATA = {
 
 # Unit data
 ALLY_DATA = {
-    "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 20, "hp": 10, "atk": 1, "range": 30, "attack_cooldown": 1500},
-    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 30, "hp": 8, "atk": 2, "range": 100, "attack_cooldown": 2000}, 
+    "Swordsman": {"name": "Swordsman", "image": "characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 20, "hp": 10, "atk": 1, "range": 15, "attack_cooldown": 1500},
+    "Archer": {"name": "Archer", "image": "characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 30, "hp": 8, "atk": 2, "range": 70, "attack_cooldown": 2000}, 
 }
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 10, "hp": 8, "atk": 1, "range": 30, "attack_cooldown": 1500, "target_priority": "building"},
-    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 5, "hp": 12, "atk": 2, "range": 10, "attack_cooldown": 2000, "target_priority": "unit"},
+    "Goblin": {"name": "Goblin", "image": "characters/goblin.png", "speed": 10, "hp": 8, "atk": 1, "range": 15, "attack_cooldown": 1500, "target_priority": "building"},
+    "Orc": {"name": "Orc", "image": "characters/orc.png", "speed": 5, "hp": 12, "atk": 2, "range": 5, "attack_cooldown": 2000, "target_priority": "unit"},
 }

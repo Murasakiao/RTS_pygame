@@ -19,7 +19,7 @@ font = pygame.font.Font(None, 20)
 
 # --- Game Initialization ---
 gold = 150
-resources = {"wood": 1000, "stone": 1000, "food": 1000, "people": 3}
+resources = {"wood": 200, "stone": 200, "food": 200, "people": 3}
 resource_increase_rates = {
     "gold": 3, "wood": 2, "stone": 1, "food": 1, "people": 0.1
 }

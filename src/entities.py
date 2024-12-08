@@ -25,7 +25,7 @@ class GameObject:
             self.image.fill(BLACK)  # Fallback image
         
         self.rect = self.image.get_rect(topleft=(x, y))
-        self.font = pygame.font.Font(None, 15)
+        self.font = pygame.font.Font(None, 12)
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
@@ -57,7 +57,7 @@ class Unit(GameObject):
         self.hp = unit_data.get("hp", 100)
         self.attack = unit_data.get("atk", 10)  # Renamed to 'attack'
         
-        self.font = font or pygame.font.Font(None, 15)
+        self.font = font or pygame.font.Font(None, 12)
         
         # Ensure targets is a list
         if targets is None:
