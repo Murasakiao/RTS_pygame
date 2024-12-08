@@ -40,30 +40,6 @@ class TerrainGenerator:
             default_water.fill(BLUE)
             self.water_tiles.append(default_water)
 
-    def generate_river(self, terrain, start_x, start_y):
-        current_x, current_y = start_x, start_y
-        river_path = [(current_x, current_y)]
-
-        while True:  # Continue until a condition is met (e.g., reach edge of map)
-            # Find lowest neighbor
-            lowest_neighbor = None
-            for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                nx, ny = current_x + dx, current_y + dy
-                if 0 <= nx < len(terrain[0]) and 0 <= ny < len(terrain):
-                    if lowest_neighbor is None or terrain[ny][nx] < terrain[lowest_neighbor[1]][lowest_neighbor[0]]:
-                        lowest_neighbor = (nx, ny)
-
-            if lowest_neighbor is None:
-                break  # No valid neighbors
-
-            # Carve river path
-            terrain[lowest_neighbor[1]][lowest_neighbor[0]] = len(self.grass_tiles) # Water tile index
-
-            current_x, current_y = lowest_neighbor
-            river_path.append((current_x, current_y))
-
-        return river_path
-
     def generate_terrain(self):
         terrain = []
         scale = 200.0  # Increased scale for larger features
@@ -93,15 +69,9 @@ class TerrainGenerator:
 
                 row.append(tile_index)
             terrain.append(row)
-
-        # Generate river after terrain is created
-        start_x = random.randint(0, self.screen_width // self.grid_size - 1)
-        start_y = 0  # Start at the top
-        self.generate_river(terrain, start_x, start_y)
-
         return terrain
 
-    def draw_terrain(self, screen):
+    def draw_terrain(self, screen):        
         for y, row in enumerate(self.terrain):
             for x, tile_index in enumerate(row):
                 if tile_index == len(self.grass_tiles):  # Water tile
