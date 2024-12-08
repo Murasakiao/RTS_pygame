@@ -163,29 +163,31 @@ class Unit(GameObject):
                     self.y += (dy / distance) * travel_distance
                     self.rect.topleft = (self.x, self.y)
 
-        elif self.target and self.destination:  # Check if destination and target are not None
-            if self.target: # Check if target exists
+        elif self.destination:  # Only check if destination is not None
+            if self.target:
                 dx = self.target.x - self.x
+                dy = self.destination[1] - self.y # changed to self.target.y
+            else:
+                dx = self.destination[0] - self.x
                 dy = self.destination[1] - self.y
-            distance = math.hypot(dx, dy)  # Calculate distance here
 
-            if distance > 0:  # Only move if not already at destination
+            distance = math.hypot(dx, dy)
+
+            if distance > 0:
                 travel_distance = self.speed * (dt / 1000)
                 new_x = self.x + (dx / distance) * travel_distance
                 new_y = self.y + (dy / distance) * travel_distance
 
-                if self.target: # Check if target exists
-                    remaining_distance = math.hypot(self.target.x - new_x, self.target.y - new_y)
-
-                    if remaining_distance < 1e-6:  # Use a small threshold for reaching destination
-                        self.x = self.target.x
-                        self.y = self.target.y
-                    self.destination = None  # Only set to None when truly reached
+                if self.target:
+                    if math.hypot(self.target.x - new_x, self.target.y - new_y) < 1e-6:
+                        self.destination = None  # Stop if close enough to target
                 else:
-                    self.x = new_x
-                    self.y = new_y
+                    if math.hypot(self.destination[0] - new_x, self.destination[1] - new_y) < 1e-6:
+                        self.destination = None  # Stop if close enough to destination
 
-                self.rect.topleft = (self.x, self.y) # Update rect after position change
+                self.x = new_x
+                self.y = new_y
+                self.rect.topleft = (self.x, self.y)
         
         elif self.destination: # Handle case where there's a destination but no target
             dx = self.destination[0] - self.x
