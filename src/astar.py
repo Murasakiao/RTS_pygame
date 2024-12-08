@@ -1,4 +1,5 @@
 import math
+import heapq
 
 class Node:
     def __init__(self, x, y, is_obstacle):
@@ -7,6 +8,15 @@ class Node:
         self.type = 'wall' if is_obstacle else 'road'
         self.g_score = float('inf')
         self.f_score = float('inf')
+
+    def __eq__(self, other):
+        return (self.x, self.y) == (other.x, other.y)
+
+    def __hash__(self):
+        return hash((self.x, self.y))
+
+    def __lt__(self, other):  # Implement __lt__ for heapq comparisons
+        return self.f_score < other.f_score
 
     def get_neighbors(self, grid):
         rows = len(grid)
@@ -17,9 +27,8 @@ class Node:
             neighbor_x = self.x + direction[0]
             neighbor_y = self.y + direction[1]
             if 0 <= neighbor_x < cols and 0 <= neighbor_y < rows:
-                neighbors.append(Node(neighbor_x, neighbor_y, grid[neighbor_y][neighbor_x][1])) # Check occupancy
+                neighbors.append(Node(neighbor_x, neighbor_y, grid[neighbor_y][neighbor_x][1]))
         return neighbors
-
 
 # g score, estimated distance
 
@@ -65,35 +74,39 @@ def a_star(grid, start_coords, end_coords):
     end_node = nodes[end_coords[1]][end_coords[0]]
 
     open_set = []
-    closed_set = []
+    heapq.heappush(open_set, (start_node.f_score, start_node)) # Use heapq
+    closed_set = set() # Use a set
     came_from = {}
 
     start_node.g_score = 0
     start_node.f_score = h_score(start_node, end_node)
 
-    open_set.append(start_node)
-
     while open_set:
-        current = lowest_f_score(open_set)
-        open_set.remove(current)
-        closed_set.append(current)
+        _, current = heapq.heappop(open_set) # Get node with lowest f_score
 
         if current == end_node:
             return reconstruct_path(nodes, came_from, current)
 
+        if current in closed_set: # Check after popping
+            continue
+
+        closed_set.add(current)
+
         for neighbor in current.get_neighbors(grid): # Pass grid to get_neighbors
             if neighbor in closed_set or neighbor.type == 'wall':
                 continue
+
             tentative_g_score = current.g_score + distance(current, neighbor)
-            if neighbor not in open_set:
-                open_set.append(neighbor)
+
+            if neighbor not in [item[1] for item in open_set]:  # Correctly access the node
+                heapq.heappush(open_set, (neighbor.f_score, neighbor))
             elif tentative_g_score > neighbor.g_score:
-                # Not a better path
                 continue
             # Found a better path
             came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
             neighbor.g_score = tentative_g_score
             neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
+
 
 
 def lowest_f_score(node_list):
