@@ -18,16 +18,16 @@ class Node:
     def __lt__(self, other):  # Implement __lt__ for heapq comparisons
         return self.f_score < other.f_score
 
-    def get_neighbors(self, grid):
-        rows = len(grid)
-        cols = len(grid[0])
+    def get_neighbors(self, nodes): # Add nodes as argument
+        rows = len(nodes)
+        cols = len(nodes[0])
         directions = [[1, 0], [1, 1], [0, 1], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]
         neighbors = []
         for dx, dy in directions:
             nx = self.x + dx
             ny = self.y + dy
             if 0 <= nx < cols and 0 <= ny < rows:
-                neighbors.append(nodes[ny][nx])
+                neighbors.append(nodes[ny][nx]) # Use nodes to get neighbors
         return neighbors
 
 
