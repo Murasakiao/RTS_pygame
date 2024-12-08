@@ -52,7 +52,7 @@ selected_unit = None
 
 noise_seed = random.randint(0, 1000) # Generate noise seed
 terrain_generator = TerrainGenerator(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, noise_seed) # Pass seed to generator
-terrain = terrain_generator.generate_terrain()
+terrain = terrain_generator.generate_terrain() # River is generated within this call now
 
 wave_timer = 0
 current_wave = 1
