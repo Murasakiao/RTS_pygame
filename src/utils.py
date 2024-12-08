@@ -17,11 +17,13 @@ pygame.init()
 font = pygame.font.Font(None, 20)
 
 # --- Functions ---
-def draw_grid(screen, color=BLACK, line_width=1):
+def draw_grid(screen, color=BLACK, line_width=1, opacity=150):
+    s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
     for x in range(0, SCREEN_WIDTH, GRID_SIZE):
         for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
-            rect = pygame.Rect(x, y, GRID_SIZE, GRID_SIZE)
-            pygame.draw.rect(screen, color, rect, line_width)
+            pygame.draw.line(s, (*color, opacity), (x, 0), (x, SCREEN_HEIGHT), line_width)
+            pygame.draw.line(s, (*color, opacity), (0, y), (SCREEN_WIDTH, y), line_width)
+    screen.blit(s, (0, 0))
 
 def add_game_message(message, game_messages, duration=MESSAGE_DURATION):
     current_time = pygame.time.get_ticks()

@@ -6,6 +6,7 @@ import noise
 
 from constants import *
 from entities import *
+from astar import a_star, Node
 from src.procedural import TerrainGenerator
 
 from pygame.locals import *
@@ -27,18 +28,18 @@ resource_increase_rates = {
 # --- Grid Setup ---
 grid_width = SCREEN_WIDTH // GRID_SIZE
 grid_height = SCREEN_HEIGHT // GRID_SIZE
-grid = [[0 for _ in range(grid_width)] for _ in range(grid_height)]
+grid = [[(0, 0) for _ in range(grid_width)] for _ in range(grid_height)]
 
 def update_grid(buildings):
     """Updates the grid based on building positions."""
     for y in range(grid_height):
         for x in range(grid_width):
-            grid[y][x] = 0  # Clear the grid
+            grid[y][x] = (terrain[y][x], 0)  # Clear the grid, keep terrain
     for building in buildings:
         for x in range(building.rect.left // GRID_SIZE, building.rect.right // GRID_SIZE):
             for y in range(building.rect.top // GRID_SIZE, building.rect.bottom // GRID_SIZE):
                 if 0 <= x < grid_width and 0 <= y < grid_height:
-                    grid[y][x] = 1  # Mark cells occupied by buildings
+                    grid[y][x] = (grid[y][x][0], 1)  # Mark cells occupied by buildings
 
 buildings = []
 units = []
@@ -240,41 +241,88 @@ while game_running:
             elif event.button == 3 and selected_unit:  # Move selected unit
                 grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
                 grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
-                selected_unit.destination = (grid_x, grid_y)
+                selected_unit.destination = (grid_x, grid_y)  # Set destination first
                 selected_unit.moving = True
 
-                # --- A* Grid Update ---
                 start_grid_x = int(selected_unit.x // GRID_SIZE)
                 start_grid_y = int(selected_unit.y // GRID_SIZE)
                 end_grid_x = grid_x // GRID_SIZE
                 end_grid_y = grid_y // GRID_SIZE
 
-                # Update grid with start and end points (2)
-                if 0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height:
-                    grid[start_grid_y][start_grid_x] = 2
+                selected_unit.path = [] # Clear the old path
+                path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y))
 
-                if 0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height:
-                    grid[end_grid_y][end_grid_x] = 2
-                # --- End A* Grid Update ---
+                if path:
+                    selected_unit.path = path
+                    add_game_message(f"Moving {selected_unit.type}", game_messages)
+                else:
+                    selected_unit.path = [] # Ensure path is empty if no path found
+                    add_game_message(f"No path found for {selected_unit.type}", game_messages)
 
-                print(selected_unit.destination)
-                print(grid)
+                # Find nearest target for the selected unit (moved outside the if block)
+                selected_unit.target = selected_unit.find_nearest_target()
+            #     selected_unit.moving = True
+
+            #     # --- A* Grid Update ---
+            #     start_grid_x = int(selected_unit.x // GRID_SIZE)
+            #     start_grid_y = int(selected_unit.y // GRID_SIZE)
+            #     end_grid_x = grid_x // GRID_SIZE
+            #     end_grid_y = grid_y // GRID_SIZE
+
+            #     # Update grid with start and end points (2)
+            #     if 0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height:
+            #         grid[start_grid_y][start_grid_x] = 2
+
+            #     if 0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height:
+            #         grid[end_grid_y][end_grid_x] = 2
+            #     # --- End A* Grid Update ---
+
+            #     print(selected_unit.destination)
+            #     print(grid)
+
+            #     # Find nearest target for the selected unit
+            #     selected_unit.target = selected_unit.find_nearest_target()
+
+            #     add_game_message(f"Moving {selected_unit.type}", game_messages)
+
+                # start_grid_x = int(selected_unit.x // GRID_SIZE)
+                # start_grid_y = int(selected_unit.y // GRID_SIZE)
+                # end_grid_x = grid_x // GRID_SIZE
+                # end_grid_y = grid_y // GRID_SIZE
+
+                # # Call a_star to get the path
+                # selected_unit.path = [] # Clear the old path
+                # path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y))
+
+                # if path:
+                #     selected_unit.path = path
+                #     add_game_message(f"Moving {selected_unit.type}", game_messages)
+                # else:
+                #     selected_unit.path = [] # Ensure path is empty if no path found
+                #     add_game_message(f"No path found for {selected_unit.type}", game_messages)
 
                 # Find nearest target for the selected unit
-                selected_unit.target = selected_unit.find_nearest_target()
+                # selected_unit.target = selected_unit.find_nearest_target()
 
-                add_game_message(f"Moving {selected_unit.type}", game_messages)
+                # if selected_unit.target: # Make sure there's a target
+                #     selected_unit.destination = (selected_unit.target.x, selected_unit.target.y)
 
     # --- Game Updates ---
+
     for unit in units:
         unit.targets = enemies  # Update targets for allied units
         unit.update(dt, game_messages)
+        if unit.target:
+            unit.destination = (unit.target.x, unit.target.y) # Set destination to target coordinates
 
     for enemy in enemies:
         enemy.targets = units + buildings  # Update targets for enemy units
         game_messages = enemy.update(dt, game_messages)
+        if enemy.target:
+            enemy.destination = (enemy.target.x, enemy.target.y) # Set destination to target coordinates
 
-    if wave_timer >= WAVE_INTERVAL:
+
+    if wave_timer >= WAVE_INTERVAL * current_wave: # Multiply WAVE_INTERVAL by current_wave
         new_enemies = spawn_enemies(buildings, units, current_wave, ENEMY_SPAWN_RATE)
         enemies.extend(new_enemies)
         wave_timer = 0

@@ -56,7 +56,8 @@ class Unit(GameObject):
         self.speed = unit_data.get("speed")
         self.hp = unit_data.get("hp", 100)
         self.attack = unit_data.get("atk", 10)  # Renamed to 'attack'
-        
+        self.path = [] # Initialize path as an empty list
+
         self.font = font or pygame.font.Font(None, 12)
         
         # Ensure targets is a list
@@ -89,57 +90,67 @@ class Unit(GameObject):
             self.target = self.find_nearest_target()
 
     def move_towards_target(self, dt):
-        """
-        Move the unit towards its current target, or stop if in attack range.
-        """
-        
-        if self.target:
-            dx = self.target.x - self.x
-            dy = self.target.y - self.y
-            distance = math.hypot(dx, dy)
-            unit_range = self.get_attack_range()  # Abstract range calculation
+        """Move the unit towards its target or along a path."""
 
-            if distance <= unit_range:
-                self.destination = None  # Stop moving when in range
-            elif self.destination:
+        if self.path:
+            if len(self.path) > 1:
+                next_node = self.path[1]
+                dx = next_node.x * GRID_SIZE - self.x
+                dy = next_node.y * GRID_SIZE - self.y
+                distance_to_next = math.hypot(dx, dy)
+                travel_distance = self.speed * (dt / 1000)
+
+                if distance_to_next <= travel_distance:
+                    self.x = next_node.x * GRID_SIZE
+                    self.y = next_node.y * GRID_SIZE
+                    self.path.pop(0)  # Remove the reached node
+                    if not self.path:
+                        self.destination = None  # Clear destination when path is complete
+                else:
+                    self.x += (dx / distance_to_next) * travel_distance
+                    self.y += (dy / distance_to_next) * travel_distance
+                self.rect.topleft = (self.x, self.y)
+            elif self.destination: # Move towards destination if path is empty or has only one node
                 dx = self.destination[0] - self.x
                 dy = self.destination[1] - self.y
-                distance = math.hypot(dx, dy)
+                distance_to_destination = math.hypot(dx, dy)
 
-                if distance > 0:
+                if distance_to_destination > 0:
                     travel_distance = self.speed * (dt / 1000)
-
-                    if distance <= travel_distance:
-                        self.x = self.destination[0]
-                        self.y = self.destination[1]
-                        self.destination = None
-                    else:
-                        self.x += (dx / distance) * travel_distance
-                        self.y += (dy / distance) * travel_distance
-
+                    self.x += (dx / distance_to_destination) * travel_distance
+                    self.y += (dy / distance_to_destination) * travel_distance
                     self.rect.topleft = (self.x, self.y)
-            elif distance > unit_range:  # Move towards target if not in range and no destination
+        elif self.target and not self.path: # Move towards target if no path
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            distance_to_target = math.hypot(dx, dy)
+            attack_range = self.get_attack_range()
+
+            if distance_to_target > attack_range:
                 travel_distance = self.speed * (dt / 1000)
-                self.x += (dx / distance) * travel_distance
-                self.y += (dy / distance) * travel_distance
+                self.x += (dx / distance_to_target) * travel_distance
+                self.y += (dy / distance_to_target) * travel_distance
                 self.rect.topleft = (self.x, self.y)
-        elif self.destination:  # Move towards destination even if no target
-            dx = self.destination[0] - self.x
-            dy = self.destination[1] - self.y
-            distance = math.hypot(dx, dy)
 
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
+        # if self.path:
+        #     if len(self.path) > 1:
+        #         next_node = self.path[1]
+        #         dx = next_node.x * GRID_SIZE - self.x
+        #         dy = next_node.y * GRID_SIZE - self.y
+        #         distance = math.hypot(dx, dy)
 
-                if distance <= travel_distance:
-                    self.x = self.destination[0]
-                    self.y = self.destination[1]
-                    self.destination = None
-                else:
-                    self.x += (dx / distance) * travel_distance
-                    self.y += (dy / distance) * travel_distance
+        #         if distance > 0:
+        #             travel_distance = self.speed * (dt / 1000)
+        #     elif self.destination and not self.target:
+        #         dx = self.destination[0] - self.x
+        #         dy = self.destination[1] - self.y
+        #         distance = math.hypot(dx, dy)
 
-                self.rect.topleft = (self.x, self.y)
+        #         if distance > 0:
+        #             travel_distance = self.speed * (dt / 1000)
+        #             self.x += (dx / distance) * travel_distance
+        #             self.y += (dy / distance) * travel_distance
+        #             self.rect.topleft = (self.x, self.y)
 
 
     def handle_attack(self, dt, game_messages):
@@ -205,10 +216,10 @@ class Unit(GameObject):
 
     def draw(self, screen, units, buildings, enemies, show_debug):  # Add show_debug parameter
         """
-        Draw the unit with additional information
+        Draw the unit with additional information, including the path.
         """
         super().draw(screen)
-        
+
         if show_debug:
             # Draw collision information
             collided_with_unit = check_collision_with_unit(self.rect, units, exclude_unit=self)
@@ -216,14 +227,22 @@ class Unit(GameObject):
             collided_with_enemy = check_collision_with_unit(self.rect, enemies, exclude_unit=self)
             if collided_with_unit or collided_with_building or collided_with_enemy:
                 collide_text = self.font.render("COLLIDING", True, RED)
-                screen.blit(collide_text, (self.rect.centerx - collide_text.get_width() // 2, 
+                screen.blit(collide_text, (self.rect.centerx - collide_text.get_width() // 2,
                                             self.rect.top + collide_text.get_height() + 5))
-        
+
             # Draw target information if a target exists
             if self.target and self.target.hp > 0:
                 target_text = self.font.render(str(self.target.type), True, RED)
-                screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2, 
+                screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2,
                                         self.rect.top - target_text.get_height() - 5))
+            
+            # Draw path information
+            if self.path:  # Only draw if there's a path
+                for node in self.path:
+                    grid_x = node.x * GRID_SIZE
+                    grid_y = node.y * GRID_SIZE
+                    rect = pygame.Rect(grid_x, grid_y, GRID_SIZE, GRID_SIZE)
+                    pygame.draw.rect(screen, BLUE, rect, 2)
 
 class AlliedUnit(Unit):
     def __init__(self, unit_type, x, y, targets, font=None):
