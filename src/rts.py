@@ -259,15 +259,8 @@ while game_running:
                     selected_unit.path = [] # Ensure path is empty if no path found
                     add_game_message(f"No path found for {selected_unit.type}", game_messages)
 
-                # Find nearest target for the selected unit
-                selected_unit.target = selected_unit.find_nearest_target() # This can stay here
-                print(path)
-
-            # elif event.button == 3 and selected_unit:  # Move selected unit
-            #     grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
-            #     grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
-            #     selected_unit.destination = (grid_x, grid_y)
-            #     selected_unit.destination = (grid_x, grid_y)
+                # Find nearest target for the selected unit (moved outside the if block)
+                selected_unit.target = selected_unit.find_nearest_target()
             #     selected_unit.moving = True
 
             #     # --- A* Grid Update ---
@@ -314,21 +307,22 @@ while game_running:
                 # if selected_unit.target: # Make sure there's a target
                 #     selected_unit.destination = (selected_unit.target.x, selected_unit.target.y)
 
-
     # --- Game Updates ---
+
     for unit in units:
         unit.targets = enemies  # Update targets for allied units
         unit.update(dt, game_messages)
+        if unit.target:
+            unit.destination = (unit.target.x, unit.target.y) # Set destination to target coordinates
 
     for enemy in enemies:
         enemy.targets = units + buildings  # Update targets for enemy units
         game_messages = enemy.update(dt, game_messages)
+        if enemy.target:
+            enemy.destination = (enemy.target.x, enemy.target.y) # Set destination to target coordinates
 
-        # Set enemy destination (add this)
-        if enemy.target:  # Only set destination if there's a target
-            enemy.destination = (enemy.target.x, enemy.target.y)
 
-    if wave_timer >= WAVE_INTERVAL:
+    if wave_timer >= WAVE_INTERVAL * current_wave: # Multiply WAVE_INTERVAL by current_wave
         new_enemies = spawn_enemies(buildings, units, current_wave, ENEMY_SPAWN_RATE)
         enemies.extend(new_enemies)
         wave_timer = 0
