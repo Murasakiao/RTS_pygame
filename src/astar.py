@@ -93,7 +93,7 @@ def a_star(grid, start_coords, end_coords):
             # Found a better path
             came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
             neighbor.g_score = tentative_g_score
-            neighbor.f_score = neighbor.g_score + h_score(neighbor, end)
+            neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
 
 
 def lowest_f_score(node_list):
