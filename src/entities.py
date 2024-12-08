@@ -142,29 +142,25 @@ class Unit(GameObject):
 
         #         self.rect.topleft = (self.x, self.y)
 
-        if self.path:  # Check if a path exists
-            if len(self.path) > 1:  # Follow path if it has more than one node
+        if self.path:
+            if len(self.path) > 1:
                 next_node = self.path[1]
                 dx = next_node.x * GRID_SIZE - self.x
                 dy = next_node.y * GRID_SIZE - self.y
-            distance = math.hypot(dx, dy)
+                distance = math.hypot(dx, dy)
 
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
-                if distance <= travel_distance:
-                    self.x = next_node.x * GRID_SIZE
-                    self.y = next_node.y * GRID_SIZE
-                    self.rect.topleft = (self.x, self.y)
-                    self.path.pop(0)  # Remove the reached node from the path
-                    if not self.path:  # Reached the end of the path
-                        self.destination = None
-                else:
+                if distance > 0:
+                    travel_distance = self.speed * (dt / 1000)
+            elif self.destination and not self.target:
+                dx = self.destination[0] - self.x
+                dy = self.destination[1] - self.y
+                distance = math.hypot(dx, dy)
+
+                if distance > 0:
+                    travel_distance = self.speed * (dt / 1000)
                     self.x += (dx / distance) * travel_distance
                     self.y += (dy / distance) * travel_distance
                     self.rect.topleft = (self.x, self.y)
-            elif self.destination and not self.target: # Move towards destination if no target and path is empty
-                dx = self.destination[0] - self.x
-                dy = self.destination[1] - self.y
 
 
     def handle_attack(self, dt, game_messages):
