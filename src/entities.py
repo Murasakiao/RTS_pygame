@@ -90,11 +90,13 @@ class Unit(GameObject):
 
     def move_towards_target(self, dt):
         """
-        Move the unit towards its current target, or stop if in attack range.
+        Move the unit towards its current target or along a path, or stop if in attack range.
         """
-        
-        if self.target:
-            dx = self.target.x - self.x
+
+        if self.path and len(self.path) > 1:  # Follow path if available
+            next_node = self.path[1]  # Target the next node in the path
+            dx = next_node.x * GRID_SIZE - self.x
+            dy = next_node.y * GRID_SIZE - self.y
             dy = self.target.y - self.y
             distance = math.hypot(dx, dy)
             unit_range = self.get_attack_range()  # Abstract range calculation
