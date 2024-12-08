@@ -142,11 +142,11 @@ class Unit(GameObject):
 
         #         self.rect.topleft = (self.x, self.y)
 
-        # print(f"Moving {self.type} to {self.destination}")
-        if self.path and len(self.path) > 1:  # Follow path if available
-            next_node = self.path[1]  # Target the next node in the path
-            dx = next_node.x * GRID_SIZE - self.x
-            dy = next_node.y * GRID_SIZE - self.y
+        if self.path:  # Check if a path exists
+            if len(self.path) > 1:  # Follow path if it has more than one node
+                next_node = self.path[1]
+                dx = next_node.x * GRID_SIZE - self.x
+                dy = next_node.y * GRID_SIZE - self.y
             distance = math.hypot(dx, dy)
 
             if distance > 0:
@@ -162,56 +162,9 @@ class Unit(GameObject):
                     self.x += (dx / distance) * travel_distance
                     self.y += (dy / distance) * travel_distance
                     self.rect.topleft = (self.x, self.y)
-
-        elif self.destination:  # Only check if destination is not None
-            if self.target:
-                dx = self.target.x - self.x
-                dy = self.destination[1] - self.y # changed to self.target.y
-            else:
+            elif self.destination and not self.target: # Move towards destination if no target and path is empty
                 dx = self.destination[0] - self.x
                 dy = self.destination[1] - self.y
-
-            distance = math.hypot(dx, dy)
-
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
-                new_x = self.x + (dx / distance) * travel_distance
-                new_y = self.y + (dy / distance) * travel_distance
-
-                if self.target:
-                    if math.hypot(self.target.x - new_x, self.target.y - new_y) < 1e-6:
-                        self.destination = None  # Stop if close enough to target
-                else:
-                    if math.hypot(self.destination[0] - new_x, self.destination[1] - new_y) < 1e-6:
-                        self.destination = None  # Stop if close enough to destination
-
-                self.x = new_x
-                self.y = new_y
-                self.rect.topleft = (self.x, self.y)
-        
-        elif self.destination: # Handle case where there's a destination but no target
-            dx = self.destination[0] - self.x
-            dy = self.destination[1] - self.y
-            distance = math.hypot(dx, dy)
-
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
-                new_x = self.x + (dx / distance) * travel_distance
-                new_y = self.y + (dy / distance) * travel_distance
-
-                remaining_distance = math.hypot(self.target.x - new_x, self.target.y - new_y)
-
-                if remaining_distance < 1e-6:  # Use a small threshold for reaching destination
-                    self.x = self.target.x
-                    self.y = self.target.y
-                    self.destination = None  # Only set to None when truly reached
-                else:
-                    self.x = new_x
-                    self.y = new_y
-
-                self.rect.topleft = (self.x, self.y) # Update rect after position change
-        
-        # print(f"New position: {self.x}, {self.y}")
 
 
     def handle_attack(self, dt, game_messages):
