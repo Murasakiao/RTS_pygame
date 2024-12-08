@@ -42,11 +42,10 @@ class TerrainGenerator:
 
     def generate_terrain(self):
         terrain = []
-        scale = 50  # Adjusted scale for larger water bodies
-        octaves = 6  # Increased octaves for more detail
-        persistence = 0.6  # Adjusted persistence
-        lacunarity = 2.2  # Adjusted lacunarity
-        water_threshold = 0.0  # Single threshold for water
+        scale = 150.0  # Decreased scale for smaller features
+        octaves = 4  # Increased octaves for more detail, but with a smaller scale
+        persistence = 0.5  # Increased persistence for less scattered noise
+        lacunarity = 1.5  # Increased lacunarity for more cohesive noise
 
         for y in range(0, self.screen_height, self.grid_size):
             row = []
@@ -60,17 +59,19 @@ class TerrainGenerator:
                                             repeaty=self.screen_height,
                                             base=0)
 
+                # Smoother threshold for water/grass transition
+                water_threshold = -0.1
                 if noise_value < water_threshold:
                     tile_index = len(self.grass_tiles)  # Water tile index
                 else:
-                    tile_index = int(noise_value * len(self.grass_tiles))
+                    tile_index = int((noise_value - water_threshold) / (1 - water_threshold) * len(self.grass_tiles))
                     tile_index = max(0, min(tile_index, len(self.grass_tiles) - 1))
 
                 row.append(tile_index)
             terrain.append(row)
         return terrain
 
-    def draw_terrain(self, screen):
+    def draw_terrain(self, screen):        
         for y, row in enumerate(self.terrain):
             for x, tile_index in enumerate(row):
                 if tile_index == len(self.grass_tiles):  # Water tile
