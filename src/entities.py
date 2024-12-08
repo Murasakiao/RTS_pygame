@@ -277,13 +277,6 @@ class Unit(GameObject):
         """
         super().draw(screen)
 
-        if self.path:  # Only draw if there's a path
-            for node in self.path:
-                grid_x = node.x * GRID_SIZE
-                grid_y = node.y * GRID_SIZE
-                rect = pygame.Rect(grid_x, grid_y, GRID_SIZE, GRID_SIZE)
-                pygame.draw.rect(screen, BLUE, rect, 2)
-
         if show_debug:
             # Draw collision information
             collided_with_unit = check_collision_with_unit(self.rect, units, exclude_unit=self)
@@ -299,6 +292,14 @@ class Unit(GameObject):
                 target_text = self.font.render(str(self.target.type), True, RED)
                 screen.blit(target_text, (self.rect.centerx - target_text.get_width() // 2,
                                         self.rect.top - target_text.get_height() - 5))
+                
+            # Draw path information    
+            if self.path:  # Only draw if there's a path
+                for node in self.path:
+                    grid_x = node.x * GRID_SIZE
+                    grid_y = node.y * GRID_SIZE
+                    rect = pygame.Rect(grid_x, grid_y, GRID_SIZE, GRID_SIZE)
+                    pygame.draw.rect(screen, BLUE, rect, 2)
 
 class AlliedUnit(Unit):
     def __init__(self, unit_type, x, y, targets, font=None):
