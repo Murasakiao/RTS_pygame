@@ -8,7 +8,7 @@ class TerrainGenerator:
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.grid_size = grid_size
-        self.noise_seed = noise_seed
+        self.noise_seed = noise_seed        
         self.grass_tiles = []
         self.water_tiles = []
         self.load_plains_tiles()

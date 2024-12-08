@@ -1,6 +1,6 @@
 import pygame
 import sys
-import random
+import random # Import random
 import math
 import noise
 
@@ -50,7 +50,8 @@ current_building_type = "Castle"
 building_cooldown = 0
 selected_unit = None
 
-terrain_generator = TerrainGenerator(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, noise)
+noise_seed = random.randint(0, 1000) # Generate noise seed
+terrain_generator = TerrainGenerator(SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, noise_seed) # Pass seed to generator
 terrain = terrain_generator.generate_terrain()
 
 wave_timer = 0
