@@ -90,56 +90,46 @@ class Unit(GameObject):
             self.target = self.find_nearest_target()
 
     def move_towards_target(self, dt):
-        """
-        Move the unit towards its current target or along a path, or stop if in attack range.
-        """
+        """Move the unit towards its target or along a path."""
 
-        if self.target and not self.destination:
-            dx = self.target.x - self.x
-            dy = self.target.y - self.y
-            distance = math.hypot(dx, dy)
-            unit_range = self.get_attack_range()  # Abstract range calculation
+        if self.path:
+            if len(self.path) > 1:
+                next_node = self.path[1]
+                dx = next_node.x * GRID_SIZE - self.x
+                dy = next_node.y * GRID_SIZE - self.y
+                distance_to_next = math.hypot(dx, dy)
+                travel_distance = self.speed * (dt / 1000)
 
-            if distance <= unit_range:
-                self.destination = None  # Stop moving when in range
-            elif self.destination:
+                if distance_to_next <= travel_distance:
+                    self.x = next_node.x * GRID_SIZE
+                    self.y = next_node.y * GRID_SIZE
+                    self.path.pop(0)  # Remove the reached node
+                    if not self.path:
+                        self.destination = None  # Clear destination when path is complete
+                else:
+                    self.x += (dx / distance_to_next) * travel_distance
+                    self.y += (dy / distance_to_next) * travel_distance
+                self.rect.topleft = (self.x, self.y)
+            elif self.destination: # Move towards destination if path is empty or has only one node
                 dx = self.destination[0] - self.x
                 dy = self.destination[1] - self.y
-                distance = math.hypot(dx, dy)
+                distance_to_destination = math.hypot(dx, dy)
 
-                if distance > 0:
+                if distance_to_destination > 0:
                     travel_distance = self.speed * (dt / 1000)
-
-                    if distance <= travel_distance:
-                        self.x = self.destination[0]
-                        self.y = self.destination[1]
-                        self.destination = None
-                    else:
-                        self.x += (dx / distance) * travel_distance
-                        self.y += (dy / distance) * travel_distance
-
+                    self.x += (dx / distance_to_destination) * travel_distance
+                    self.y += (dy / distance_to_destination) * travel_distance
                     self.rect.topleft = (self.x, self.y)
-            elif distance > unit_range:  # Move towards target if not in range and no destination
+        elif self.target and not self.path: # Move towards target if no path
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            distance_to_target = math.hypot(dx, dy)
+            attack_range = self.get_attack_range()
+
+            if distance_to_target > attack_range:
                 travel_distance = self.speed * (dt / 1000)
-                self.x += (dx / distance) * travel_distance
-                self.y += (dy / distance) * travel_distance
-                self.rect.topleft = (self.x, self.y)
-        elif self.destination:  # Move towards destination even if no target
-            dx = self.destination[0] - self.x
-            dy = self.destination[1] - self.y
-            distance = math.hypot(dx, dy)
-
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
-
-                if distance <= travel_distance:
-                    self.x = self.destination[0]
-                    self.y = self.destination[1]
-                    self.destination = None
-                else:
-                    self.x += (dx / distance) * travel_distance
-                    self.y += (dy / distance) * travel_distance
-
+                self.x += (dx / distance_to_target) * travel_distance
+                self.y += (dy / distance_to_target) * travel_distance
                 self.rect.topleft = (self.x, self.y)
 
         # if self.path:
