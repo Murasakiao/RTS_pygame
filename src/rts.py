@@ -279,6 +279,7 @@ while game_running:
                 print(path)
 
     # --- Game Updates ---
+
     for unit in units:
         unit.targets = enemies  # Update targets for allied units
         unit.update(dt, grid, game_messages)
@@ -287,11 +288,8 @@ while game_running:
         enemy.targets = units + buildings  # Update targets for enemy units
         game_messages = enemy.update(dt, grid, game_messages)
 
-        # Set enemy destination (add this)
-        if enemy.target:  # Only set destination if there's a target
-            enemy.destination = (enemy.target.x, enemy.target.y)
 
-    if wave_timer >= WAVE_INTERVAL:
+    if wave_timer >= WAVE_INTERVAL * current_wave: # Multiply WAVE_INTERVAL by current_wave
         new_enemies = spawn_enemies(buildings, units, current_wave, ENEMY_SPAWN_RATE)
         enemies.extend(new_enemies)
         wave_timer = 0
