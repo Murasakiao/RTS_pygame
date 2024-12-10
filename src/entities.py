@@ -72,6 +72,7 @@ class Unit(GameObject):
         
         self.target = None
         self.attack_cooldown = 0
+        self.previous_target_position = None # Store previous target position
 
     def update(self, dt, grid, game_messages=None):
         """
@@ -92,6 +93,7 @@ class Unit(GameObject):
 
     def move_towards_target(self, dt, grid):
         """Moves the unit towards its target or destination, using A* pathfinding."""
+        path_needs_update = False  # Flag to track path updates
 
         if self.target and self.target.hp > 0:
             dx = self.target.x - self.x
@@ -102,7 +104,13 @@ class Unit(GameObject):
             if distance_to_target <= unit_range:
                 self.destination = None  # Stop if in attack range
                 self.path = []  # Clear path if in range
-            elif not self.path:  # Recalculate path if needed or no path exists
+            elif not self.path:  # Recalculate path if no path exists
+                path_needs_update = True
+            elif self.path and self.previous_target_position != (self.target.x, self.target.y): # Recalculate if target moved
+                path_needs_update = True
+                self.previous_target_position = (self.target.x, self.target.y)
+
+            if path_needs_update:
                 start_grid_x = int(self.x // GRID_SIZE)
                 start_grid_y = int(self.y // GRID_SIZE)
                 end_grid_x = int(self.target.x // GRID_SIZE)
