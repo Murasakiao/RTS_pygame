@@ -4,6 +4,7 @@ import math
 import pygame
 from constants import *
 from utils import *
+from astar import a_star, Node
 
 pygame.init()
 
@@ -72,13 +73,13 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
 
-    def update(self, dt, game_messages=None):
+    def update(self, dt, grid, game_messages=None):
         """
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
         """
         self.handle_target_selection()
-        self.move_towards_target(dt)
+        self.move_towards_target(dt, grid)
         self.handle_attack(dt, game_messages)
         return game_messages
 
@@ -89,17 +90,45 @@ class Unit(GameObject):
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
 
-    def move_towards_target(self, dt):
+    def move_towards_target(self, dt, grid):
         """
         Move the unit towards its current target or along a path, or stop if in attack range.
         """
 
-        if self.target:
+        if self.target and not self.destination:
+            # print(self.path)
+            # print(self.target.x)
             dx = self.target.x - self.x
             dy = self.target.y - self.y
             distance = math.hypot(dx, dy)
             unit_range = self.get_attack_range()  # Abstract range calculation
+            
+            # if self.target is EnemyUnit:
+                
+            #     print("hello path")
+            #     grid_x = (self.target.x // GRID_SIZE) * GRID_SIZE
+            #     grid_y = (self.target.y // GRID_SIZE) * GRID_SIZE
+            #     self.destination = (grid_x, grid_y)  # Set destination first
 
+            #     start_grid_x = int(self.x // GRID_SIZE)
+            #     start_grid_y = int(self.y // GRID_SIZE)
+            #     end_grid_x = int(grid_x // GRID_SIZE)
+            #     end_grid_y = int(grid_y // GRID_SIZE)
+            
+            #     self.path = [] # Clear the old path
+            #     print(start_grid_x, start_grid_y)
+            #     print(end_grid_x, end_grid_y)
+            #     print(self.path)
+            #     path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y))
+
+            #     if path:
+            #         self.path = path
+            #         # add_game_message(f"Moving {self.type}", game_messages)
+            #     else:
+            #         self.path = [] # Ensure path is empty if no path found
+            #         # add_game_message(f"No path found for {self.type}", game_messages)
+            # else:
+            #     print("hello not path")
             if distance <= unit_range:
                 self.destination = None  # Stop moving when in range
             elif self.destination:
@@ -139,6 +168,11 @@ class Unit(GameObject):
                     self.y = next_node.y * GRID_SIZE
                     self.rect.topleft = (self.x, self.y)
                     self.path.pop(0)  # Remove the reached node from the path
+                    print(self.path)
+
+                    if len(self.path) == 1:
+                        self.path.clear()
+                        
                     if not self.path:  # Reached the end of the path
                         self.destination = None
                 else:
