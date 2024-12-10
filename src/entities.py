@@ -91,127 +91,60 @@ class Unit(GameObject):
             self.target = self.find_nearest_target()
 
     def move_towards_target(self, dt, grid):
-        """
-        Move the unit towards its current target or along a path, or stop if in attack range.
-        """
+        """Moves the unit towards its target or destination, using A* pathfinding."""
 
-        if self.target and not self.destination:
-            # print(self.path)
-            # print(self.target.x)
+        if self.target and self.target.hp > 0:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
-            distance = math.hypot(dx, dy)
-            unit_range = self.get_attack_range()  # Abstract range calculation
-            
-            if self.target is EnemyUnit:
-                
-                print("hello path")
-                grid_x = (self.target.x // GRID_SIZE) * GRID_SIZE
-                grid_y = (self.target.y // GRID_SIZE) * GRID_SIZE
-                self.destination = (grid_x, grid_y)  # Set destination first
+            distance_to_target = math.hypot(dx, dy)
+            unit_range = self.get_attack_range()
 
+            if distance_to_target <= unit_range:
+                self.destination = None  # Stop if in attack range
+                self.path = []  # Clear path if in range
+            elif not self.path:  # Recalculate path if needed or no path exists
                 start_grid_x = int(self.x // GRID_SIZE)
                 start_grid_y = int(self.y // GRID_SIZE)
-                end_grid_x = int(grid_x // GRID_SIZE)
-                end_grid_y = int(grid_y // GRID_SIZE)
-            
-                self.path = [] # Clear the old path
-                print(start_grid_x, start_grid_y)
-                print(end_grid_x, end_grid_y)
-                print(self.path)
-                path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y))
+                end_grid_x = int(self.target.x // GRID_SIZE)
+                end_grid_y = int(self.target.y // GRID_SIZE)
+                self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or [] # Find path to target
 
-                if path:
-                    self.path = path
-                    # add_game_message(f"Moving {self.type}", game_messages)
-                else:
-                    self.path = [] # Ensure path is empty if no path found
-                    # add_game_message(f"No path found for {self.type}", game_messages)
-            else:
-                print("hello not path")
-                if distance <= unit_range:
-                    self.destination = None  # Stop moving when in range
-                elif self.destination:
-                    dx = self.destination[0] - self.x
-                    dy = self.destination[1] - self.y
-                    distance = math.hypot(dx, dy)
-
-                    if distance > 0:
-                        travel_distance = self.speed * (dt / 1000)
-
-                        if distance <= travel_distance:
-                            self.x = self.destination[0]
-                            self.y = self.destination[1]
-                            self.destination = None
-                        else:
-                            self.x += (dx / distance) * travel_distance
-                            self.y += (dy / distance) * travel_distance
-
-                        self.rect.topleft = (self.x, self.y)
-                elif distance > unit_range:  # Move towards target if not in range and no destination
-                    travel_distance = self.speed * (dt / 1000)
-                    self.x += (dx / distance) * travel_distance
-                    self.y += (dy / distance) * travel_distance
-                    self.rect.topleft = (self.x, self.y)
-
-        # print(f"Moving {self.type} to {self.destination}")
-        elif self.path and len(self.path) > 1:  # Follow path if available
-            next_node = self.path[1]  # Target the next node in the path
+        # Destination handling (for both mouse clicks and path following)
+        if self.path:  # Prioritize following the path
+            next_node = self.path[0]  # Get the next node from the path
             dx = next_node.x * GRID_SIZE - self.x
             dy = next_node.y * GRID_SIZE - self.y
-            distance = math.hypot(dx, dy)
+            distance_to_next_node = math.hypot(dx, dy)
+            travel_distance = self.speed * (dt / 1000)
 
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
-                if distance <= travel_distance:
-                    self.x = next_node.x * GRID_SIZE
-                    self.y = next_node.y * GRID_SIZE
-                    self.rect.topleft = (self.x, self.y)
-                    self.path.pop(0)  # Remove the reached node from the path
-                    print(self.path)
+            if distance_to_next_node <= travel_distance:  # Reached the next node
+                self.x = next_node.x * GRID_SIZE
+                self.y = next_node.y * GRID_SIZE
+                self.rect.topleft = (self.x, self.y)
+                self.path.pop(0)  # Remove the current node from the path
 
-                    if len(self.path) == 1:
-                        self.path.clear()
-                        
-                    if not self.path:  # Reached the end of the path
-                        self.destination = None
-                else:
-                    self.x += (dx / distance) * travel_distance
-                    self.y += (dy / distance) * travel_distance
-                    self.rect.topleft = (self.x, self.y)
-
-        elif self.target and self.destination:  # Check if destination is not None
-            dx = self.destination[0] - self.x
-            dy = self.destination[1] - self.y
-            distance = math.hypot(dx, dy)  # Calculate distance here
-
-            if distance > 0:  # Only move if not already at destination
-                travel_distance = self.speed * (dt / 1000)
-                new_x = self.x + (dx / distance) * travel_distance
-                new_y = self.y + (dy / distance) * travel_distance
-
-            distance = math.hypot(dx, dy)
-
-            if distance > 0:
-                travel_distance = self.speed * (dt / 1000)
-                self.x += (dx / distance) * travel_distance
-                self.y += (dy / distance) * travel_distance
+                if not self.path:  # If path is empty, clear destination
+                    self.destination = None
+            else:  # Move towards the next node
+                self.x += (dx / distance_to_next_node) * travel_distance
+                self.y += (dy / distance_to_next_node) * travel_distance
                 self.rect.topleft = (self.x, self.y)
 
-                if distance <= travel_distance:  # Reached destination (node or final target)
-                    if self.path:
-                        self.path.pop(0)
-                        if not self.path and self.target and self.target.hp > 0: # Recalculate if target is still alive and path is finished
-                            start_grid_x = int(self.x // GRID_SIZE)
-                            start_grid_y = int(self.y // GRID_SIZE)
-                            end_grid_x = int(self.target.x // GRID_SIZE)
-                            end_grid_y = int(self.target.y // GRID_SIZE)
-                            self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or []
-                        else:
-                            self.destination = None # Reached end of path
-                    else:
-                        self.destination = None
+        elif self.destination:  # Move towards clicked destination if no path
+            dx = self.destination[0] - self.x
+            dy = self.destination[1] - self.y
+            distance_to_destination = math.hypot(dx, dy)
+            travel_distance = self.speed * (dt / 1000)
 
+            if distance_to_destination <= travel_distance:
+                self.x = self.destination[0]
+                self.y = self.destination[1]
+                self.rect.topleft = (self.x, self.y)
+                self.destination = None  # Clear destination once reached
+            else:
+                self.x += (dx / distance_to_destination) * travel_distance
+                self.y += (dy / distance_to_destination) * travel_distance
+                self.rect.topleft = (self.x, self.y)
 
     def handle_attack(self, dt, game_messages):
         """
