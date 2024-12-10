@@ -125,7 +125,7 @@ class Unit(GameObject):
                 start_grid_y = int(self.y // GRID_SIZE)
                 end_grid_x = int(self.target.x // GRID_SIZE)
                 end_grid_y = int(self.target.y // GRID_SIZE)
-                self.previous_target_position = (self.target.x, self.target.y) # Update previous position
+                self.previous_target_position = (self.targetsdf.x, self.target.y) # Update previous position
 
                 # Add boundary checks here
                 grid_width = len(grid[0])
