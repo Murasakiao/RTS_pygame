@@ -31,15 +31,21 @@ grid_height = SCREEN_HEIGHT // GRID_SIZE
 grid = [[(0, 0) for _ in range(grid_width)] for _ in range(grid_height)]
 
 def update_grid(buildings):
-    """Updates the grid based on building positions."""
-    for y in range(grid_height):
-        for x in range(grid_width):
-            grid[y][x] = (terrain[y][x], 0)  # Clear the grid, keep terrain
-    for building in buildings:
-        for x in range(building.rect.left // GRID_SIZE, building.rect.right // GRID_SIZE):
-            for y in range(building.rect.top // GRID_SIZE, building.rect.bottom // GRID_SIZE):
-                if 0 <= x < grid_width and 0 <= y < grid_height:
-                    grid[y][x] = (grid[y][x][0], 1)  # Mark cells occupied by buildings
+     """Updates the grid based on building positions and water tiles."""
+     global grid  # Access the global grid variable
+
+     # Reset the grid, marking water as non-passable (impassable_terrain_value = 1)
+     for y in range(grid_height):
+         for x in range(grid_width):
+             is_water = terrain[y][x] == len(terrain_generator.grass_tiles)  # Check if it's a water tile
+             grid[y][x] = (terrain[y][x], 1 if is_water else 0)  # Mark water as non-passable
+
+     # Mark cells occupied by buildings as non-passable
+     for building in buildings:
+         for x in range(building.rect.left // GRID_SIZE, building.rect.right // GRID_SIZE):
+             for y in range(building.rect.top // GRID_SIZE, building.rect.bottom // GRID_SIZE):
+                 if 0 <= x < grid_width and 0 <= y < grid_height:
+                     grid[y][x] = (grid[y][x][0], 1)  # Keep terrain type, mark as non-passable
 
 buildings = []
 units = []
@@ -199,6 +205,15 @@ while game_running:
                 # Building Placement / Unit Training
                 grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
                 grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+
+                # Get terrain type at the clicked location
+                terrain_index = terrain[grid_y // GRID_SIZE][grid_x // GRID_SIZE]
+                is_water = terrain_index == len(terrain_generator.grass_tiles)
+
+                # Prevent building in water
+                if is_water:
+                    add_game_message("Cannot build in water!", game_messages)
+                    continue
 
                 clicked_building = next((building for building in buildings if building.rect.collidepoint(mouse_pos)), None)
 

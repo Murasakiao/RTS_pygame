@@ -50,12 +50,16 @@ def distance(node1, node2):
     return math.sqrt(math.pow(node1.x - node2.x, 2) + math.pow(node1.y - node2.y, 2))
 
 # Measures distance from node to endpoint with nodes only being able to travel vertically, horizontally, or diagonally
+# def h_score(start, end):
+#     x_dist = abs(end.x - start.x)
+#     y_dist = abs(end.y - start.y)
+#     diagonal_steps = min(x_dist, y_dist)
+#     straight_steps = y_dist + x_dist - 2 * diagonal_steps
+#     return diagonal_steps * math.sqrt(2) + straight_steps
+
+# Modified h_score function using Manhattan distance
 def h_score(start, end):
-    x_dist = abs(end.x - start.x)
-    y_dist = abs(end.y - start.y)
-    diagonal_steps = min(x_dist, y_dist)
-    straight_steps = y_dist + x_dist - 2 * diagonal_steps
-    return diagonal_steps * math.sqrt(2) + straight_steps
+    return abs(end.x - start.x) + abs(end.y - start.y)
 
 def reconstruct_path(grid, came_from, current):
     path = [current]

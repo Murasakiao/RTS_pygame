@@ -1,0 +1,41 @@
+YouTube Shorts Script: RTS Game Update
+
+(Scene: Gameplay footage showing the procedurally generated terrain with units moving and buildings present.)
+
+Narrator: Hey everyone!  In this update to my RTS game, you can see procedurally generated terrain with rivers and
+grasslands.  Units use A* pathfinding to navigate, and players can build various structures like castles, houses, and
+barracks.  We've got key bindings for quick building selection, and a simple menu to start a new game.
+
+(Scene: Short clip showing a player attempting to build a building in the water, then a message "Cannot build in water!"
+appears.)
+
+Narrator:  But in the previous version, you could accidentally build in the water!  This was frustrating.
+
+(Scene: Gameplay footage showing a unit smoothly following a path, even when the target moves slightly.)
+
+Narrator:  We've made two key improvements. First, we now prevent building in water, making the game more realistic and
+user-friendly.
+
+(Scene:  A split-screen comparison. One side shows a unit recalculating its path frequently as the target moves. The
+other side shows the unit smoothly adjusting its path with fewer recalculations.)
+
+Narrator: Second, we've implemented a smarter pathfinding system.  Now, units adjust their paths more smoothly, even
+when their targets move, reducing lag and making the game run much more efficiently.
+
+(Scene:  Final gameplay footage showcasing the improved building placement and unit movement.)
+
+Narrator:  These improvements make the game more enjoyable and performant!  Let me know what you think in the comments,
+and don't forget to like and subscribe for more updates!
+
+Tips for your YouTube Short:
+
+ • Keep it concise: YouTube Shorts are short, so keep your script brief and to the point.
+ • Use visuals:  Show the improvements in action with clear gameplay footage.
+ • Fast-paced editing: Use quick cuts and transitions to maintain viewer engagement.
+ • Upbeat music: Add some background music to enhance the mood.
+ • Call to action: Encourage viewers to like, subscribe, and comment.
+
+Remember to replace the bracketed information with your specific game details and footage.  Good luck with your YouTube
+Short!
+
+
