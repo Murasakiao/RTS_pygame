@@ -318,7 +318,7 @@ while game_running:
     # --- Game Updates ---
     for unit in units:
         unit.targets = enemies  # Update targets for allied units
-        unit.update(dt, game_messages)
+        unit.update(dt, grid, game_messages)
 
     for enemy in enemies:
         enemy.targets = units + buildings  # Update targets for enemy units

@@ -194,8 +194,7 @@ class Unit(GameObject):
 
             if self.target and self.target.hp <= 0:  # Check if target still exists
                 message = f"{unit_name} destroyed {target_name}"
-                # Automatically find a new target after destroying current one
-                self.target = None
+                self.target = None  # Clear target after destroying it
             
             if game_messages is not None:
                 if game_messages is not None:
