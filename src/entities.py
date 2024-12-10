@@ -195,7 +195,8 @@ class Unit(GameObject):
                 self.target = None
             
             if game_messages is not None:
-                add_game_message(message, game_messages)
+                if game_messages is not None:
+                    add_game_message(message, game_messages)
 
     def find_nearest_target(self):
         """
