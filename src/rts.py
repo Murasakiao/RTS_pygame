@@ -113,7 +113,6 @@ while menu_running:
     pygame.display.flip()
 
 # --- Game Loop ---
-
 game_messages = []
 while game_running:
     # Update the grid at the beginning of the game loop

@@ -79,6 +79,9 @@ class Unit(GameObject):
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
         """
+        if game_messages is None:
+            game_messages = []  # Create an empty list if None
+
         self.handle_target_selection()
         self.move_towards_target(dt, grid)
         self.handle_attack(dt, game_messages)
@@ -161,26 +164,26 @@ class Unit(GameObject):
                 self.y += (dy / distance_to_destination) * travel_distance
                 self.rect.topleft = (self.x, self.y)
 
-    def handle_attack(self, dt, game_messages):
+    def handle_attack(self, dt, game_messages=None):
         """
         Handle attack cooldown and attacking
         """
+        if game_messages is None:
+            game_messages = []
+
         if self.target and self.attack_cooldown <= 0:
             if self.should_attack():
-                self.attack_target(game_messages)
+                self.attack_target(game_messages if game_messages is not None else [])
                 self.attack_cooldown = self.get_attack_cooldown()
-        
+
         if self.attack_cooldown > 0:
             self.attack_cooldown -= dt
 
-    def attack_target(self, game_messages):
+    def attack_target(self, game_messages=None):
         """
         Attack the current target and generate game messages
         """
         if self.target:
-            # Use the unit type name instead of the entire dictionary
-            unit_name = self.name  # Use the stored name
-            # Use the unit type name instead of the entire dictionary
             unit_name = self.name  # Use the stored name
             if hasattr(self.target, 'name'):
                 target_name = self.target.name
