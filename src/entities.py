@@ -107,7 +107,14 @@ class Unit(GameObject):
                 start_grid_y = int(self.y // GRID_SIZE)
                 end_grid_x = int(self.target.x // GRID_SIZE)
                 end_grid_y = int(self.target.y // GRID_SIZE)
-                self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or [] # Find path to target
+
+                # Add boundary checks here
+                grid_width = len(grid[0])
+                grid_height = len(grid)
+                if 0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height and 0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height:
+                    self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or [] # Find path to target
+                else:
+                    self.path = []  # Clear path if out of bounds
 
         # Destination handling (for both mouse clicks and path following)
         if self.path:  # Prioritize following the path
