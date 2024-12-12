@@ -45,7 +45,7 @@ class Building(GameObject):
 class Unit(GameObject):
     def __init__(self, unit_type, x, y, targets, font=None):
         # Get unit data based on type
-        unit_data = self.enhanced_data or (ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)) # Use enhanced_data if provided
+        unit_data = (ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)) 
         if unit_data is None:
             raise ValueError(f"Invalid unit_type: {unit_type}")
         
@@ -336,7 +336,7 @@ class EnemyUnit(Unit):
         super().__init__(unit_type, x, y, targets, font)
         self.enhanced_data = enhanced_data # Store enhanced data
 
-        if enhanced_data and "size_multiplier" in enhanced_
+        if enhanced_data and "size_multiplier" in enhanced_data:
             self.image = pygame.transform.scale(self.image, (int(self.rect.width * enhanced_data["size_multiplier"]), int(self.rect.height * enhanced_data["size_multiplier"])))
             self.rect = self.image.get_rect(topleft=(x, y)) # Update rect after scaling
 
