@@ -92,30 +92,20 @@ def generate_spawn_point():
     else:  # bottom
         return random.randint(0, SCREEN_WIDTH - GRID_SIZE), SCREEN_HEIGHT
 
-def enhance_enemy(enemy_data, multiplier=1.5, size_multiplier=1.2):
-    """Enhances enemy stats and size."""
-    enhanced_data = enemy_data.copy()  # Create a copy to avoid modifying the original
-    for stat in ("speed", "hp", "atk", "range"):
-        enhanced_data[stat] = int(enhanced_data.get(stat, 0) * multiplier)
-    enhanced_data["size_multiplier"] = size_multiplier  # Add size multiplier
-    return enhanced_data
 
 
-def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=None):
-    """Spawns enemies, including a random mini-boss every 10th wave."""
+def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
     spawned_enemies = []
 
     if current_wave % 10 == 0:
-        if mini_bosses is None:
-            mini_bosses = list(ENEMY_DATA.keys())  # Default to all enemy types as potential mini-bosses
-        mini_boss_type = random.choice(mini_bosses)
-        enhanced_mini_boss = enhance_enemy(ENEMY_DATA[mini_boss_type])  # Enhance the chosen mini-boss
-        spawn_x, spawn_y = generate_spawn_point()
-        mini_boss = EnemyUnit(mini_boss_type, spawn_x, spawn_y, buildings, units, enhanced_data=enhanced_mini_boss) # Pass enhanced data
-        spawned_enemies.append(mini_boss)
-        print(f"Wave {current_wave}: Spawning mini-boss: {mini_boss_type}")
+        for enemy_type, enemy_data in ENEMY_DATA.items():
+            if "mini-boss" in enemy_data.get("name", "").lower(): # Check for "mini-boss" in name
+                spawn_x, spawn_y = generate_spawn_point()
+                mini_boss = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)
+                spawned_enemies.append(mini_boss)
+                print(f"Wave {current_wave}: Spawning mini-boss: {enemy_type}")
+                break # Spawn only one mini-boss
 
-    # Regular enemy spawning (unchanged)
     num_regular_enemies = current_wave * enemy_spawn_rate
     for _ in range(num_regular_enemies):
         spawn_x, spawn_y = generate_spawn_point()
@@ -152,3 +142,26 @@ def draw_debug_info(screen, font, debug_info, x=10, y=40):
     for i, line in enumerate(debug_info):
         text_surface = font.render(line, True, BLACK)
         screen.blit(text_surface, (x, y + i * 20))
+
+
+def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_spawn_rate, wave_interval=WAVE_INTERVAL, mini_bosses=None): # Added mini_bosses parameter
+    """Manages wave timing and enemy spawning with an interval between waves."""
+    wave_in_progress = False
+
+    if wave_timer >= wave_interval and not wave_in_progress:
+        new_enemies = spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=mini_bosses) # Pass mini_bosses to spawn_enemies
+        enemies.extend(new_enemies)
+        wave_timer = 0
+        current_wave += 1
+        wave_in_progress = True # Set the flag when a wave starts
+        print(f"Starting wave {current_wave}") # Debug message
+
+    elif wave_in_progress and not enemies: # Check if wave is finished (no enemies left)
+        wave_in_progress = False # Reset the flag
+        wave_timer = 0 # Reset the timer to start the interval
+        print(f"Wave {current_wave -1} finished. Next wave in {wave_interval/1000} seconds.") # Debug message
+
+    elif not wave_in_progress: # Only increment timer if no wave is in progress
+        wave_timer += dt
+
+    return wave_timer, current_wave, wave_in_progress, enemies

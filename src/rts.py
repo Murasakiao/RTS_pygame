@@ -8,6 +8,7 @@ from constants import *
 from entities import *
 from astar import a_star, Node
 from src.procedural import TerrainGenerator
+from utils import manage_waves # Import manage_waves
 
 from pygame.locals import *
 
