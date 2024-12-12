@@ -92,7 +92,7 @@ def generate_spawn_point():
     else:  # bottom
         return random.randint(0, SCREEN_WIDTH - GRID_SIZE), SCREEN_HEIGHT
 
-def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
+def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=None): # Added mini_bosses parameter
     spawned_enemies = []
 
     if current_wave % 2 == 0:
@@ -114,12 +114,12 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
 
     return spawned_enemies
 
-def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_spawn_rate, wave_interval=WAVE_INTERVAL, mini_bosses=None): # Added mini_bosses parameter
+def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_spawn_rate, wave_interval=WAVE_INTERVAL):
     """Manages wave timing and enemy spawning with an interval between waves."""
     wave_in_progress = False
 
     if wave_timer >= wave_interval and not wave_in_progress:
-        new_enemies = spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=mini_bosses) # Pass mini_bosses to spawn_enemies
+        new_enemies = spawn_enemies(buildings, units, current_wave, enemy_spawn_rate)
         enemies.extend(new_enemies)
         wave_timer = 0
         current_wave += 1
