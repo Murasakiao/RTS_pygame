@@ -92,13 +92,37 @@ def generate_spawn_point():
     else:  # bottom
         return random.randint(0, SCREEN_WIDTH - GRID_SIZE), SCREEN_HEIGHT
 
-def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
+def enhance_enemy(enemy_data, multiplier=1.5, size_multiplier=1.2):
+    """Enhances enemy stats and size."""
+    enhanced_data = enemy_data.copy()  # Create a copy to avoid modifying the original
+    for stat in ("speed", "hp", "atk", "range"):
+        enhanced_data[stat] = int(enhanced_data.get(stat, 0) * multiplier)
+    enhanced_data["size_multiplier"] = size_multiplier  # Add size multiplier
+    return enhanced_data
+
+
+def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=None):
+    """Spawns enemies, including a random mini-boss every 10th wave."""
     spawned_enemies = []
-    for _ in range(current_wave * enemy_spawn_rate):
+
+    if current_wave % 10 == 0:
+        if mini_bosses is None:
+            mini_bosses = list(ENEMY_DATA.keys())  # Default to all enemy types as potential mini-bosses
+        mini_boss_type = random.choice(mini_bosses)
+        enhanced_mini_boss = enhance_enemy(ENEMY_DATA[mini_boss_type])  # Enhance the chosen mini-boss
+        spawn_x, spawn_y = generate_spawn_point()
+        mini_boss = EnemyUnit(mini_boss_type, spawn_x, spawn_y, buildings, units, enhanced_data=enhanced_mini_boss) # Pass enhanced data
+        spawned_enemies.append(mini_boss)
+        print(f"Wave {current_wave}: Spawning mini-boss: {mini_boss_type}")
+
+    # Regular enemy spawning (unchanged)
+    num_regular_enemies = current_wave * enemy_spawn_rate
+    for _ in range(num_regular_enemies):
         spawn_x, spawn_y = generate_spawn_point()
         enemy_type = random.choice(list(ENEMY_DATA.keys()))
-        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)  # Pass buildings and units separately
+        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)
         spawned_enemies.append(enemy)
+        print(f"Wave {current_wave}: Spawning regular enemy: {enemy_type}")
 
     return spawned_enemies
 

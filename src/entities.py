@@ -45,7 +45,7 @@ class Building(GameObject):
 class Unit(GameObject):
     def __init__(self, unit_type, x, y, targets, font=None):
         # Get unit data based on type
-        unit_data = ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)
+        unit_data = self.enhanced_data or (ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)) # Use enhanced_data if provided
         if unit_data is None:
             raise ValueError(f"Invalid unit_type: {unit_type}")
         
@@ -331,9 +331,14 @@ class AlliedUnit(Unit):
         return ALLY_DATA.get(self.type, {}).get("attack_cooldown", UNIT_ATTACK_COOLDOWN)
 
 class EnemyUnit(Unit):
-    def __init__(self, unit_type, x, y, buildings, units, font=None):
+    def __init__(self, unit_type, x, y, buildings, units, font=None, enhanced_data=None):
         targets = buildings + units
         super().__init__(unit_type, x, y, targets, font)
+        self.enhanced_data = enhanced_data # Store enhanced data
+
+        if enhanced_data and "size_multiplier" in enhanced_
+            self.image = pygame.transform.scale(self.image, (int(self.rect.width * enhanced_data["size_multiplier"]), int(self.rect.height * enhanced_data["size_multiplier"])))
+            self.rect = self.image.get_rect(topleft=(x, y)) # Update rect after scaling
 
     def should_attack(self):
         """

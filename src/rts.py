@@ -291,13 +291,28 @@ while game_running:
         if enemy.target:  # Only set destination if there's a target
             enemy.destination = (enemy.target.x, enemy.target.y)
 
-    if wave_timer >= WAVE_INTERVAL:
-        new_enemies = spawn_enemies(buildings, units, current_wave, ENEMY_SPAWN_RATE)
+
+def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_spawn_rate, wave_interval=WAVE_INTERVAL, mini_bosses=None): # Added mini_bosses parameter
+    """Manages wave timing and enemy spawning with an interval between waves."""
+    wave_in_progress = False
+
+    if wave_timer >= wave_interval and not wave_in_progress:
+        new_enemies = spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=mini_bosses) # Pass mini_bosses to spawn_enemies
         enemies.extend(new_enemies)
         wave_timer = 0
         current_wave += 1
-    else:
+        wave_in_progress = True # Set the flag when a wave starts
+        print(f"Starting wave {current_wave}") # Debug message
+
+    elif wave_in_progress and not enemies: # Check if wave is finished (no enemies left)
+        wave_in_progress = False # Reset the flag
+        wave_timer = 0 # Reset the timer to start the interval
+        print(f"Wave {current_wave -1} finished. Next wave in {wave_interval/1000} seconds.") # Debug message
+
+    elif not wave_in_progress: # Only increment timer if no wave is in progress
         wave_timer += dt
+
+    return wave_timer, current_wave, wave_in_progress, enemies
 
     # Remove dead units and enemies
     enemies[:] = [enemy for enemy in enemies if enemy.hp > 0]
@@ -321,7 +336,7 @@ while game_running:
             pygame.draw.rect(screen, GREEN, unit.rect, 2)
 
     for enemy in enemies:
-        enemy.draw(screen, units, buildings, enemies, show_debug)  # Pass show_debug here as well
+        enemy.draw(screen, units, buildings, enemies, show_debug)
 
     draw_building_preview(screen, preview_rect, collision, resources, gold, current_building_type)
     draw_messages(screen, font, game_messages)
