@@ -108,14 +108,22 @@ class Unit(GameObject):
             distance_to_target = math.hypot(dx, dy)
             unit_range = self.get_attack_range()
 
+            target_grid_x = int(self.target.x // GRID_SIZE)
+            target_grid_y = int(self.target.y // GRID_SIZE)
+
+            # Check if target is in water/obstacle
+            grid_width = len(grid[0])
+            grid_height = len(grid)
+            if 0 <= target_grid_x < grid_width and 0 <= target_grid_y < grid_height and grid[target_grid_y][target_grid_x][1] == 1:
+                self.path = []  # Clear path
+                self.destination = None
+                return  # Skip pathfinding
+
             if distance_to_target <= unit_range:
                 self.destination = None  # Stop if in attack range
                 self.path = []  # Clear path if in range
             elif not self.path:  # Recalculate path if no path exists
                 path_needs_update = True
-            # elif self.path and self.previous_target_position != (self.target.x, self.target.y): # Recalculate if target moved
-            #     # path_needs_update = True
-            #     self.previous_target_position = (self.target.x, self.target.y)
             elif self.previous_target_position: # Check if previous position is available
                 target_movement = math.hypot(self.target.x - self.previous_target_position[0], self.target.y - self.previous_target_position[1])
                 if target_movement > movement_threshold:
