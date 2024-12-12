@@ -77,7 +77,7 @@ class Unit(GameObject):
         self.attack_cooldown = 0
         self.previous_target_position = None # Store previous target position
 
-    def update(self, dt, grid, game_messages=None):
+    def update(self, dt, grid, game_messages=None): # Add grid parameter
         """
         Update method to be implemented by subclasses
         Handles target selection, movement, and attacking
@@ -85,7 +85,7 @@ class Unit(GameObject):
         if game_messages is None:
             game_messages = []  # Create an empty list if None
 
-        self.handle_target_selection()
+        self.handle_target_selection(grid) # Pass grid to handle_target_selection
         self.move_towards_target(dt, grid)
         self.handle_attack(dt, game_messages)
         return game_messages
@@ -243,24 +243,31 @@ class Unit(GameObject):
         """
         Find the nearest valid target, prioritizing based on enemy type.
         """
-        priority_targets = []
-        other_targets = []
+        reachable_targets = []
+        unreachable_targets = []
 
         for target in self.targets:
-            if (hasattr(target, 'hp') and hasattr(target, 'x') and hasattr(target, 'y') and target.hp > 0):
-                if isinstance(self, EnemyUnit) and hasattr(self, 'target_priority'):  # Check if it's an enemy unit
-                    if (self.target_priority == "building" and isinstance(target, Building)) or \
-                       (self.target_priority == "unit" and isinstance(target, Unit)):
-                        priority_targets.append(target)
-                    else:
-                        other_targets.append(target)
-                else:  # If not an enemy unit or no priority, treat all as other targets
-                    other_targets.append(target)
+            if target.hp > 0: # Check if target is alive
+                target_grid_x = int(target.x // GRID_SIZE)
+                target_grid_y = int(target.y // GRID_SIZE)
+                grid_width = len(grid[0]) # Access grid dimensions
+                grid_height = len(grid)
 
-        if priority_targets:
-            return min(priority_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-        elif other_targets:
-            return min(other_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+
+                is_reachable = True
+                if 0 <= target_grid_x < grid_width and 0 <= target_grid_y < grid_height and grid[target_grid_y][target_grid_x][1] == 1:
+                    is_reachable = False
+
+                if is_reachable:
+                    reachable_targets.append(target)
+                else:
+                    unreachable_targets.append(target)
+
+
+        if reachable_targets:
+            return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+        elif unreachable_targets:
+            return min(unreachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
         else:
             return None
 

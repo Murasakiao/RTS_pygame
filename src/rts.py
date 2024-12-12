@@ -280,12 +280,12 @@ while game_running:
 
     # --- Game Updates ---
     for unit in units:
-        unit.targets = enemies  # Update targets for allied units
-        unit.update(dt, grid, game_messages)
+        unit.targets = enemies # Update targets for allied units
+        unit.update(dt, grid, game_messages) # Pass grid
 
     for enemy in enemies:
-        enemy.targets = units + buildings  # Update targets for enemy units
-        game_messages = enemy.update(dt, grid, game_messages)
+        enemy.targets = units + buildings # Update targets for enemy units
+        game_messages = enemy.update(dt, grid, game_messages) # Pass grid
 
         # Set enemy destination
         if enemy.target:  # Only set destination if there's a target
