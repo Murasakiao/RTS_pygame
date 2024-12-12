@@ -95,7 +95,7 @@ def generate_spawn_point():
 def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=None): # Updated to handle mini-bosses correctly
     spawned_enemies = []
 
-    if current_wave % 2 == 0 and mini_bosses:  # Spawn a mini-boss every 10th wave
+    if current_wave % 10 == 0 and mini_bosses:  # Spawn a mini-boss every 10th wave
         enemy_type = random.choice(mini_bosses) # Choose a random mini-boss
         spawn_x, spawn_y = generate_spawn_point()
         mini_boss = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)
