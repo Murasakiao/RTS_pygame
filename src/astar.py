@@ -111,8 +111,6 @@ def a_star(grid, start_coords, end_coords):
             neighbor.g_score = tentative_g_score
             neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
 
-
-
 def lowest_f_score(node_list):
     final_node = None
     for node in node_list:

@@ -49,7 +49,10 @@ class Unit(GameObject):
         if unit_data is None:
             raise ValueError(f"Invalid unit_type: {unit_type}")
         
-        super().__init__(x, y, unit_data["image"])
+        size_multiplier = unit_data.get("size_multiplier", 1)
+        size = (GRID_SIZE * size_multiplier, GRID_SIZE * size_multiplier)
+        
+        super().__init__(x, y, unit_data["image"], size)
         
         self.name = unit_data['name']  # Store the name separately
         self.type = unit_type  # Store the unit type as a string
@@ -97,7 +100,7 @@ class Unit(GameObject):
     def move_towards_target(self, dt, grid):
         """Moves the unit towards its target or destination, using A* pathfinding."""
         path_needs_update = False  # Flag to track path updates
-        movement_threshold = 2 * GRID_SIZE # Adjust this threshold as needed
+        movement_threshold = 3 * GRID_SIZE # Adjust this threshold as needed
 
         if self.target and self.target.hp > 0 and self.destination is None:
             dx = self.target.x - self.x
@@ -116,7 +119,7 @@ class Unit(GameObject):
             elif self.previous_target_position: # Check if previous position is available
                 target_movement = math.hypot(self.target.x - self.previous_target_position[0], self.target.y - self.previous_target_position[1])
                 if target_movement > movement_threshold:
-                     path_needs_update = True
+                    path_needs_update = True
             else:
                  path_needs_update = True # First time, recalculate
 

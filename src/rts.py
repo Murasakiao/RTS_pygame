@@ -287,7 +287,7 @@ while game_running:
         enemy.targets = units + buildings  # Update targets for enemy units
         game_messages = enemy.update(dt, grid, game_messages)
 
-        # Set enemy destination (add this)
+        # Set enemy destination
         if enemy.target:  # Only set destination if there's a target
             enemy.destination = (enemy.target.x, enemy.target.y)
 
