@@ -154,28 +154,3 @@ def draw_debug_info(screen, font, debug_info, x=10, y=40):
         text_surface = font.render(line, True, BLACK)
         screen.blit(text_surface, (x, y + i * 20))
 
-
-def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_spawn_rate, wave_interval=WAVE_INTERVAL, mini_bosses=None): # Added mini_bosses parameter
-    """Manages wave timing and enemy spawning with an interval between waves."""
-    wave_in_progress = False
-    wave_start_time = None # Initialize wave_start_time
-
-    if wave_timer >= wave_interval and not wave_in_progress:
-        new_enemies = spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=mini_bosses) # Pass mini_bosses to spawn_enemies
-        enemies.extend(new_enemies)
-        wave_timer = 0
-        current_wave += 1
-        wave_in_progress = True # Set the flag when a wave starts
-        wave_start_time = pygame.time.get_ticks() # Record the start time
-        print(f"Starting wave {current_wave}") # Debug message
-        add_game_message(f"Wave {current_wave} Incoming!", game_messages, duration=5000) # Display message
-
-    elif wave_in_progress and not enemies: # Check if wave is finished (no enemies left)
-        wave_in_progress = False # Reset the flag
-        wave_timer = 0 # Reset the timer to start the interval
-        print(f"Wave {current_wave -1} finished. Next wave in {wave_interval/1000} seconds.") # Debug message
-
-    elif not wave_in_progress: # Only increment timer if no wave is in progress
-        wave_timer += dt
-
-    return wave_timer, current_wave, wave_in_progress, enemies
