@@ -90,12 +90,12 @@ class Unit(GameObject):
         self.handle_attack(dt, game_messages)
         return game_messages
 
-    def handle_target_selection(self):
+    def handle_target_selection(self, grid): # Add grid parameter
         """
         Select the nearest target if current target is invalid
         """
         if not self.target or self.target.hp <= 0:
-            self.target = self.find_nearest_target()
+            self.target = self.find_nearest_target(grid) # Pass grid to find_nearest_target
 
     def move_towards_target(self, dt, grid):
         """Moves the unit towards its target or destination, using A* pathfinding."""
@@ -239,7 +239,7 @@ class Unit(GameObject):
                 if game_messages is not None:
                     add_game_message(message, game_messages)
 
-    def find_nearest_target(self):
+    def find_nearest_target(self, grid):
         """
         Find the nearest valid target, prioritizing based on enemy type.
         """
