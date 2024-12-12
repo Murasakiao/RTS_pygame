@@ -95,7 +95,7 @@ def generate_spawn_point():
 def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=None): # Added mini_bosses parameter
     spawned_enemies = []
 
-    if current_wave % 2 == 0:
+    if current_wave % 10 == 0:
         for enemy_type, enemy_data in ENEMY_DATA.items():
             if "mini-boss" in enemy_data.get("name", "").lower(): # Check for "mini-boss" in name
                 spawn_x, spawn_y = generate_spawn_point()
