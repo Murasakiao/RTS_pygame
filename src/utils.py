@@ -92,22 +92,23 @@ def generate_spawn_point():
     else:  # bottom
         return random.randint(0, SCREEN_WIDTH - GRID_SIZE), SCREEN_HEIGHT
 
-def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
+def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=None):
     spawned_enemies = []
 
-    if current_wave % 10 == 0:  # Spawn a mini-boss every 10th wave
-        for enemy_type, enemy_data in MINI_BOSS_DATA.items(): # Iterate through mini-bosses
-            spawn_x, spawn_y = generate_spawn_point()
-            mini_boss = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)
-            spawned_enemies.append(mini_boss)
-            print(f"Wave {current_wave}: Spawning mini-boss: {enemy_type}")
-            return spawned_enemies # Return after spawning the mini-boss
+    if current_wave % 10 == 0 and mini_bosses:  # Spawn a mini-boss every 10th wave
+        enemy_type = random.choice(mini_bosses) # Choose a random mini-boss
+        spawn_x, spawn_y = generate_spawn_point()
+        mini_boss = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units, enhanced_data=ENEMY_DATA.get(enemy_type)) # Pass enhanced_data
+        spawned_enemies.append(mini_boss)
+        print(f"Wave {current_wave}: Spawning mini-boss: {enemy_type}")
+        return spawned_enemies # Return after spawning the mini-boss
 
-    # Spawn regular enemies
+    # Spawn regular enemies, excluding mini-bosses
     num_regular_enemies = current_wave * enemy_spawn_rate
     for _ in range(num_regular_enemies):
         spawn_x, spawn_y = generate_spawn_point()
-        enemy_type = random.choice(list(ENEMY_DATA.keys()))
+        regular_enemies = [enemy for enemy in ENEMY_DATA if "mini-boss" not in ENEMY_DATA[enemy]["name"].lower()] # Exclude mini-bosses
+        enemy_type = random.choice(regular_enemies)
         enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)
         spawned_enemies.append(enemy)
         print(f"Wave {current_wave}: Spawning regular enemy: {enemy_type}")
