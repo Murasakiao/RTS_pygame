@@ -340,9 +340,12 @@ def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_
 
     draw_building_preview(screen, preview_rect, collision, resources, gold, current_building_type)
     draw_messages(screen, font, game_messages)
-    draw_key_bindings(screen, font, building_map, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, BUILDING_DATA)
+    wave_timer, current_wave, wave_in_progress, enemies = manage_waves(
+        wave_timer, current_wave, dt, buildings, units, enemies,
+        ENEMY_SPAWN_RATE #, mini_bosses=mini_boss_types  # Example: uncomment and define mini_boss_types if needed
+    )
 
-    # print(wave_timer, current_wave)
+
     # Draw debug information if enabled
     if show_debug:
         draw_debug_info(screen, font, debug_info)
