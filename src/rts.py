@@ -276,7 +276,7 @@ while game_running:
                     add_game_message(f"No path found for {selected_unit.type}", game_messages)
 
                 # Find nearest target for the selected unit
-                selected_unit.target = selected_unit.find_nearest_target() # This can stay here
+                selected_unit.target = selected_unit.find_nearest_target(grid) # This can stay here
                 print(path)
 
     # --- Game Updates ---
