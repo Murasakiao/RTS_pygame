@@ -124,7 +124,7 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate, mini_bosses=
 
     return spawned_enemies
 
-def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_spawn_rate, wave_interval=WAVE_INTERVAL, mini_bosses=None): # Added mini_bosses parameter
+def manage_waves(wave_timer, current_wave, dt, buildings, units, enemies, enemy_spawn_rate, game_messages, wave_interval=WAVE_INTERVAL, mini_bosses=None): # Added mini_bosses parameter
     """Manages wave timing and enemy spawning with an interval between waves."""
     wave_in_progress = False
     wave_start_time = None # Initialize wave_start_time
@@ -153,4 +153,3 @@ def draw_debug_info(screen, font, debug_info, x=10, y=40):
     for i, line in enumerate(debug_info):
         text_surface = font.render(line, True, BLACK)
         screen.blit(text_surface, (x, y + i * 20))
-

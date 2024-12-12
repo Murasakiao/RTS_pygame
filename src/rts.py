@@ -320,7 +320,7 @@ while game_running:
     draw_messages(screen, font, game_messages)
     wave_timer, current_wave, wave_in_progress, enemies = manage_waves(
         wave_timer, current_wave, dt, buildings, units, enemies,
-        ENEMY_SPAWN_RATE,
+        ENEMY_SPAWN_RATE, game_messages, # Pass game_messages here
         mini_bosses=["Dragon"] # Pass mini-bosses list
     )
 
