@@ -255,26 +255,26 @@ class Unit(GameObject):
                 if 0 <= target_grid_x < len(grid[0]) and 0 <= target_grid_y < len(grid) and grid[target_grid_y][target_grid_x][1] == 1:
                     is_reachable = False
 
-                priority = 0  # Default priority
+                priority = 0  # Default priority (for buildings)
                 if hasattr(self, 'type') and self.type in ENEMY_DATA:
                     priority_type = ENEMY_DATA[self.type].get("target_priority", None)
-                    if priority_type == "building" and isinstance(target, Building):
-                        priority = 1
-                    elif priority_type == "unit" and isinstance(target, Unit) and not isinstance(target, EnemyUnit):
+                    if priority_type == "unit" and isinstance(target, Unit) and not isinstance(target, EnemyUnit):
+                        priority = 2 # Higher priority for units
+                    elif priority_type == "building" and isinstance(target, Building):
                         priority = 1
 
                 targets_by_priority.append((dist, priority, is_reachable, target))
 
-        # Sort targets by priority, then distance, then reachability
+        # Sort targets: priority descending, distance ascending, reachability ascending
         targets_by_priority.sort(key=lambda x: (-x[1], x[0], x[2]))
 
-        for target_data in targets_by_priority:
-            if not target_data[2]: # If target is reachable
-                return target_data[3] # Return the target
-        
-        # No reachable targets found
         if targets_by_priority:
-            return targets_by_priority[0][3] # Return the nearest unreachable target
+            # Return the nearest reachable target of the highest priority
+            for dist, priority, is_reachable, target in targets_by_priority:
+                if not is_reachable:
+                    return target
+            # If no reachable targets, return the nearest unreachable target
+            return targets_by_priority[0][3]
         else:
             return None
 
