@@ -30,6 +30,8 @@ class Node:
                 neighbors.append(Node(neighbor_x, neighbor_y, grid[neighbor_y][neighbor_x][1]))
         return neighbors
 
+# g score, estimated distance
+
 def create_nodes_from_grid(grid):
     rows = len(grid)
     cols = len(grid[0])
@@ -43,13 +45,21 @@ def create_nodes_from_grid(grid):
         nodes.append(row)
     return nodes
 
+# Returns distance between two nodes
 def distance(node1, node2):
     return math.sqrt(math.pow(node1.x - node2.x, 2) + math.pow(node1.y - node2.y, 2))
 
+# Measures distance from node to endpoint with nodes only being able to travel vertically, horizontally, or diagonally
+# def h_score(start, end):
+#     x_dist = abs(end.x - start.x)
+#     y_dist = abs(end.y - start.y)
+#     diagonal_steps = min(x_dist, y_dist)
+#     straight_steps = y_dist + x_dist - 2 * diagonal_steps
+#     return diagonal_steps * math.sqrt(2) + straight_steps
+
+# Modified h_score function using Manhattan distance
 def h_score(start, end):
-    dx = abs(end.x - start.x)
-    dy = abs(end.y - start.y)
-    return (dx + dy) + (math.sqrt(2) - 2) * min(dx, dy)
+    return abs(end.x - start.x) + abs(end.y - start.y)
 
 def reconstruct_path(grid, came_from, current):
     path = [current]
@@ -60,44 +70,50 @@ def reconstruct_path(grid, came_from, current):
         path.insert(0, current)
     return path
 
+# Performs the pathfinding algorithm. start are end are (x, y) tuples
+# Credit: https://en.wikipedia.org/wiki/A*_search_algorithm
 def a_star(grid, start_coords, end_coords):
     nodes = create_nodes_from_grid(grid)
     start_node = nodes[start_coords[1]][start_coords[0]]
     end_node = nodes[end_coords[1]][end_coords[0]]
 
     open_set = []
-    heapq.heappush(open_set, (start_node.f_score, start_node))
-    closed_set = set()
+    heapq.heappush(open_set, (start_node.f_score, start_node)) # Use heapq
+    closed_set = set() # Use a set
     came_from = {}
 
     start_node.g_score = 0
     start_node.f_score = h_score(start_node, end_node)
 
     while open_set:
-        _, current = heapq.heappop(open_set)
+        _, current = heapq.heappop(open_set) # Get node with lowest f_score
 
         if current == end_node:
             return reconstruct_path(nodes, came_from, current)
 
-        if current in closed_set:
+        if current in closed_set: # Check after popping
             continue
 
         closed_set.add(current)
 
-        for neighbor in current.get_neighbors(grid):
+        for neighbor in current.get_neighbors(grid): # Pass grid to get_neighbors
             if neighbor in closed_set or neighbor.type == 'wall':
                 continue
 
-            tentative_g_score = current.g_score + (distance(current, neighbor) if neighbor.type == 'road' else float('inf'))
+            tentative_g_score = current.g_score + distance(current, neighbor)
 
-            if neighbor not in [item[1] for item in open_set]:
-                neighbor.f_score = tentative_g_score + h_score(neighbor, end_node)
+            if neighbor not in [item[1] for item in open_set]:  # Correctly access the node
                 heapq.heappush(open_set, (neighbor.f_score, neighbor))
-            elif tentative_g_score < neighbor.g_score:
-                neighbor.g_score = tentative_g_score
-                neighbor.f_score = tentative_g_score + h_score(neighbor, end_node)
-                # Updating within the heap is not handled efficiently by heapq.  A more sophisticated heap
-                # implementation (like a Fibonacci heap) would be needed for optimal performance in large grids.
+            elif tentative_g_score > neighbor.g_score:
+                continue
+            # Found a better path
+            came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
+            neighbor.g_score = tentative_g_score
+            neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
 
-    return None # No path found
-
+def lowest_f_score(node_list):
+    final_node = None
+    for node in node_list:
+        if not final_node or node.f_score < final_node.f_score:
+            final_node = node
+    return final_node
