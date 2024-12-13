@@ -256,10 +256,10 @@ class Unit(GameObject):
                     is_reachable = False
 
                 priority = 0  # Default priority (for buildings)
-                if hasattr(self, 'type') and self.type in ENEMY_DATA:
+                if hasattr(self, 'target_priority') and self.type in ENEMY_DATA:
                     priority_type = ENEMY_DATA[self.type].get("target_priority", None)
                     if priority_type == "unit" and isinstance(target, Unit) and not isinstance(target, EnemyUnit):
-                        priority = 2 # Higher priority for units
+                        priority = 2  # Higher priority for units
                     elif priority_type == "building" and isinstance(target, Building):
                         priority = 1
 
