@@ -256,7 +256,7 @@ class Unit(GameObject):
                     is_reachable = False
 
                 priority = 0  # Default priority (for buildings)
-                if hasattr(self, 'target_priority') and self.type in ENEMY_DATA:
+                if self.type in ENEMY_DATA:
                     priority_type = ENEMY_DATA[self.type].get("target_priority", None)
                     if priority_type == "unit" and isinstance(target, Unit) and not isinstance(target, EnemyUnit):
                         priority = 2  # Higher priority for units
@@ -265,8 +265,8 @@ class Unit(GameObject):
 
                 targets_by_priority.append((dist, priority, is_reachable, target))
 
-        # Sort targets: priority descending, distance ascending, reachability ascending
-        targets_by_priority.sort(key=lambda x: (-x[1], x[0], x[2]))
+        # Sort targets: priority descending, distance ascending, reachability ascending, then by original order
+        targets_by_priority.sort(key=lambda x: (-x[1], x[0], x[2], self.targets.index(x[3]))) # Preserve original order for equal priority/distance
 
         if targets_by_priority:
             # Return the nearest reachable target of the highest priority
