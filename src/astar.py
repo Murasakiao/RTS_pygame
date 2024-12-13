@@ -49,6 +49,13 @@ def create_nodes_from_grid(grid):
 def distance(node1, node2):
     return math.sqrt(math.pow(node1.x - node2.x, 2) + math.pow(node1.y - node2.y, 2))
 
+# Measures distance from node to endpoint with nodes only being able to travel vertically, horizontally, or diagonally
+# def h_score(start, end):
+#     x_dist = abs(end.x - start.x)
+#     y_dist = abs(end.y - start.y)
+#     diagonal_steps = min(x_dist, y_dist)
+#     straight_steps = y_dist + x_dist - 2 * diagonal_steps
+#     return diagonal_steps * math.sqrt(2) + straight_steps
 
 # Modified h_score function using Manhattan distance
 def h_score(start, end):
@@ -97,11 +104,12 @@ def a_star(grid, start_coords, end_coords):
 
             if neighbor not in [item[1] for item in open_set]:  # Correctly access the node
                 heapq.heappush(open_set, (neighbor.f_score, neighbor))
-            elif tentative_g_score < neighbor.g_score: #Only update if a better path is found
-                neighbor.g_score = tentative_g_score
-                neighbor.f_score = tentative_g_score + h_score(neighbor, end_node)
-                #Update in heap (requires a more sophisticated heap implementation for efficiency)
-
+            elif tentative_g_score > neighbor.g_score:
+                continue
+            # Found a better path
+            came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
+            neighbor.g_score = tentative_g_score
+            neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
 
 def lowest_f_score(node_list):
     final_node = None
