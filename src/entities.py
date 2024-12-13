@@ -265,18 +265,19 @@ class Unit(GameObject):
 
                 targets_by_priority.append((dist, priority, is_reachable, target))
 
-        # Sort targets: priority descending, distance ascending, reachability ascending, then by original order
-        targets_by_priority.sort(key=lambda x: (-x[1], x[0], x[2], self.targets.index(x[3]))) # Preserve original order for equal priority/distance
+        # Sort targets: priority descending, reachability ascending, then distance ascending, then by original order
+        targets_by_priority.sort(key=lambda x: (-x[1], x[2], x[0], self.targets.index(x[3])))
 
         if targets_by_priority:
-            # Return the nearest reachable target of the highest priority
-            for dist, priority, is_reachable, target in targets_by_priority:
-                if not is_reachable:
-                    return target
-            # If no reachable targets, return the nearest unreachable target
-            return targets_by_priority[0][3]
-        else:
-            return None
+            reachable_targets = [target for dist, priority, is_reachable, target in targets_by_priority if not is_reachable]
+            if reachable_targets:
+                # Return nearest reachable target
+                return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+            else:
+                # Return nearest unreachable target if no reachable targets are found
+                return targets_by_priority[0][3]
+
+        return None
 
     def draw(self, screen, units, buildings, enemies, show_debug):
         """
