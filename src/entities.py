@@ -43,7 +43,7 @@ class Building(GameObject):
         self.hp = data["hp"]
 
 class Unit(GameObject):
-    def __init__(self, unit_type, x, y, targets, font=None):
+    def __init__(self, unit_type, x, y, targets, font=None, target_priority=None):
         # Get unit data based on type
         unit_data = (ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)) 
         if unit_data is None:
@@ -76,6 +76,7 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
         self.previous_target_position = None # Store previous target position
+        self.target_priority = target_priority # Store target priority
 
     def update(self, dt, grid, game_messages=None): # Add grid parameter
         """
@@ -247,12 +248,11 @@ class Unit(GameObject):
         unreachable_targets = []
 
         for target in self.targets:
-            if target.hp > 0: # Check if target is alive
+            if target.hp > 0:  # Check if target is alive
                 target_grid_x = int(target.x // GRID_SIZE)
                 target_grid_y = int(target.y // GRID_SIZE)
-                grid_width = len(grid[0]) # Access grid dimensions
+                grid_width = len(grid[0])  # Access grid dimensions
                 grid_height = len(grid)
-
 
                 is_reachable = True
                 if 0 <= target_grid_x < grid_width and 0 <= target_grid_y < grid_height and grid[target_grid_y][target_grid_x][1] == 1:
@@ -263,9 +263,31 @@ class Unit(GameObject):
                 else:
                     unreachable_targets.append(target)
 
-
         if reachable_targets:
-            return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+            if hasattr(self, 'type') and self.type in ENEMY_DATA:
+                priority = ENEMY_DATA[self.type].get("target_priority", "building")
+                if priority == "building":
+                    building_targets = [target for target in reachable_targets if isinstance(target, Building)]
+                    if building_targets:
+                        return min(building_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+                    else:
+                        unit_targets = [target for target in reachable_targets if isinstance(target, Unit) and not isinstance(target, EnemyUnit)]
+                        if unit_targets:
+                            return min(unit_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+                        else:
+                            return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+                elif priority == "unit":
+                    unit_targets = [target for target in reachable_targets if isinstance(target, Unit) and not isinstance(target, EnemyUnit)]
+                    if unit_targets:
+                        return min(unit_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+                    else:
+                        building_targets = [target for target in reachable_targets if isinstance(target, Building)]
+                        if building_targets:
+                            return min(building_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+                        else:
+                            return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+            else:
+                return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
         elif unreachable_targets:
             return min(unreachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
         else:
