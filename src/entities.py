@@ -241,34 +241,44 @@ class Unit(GameObject):
 
     def find_nearest_target(self, grid):
         """
-        Find the nearest valid target, prioritizing based on enemy type.
+        Find the nearest valid target, prioritizing by target_priority and then distance.
         """
-        reachable_targets = []
-        unreachable_targets = []
 
+        def get_target_priority(target):
+            if isinstance(target, Building):
+                return 0  # Buildings have lower priority
+            elif isinstance(target, AlliedUnit):
+                return 1 # Allied units have higher priority
+            return -1 # Should not happen
+
+        targets_by_priority = []
         for target in self.targets:
-            if target.hp > 0: # Check if target is alive
+            if target.hp > 0:
+                dist = math.hypot(target.x - self.x, target.y - self.y)
+                priority = get_target_priority(target)
+
                 target_grid_x = int(target.x // GRID_SIZE)
                 target_grid_y = int(target.y // GRID_SIZE)
-                grid_width = len(grid[0]) # Access grid dimensions
+                grid_width = len(grid[0])
                 grid_height = len(grid)
-
 
                 is_reachable = True
                 if 0 <= target_grid_x < grid_width and 0 <= target_grid_y < grid_height and grid[target_grid_y][target_grid_x][1] == 1:
                     is_reachable = False
 
-                if is_reachable:
-                    reachable_targets.append(target)
-                else:
-                    unreachable_targets.append(target)
+                targets_by_priority.append((dist, priority, is_reachable, target))
 
-        if reachable_targets:
-            return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-        elif unreachable_targets:
-            return min(unreachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-        else:
-            return None
+        # Sort targets by priority descending, reachability ascending, then distance ascending
+        targets_by_priority.sort(key=lambda x: (-x[1], x[2], x[0]))
+
+        if targets_by_priority:
+            reachable_targets = [target for dist, priority, is_reachable, target in targets_by_priority if not is_reachable]
+            if reachable_targets:
+                return reachable_targets[0]  # Return the highest priority reachable target
+            elif targets_by_priority: # Fallback to any target if no reachable targets are found
+                return targets_by_priority[0][3]
+
+        return None
 
     def draw(self, screen, units, buildings, enemies, show_debug):  # Add show_debug parameter
         """
