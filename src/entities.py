@@ -246,9 +246,9 @@ class Unit(GameObject):
 
         def get_target_priority(target):
             if isinstance(target, Building):
-                return 0  # Buildings have lower priority
+                return 1  # Buildings have higher priority
             elif isinstance(target, AlliedUnit):
-                return 1 # Allied units have higher priority
+                return 0 # Allied units have lower priority
             return -1 # Should not happen
 
         targets_by_priority = []
