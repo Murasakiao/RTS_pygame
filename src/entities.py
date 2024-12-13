@@ -267,26 +267,23 @@ class Unit(GameObject):
             if hasattr(self, 'type') and self.type in ENEMY_DATA:
                 priority = ENEMY_DATA[self.type].get("target_priority", "building")
                 if priority == "building":
+                    # Filter for building targets first
                     building_targets = [target for target in reachable_targets if isinstance(target, Building)]
                     if building_targets:
                         return min(building_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
                     else:
-                        unit_targets = [target for target in reachable_targets if isinstance(target, Unit) and not isinstance(target, EnemyUnit)]
-                        if unit_targets:
-                            return min(unit_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-                        else:
-                            return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+                        # If no buildings, fall back to any reachable target
+                        return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
                 elif priority == "unit":
+                    # Filter for unit targets first
                     unit_targets = [target for target in reachable_targets if isinstance(target, Unit) and not isinstance(target, EnemyUnit)]
                     if unit_targets:
                         return min(unit_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
                     else:
-                        building_targets = [target for target in reachable_targets if isinstance(target, Building)]
-                        if building_targets:
-                            return min(building_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-                        else:
-                            return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
+                        # If no units, fall back to any reachable target
+                        return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
             else:
+                # If no priority, fall back to any reachable target
                 return min(reachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
         elif unreachable_targets:
             return min(unreachable_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
@@ -358,7 +355,7 @@ class EnemyUnit(Unit):
         super().__init__(unit_type, x, y, targets, font)
         self.enhanced_data = enhanced_data # Store enhanced data
 
-        if enhanced_data and "size_multiplier" in enhanced_data:
+        if enhanced_data and "size_multiplier" in enhanced_
             self.image = pygame.transform.scale(self.image, (int(self.rect.width * enhanced_data["size_multiplier"]), int(self.rect.height * enhanced_data["size_multiplier"])))
             self.rect = self.image.get_rect(topleft=(x, y)) # Update rect after scaling
 
