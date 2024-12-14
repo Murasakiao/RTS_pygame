@@ -49,6 +49,24 @@ def create_nodes_from_grid(grid):
 def distance(node1, node2):
     return math.sqrt(math.pow(node1.x - node2.x, 2) + math.pow(node1.y - node2.y, 2))
 
+# Measures distance from node to endpoint with nodes only being able to travel vertically, horizontally, or diagonally
+# def h_score(start, end):
+#     x_dist = abs(end.x - start.x)
+#     y_dist = abs(end.y - start.y)
+#     diagonal_steps = min(x_dist, y_dist)
+#     straight_steps = y_dist + x_dist - 2 * diagonal_steps
+#     return diagonal_steps * math.sqrt(2) + straight_steps
+
+# Modified h_score function using Manhattan distance
+# def h_score(start, end):
+#     # return abs(end.x - start.x) + abs(end.y - start.y)
+#     return max(abs(end.x - start.x), abs(end.y - start.y))
+
+# def h_score(start, end):
+#     dx = abs(end.x - start.x)
+#     dy = abs(end.y - start.y)
+#     return dx + dy + (math.sqrt(2) - 2) * min(dx, dy)
+
 def h_score(start, end):
     dx = abs(end.x - start.x)
     dy = abs(end.y - start.y)
@@ -56,10 +74,8 @@ def h_score(start, end):
 
 def reconstruct_path(grid, came_from, current):
     path = [current]
-    current_key = str(current.x) + ' ' + str(current.y)
-    while current_key in came_from:
-        current = came_from[current_key]
-        current_key = str(current.x) + ' ' + str(current.y)
+    while current in came_from:
+        current = came_from[current]
         path.insert(0, current)
     return path
 
@@ -82,6 +98,7 @@ def a_star(grid, start_coords, end_coords):
 
     while open_set:
         print(f"Open Set: {[f'({item[1].x}, {item[1].y}, f={item[0]:.2f})' for item in open_set]}")
+        print(len(open_set))
         _, current = heapq.heappop(open_set) # Get node with lowest f_score
         print(f"Current Node: ({current.x}, {current.y}), g_score: {current.g_score:.2f}, f_score: {current.f_score:.2f}")
 
@@ -90,33 +107,69 @@ def a_star(grid, start_coords, end_coords):
             return reconstruct_path(nodes, came_from, current)
 
         if current in closed_set: # Check after popping
-            print(f"Node ({current.x}, {current.y}) already in closed set, skipping.")
             continue
 
         closed_set.add(current)
         print(f"Closed Set: {[f'({node.x}, {node.y})' for node in closed_set]}")
+        print(len(closed_set))
 
         for neighbor in current.get_neighbors(grid): # Pass grid to get_neighbors
             if neighbor in closed_set or neighbor.type == 'wall':
-                print(f"Neighbor ({neighbor.x}, {neighbor.y}) is a wall or in closed set, skipping.")
                 continue
 
             tentative_g_score = current.g_score + distance(current, neighbor)
-            print(f"  Neighbor ({neighbor.x}, {neighbor.y}), tentative_g_score: {tentative_g_score:.2f}")
 
             if neighbor not in [item[1] for item in open_set]:  # Correctly access the node
-                neighbor.f_score = tentative_g_score + h_score(neighbor, end_node)
-                heapq.heappush(open_set, (neighbor.f_score, neighbor))
-                print(f"    Neighbor ({neighbor.x}, {neighbor.y}) added to open set, f_score: {neighbor.f_score:.2f}")
-            elif tentative_g_score > neighbor.g_score:
-                print(f"    Shorter path to ({neighbor.x}, {neighbor.y}) not found, skipping.")
-                continue
-            else:
-                print(f"    Found a better path to ({neighbor.x}, {neighbor.y})")
-                came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
                 neighbor.g_score = tentative_g_score
                 neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
-                print(f"    Updated g_score: {neighbor.g_score:.2f}, f_score: {neighbor.f_score:.2f}")
+                came_from[neighbor] = current # Store the node object
+                heapq.heappush(open_set, (neighbor.f_score, neighbor))
+            elif tentative_g_score < neighbor.g_score:
+                # Found a better path
+                came_from[neighbor] = current # Store the node object
+                neighbor.g_score = tentative_g_score
+                neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
+                # Re-heapify the open set to ensure the node is in the correct position
+                open_set = [(item[1].f_score, item[1]) for item in open_set]
+                heapq.heapify(open_set)
+
+    # while open_set:
+        
+    #     _, current = heapq.heappop(open_set) # Get node with lowest f_score
+    #     
+
+    #     if current == end_node:
+    #         
+    #         return reconstruct_path(nodes, came_from, current)
+
+    #     if current in closed_set: # Check after popping
+    #         print(f"Node ({current.x}, {current.y}) already in closed set, skipping.")
+    #         continue
+
+    #     closed_set.add(current)
+    #     
+
+    #     for neighbor in current.get_neighbors(grid): # Pass grid to get_neighbors
+    #         if neighbor in closed_set or neighbor.type == 'wall':
+    #             print(f"Neighbor ({neighbor.x}, {neighbor.y}) is a wall or in closed set, skipping.")
+    #             continue
+
+    #         tentative_g_score = current.g_score + distance(current, neighbor)
+    #         print(f"  Neighbor ({neighbor.x}, {neighbor.y}), tentative_g_score: {tentative_g_score:.2f}")
+
+    #         if neighbor not in [item[1] for item in open_set]:  # Correctly access the node
+    #             neighbor.f_score = tentative_g_score + h_score(neighbor, end_node)
+    #             heapq.heappush(open_set, (neighbor.f_score, neighbor))
+    #             print(f"    Neighbor ({neighbor.x}, {neighbor.y}) added to open set, f_score: {neighbor.f_score:.2f}")
+    #         elif tentative_g_score > neighbor.g_score:
+    #             print(f"    Shorter path to ({neighbor.x}, {neighbor.y}) not found, skipping.")
+    #             continue
+    #         else:
+    #             print(f"    Found a better path to ({neighbor.x}, {neighbor.y})")
+    #             came_from[str(neighbor.x) + ' ' + str(neighbor.y)] = current
+    #             neighbor.g_score = tentative_g_score
+    #             neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
+    #             print(f"    Updated g_score: {neighbor.g_score:.2f}, f_score: {neighbor.f_score:.2f}")
 
 def lowest_f_score(node_list):
     final_node = None

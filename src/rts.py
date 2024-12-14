@@ -133,7 +133,8 @@ while game_running:
         f"Buildings: {len(buildings)}",
         f"Units: {len(units)}",
         f"Enemies: {len(enemies)}",
-        f"Mouse Position: {mouse_pos}",
+        # f"Mouse Position: {mouse_pos}",
+        f"Mouse Position: {(mouse_pos[0] // GRID_SIZE, mouse_pos[1] // GRID_SIZE)}",
         f"Selected Unit: {selected_unit.type if selected_unit else 'None'}",
         f"Current Wave: {current_wave}",
         # f"Gold: {int(gold)}",
@@ -187,7 +188,7 @@ while game_running:
                 terrain = terrain_generator.generate_terrain()
             elif event.key == K_d:  # 'D' key to toggle debug info display
                 show_debug = not show_debug
-                print(grid)
+                # print(grid)
         elif event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
                 # Unit Selection
@@ -277,7 +278,7 @@ while game_running:
 
                 # Find nearest target for the selected unit
                 selected_unit.target = selected_unit.find_nearest_target(grid) # This can stay here
-                print(path)
+                # print(path)
 
     # --- Game Updates ---
     for unit in units:

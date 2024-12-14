@@ -8,7 +8,7 @@ GRID_SIZE = 16
 FPS = 30
 BUILDING_COOLDOWN_TIME = 1000
 MESSAGE_DURATION = 3000
-WAVE_INTERVAL = 6000
+WAVE_INTERVAL = 600000
 ENEMY_SPAWN_RATE = 1
 UNIT_ATTACK_RANGE = 50
 ENEMY_ATTACK_RANGE = 50
@@ -43,14 +43,14 @@ BUILDING_DATA = {
 
 # Unit data
 ALLY_DATA = {
-    "Swordsman": {"name": "Swordsman", "image": "assets/characters/swordsman.png", "cost": {"gold": 50, "food": 30, "people": 1}, "speed": 20, "hp": 12, "atk": 1, "range": 15, "attack_cooldown": 1500},
-    "Archer": {"name": "Archer", "image": "assets/characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 30, "hp": 5, "atk": 2, "range": 70, "attack_cooldown": 2000}, 
+    "Swordsman": {"name": "Swordsman", "image": "assets/characters/swordsman.png", "cost": {"gold": 45, "food": 20, "people": 1}, "speed": 12, "hp": 12, "atk": 1, "range": 15, "attack_cooldown": 1500},
+    "Archer": {"name": "Archer", "image": "assets/characters/bowman.png", "cost": {"gold": 60, "food": 40, "people": 1}, "speed": 24, "hp": 5, "atk": 2, "range": 50, "attack_cooldown": 2000}, 
 }
 
 # Enemy data
 ENEMY_DATA = {
-    "Goblin": {"name": "Goblin", "image": "assets/characters/goblin.png", "speed": 10, "hp": 8, "atk": 1, "range": 15, "attack_cooldown": 1500, "target_priority": "building"},
-    "GoblinArcher": {"name": "Goblin Archer", "image": "assets/characters/archerGob.png", "speed": 15, "hp": 3, "atk": 2, "range": 25, "attack_cooldown": 3000, "target_priority": "unit"},
-    "Orc": {"name": "Orc", "image": "assets/characters/orc.png", "speed": 5, "hp": 12, "atk": 2, "range": 5, "attack_cooldown": 2000, "target_priority": "unit"},
-    "Dragon": {"name": "Dragon mini-boss", "image": "assets/characters/dragon.png", "speed": 2, "hp": 20, "atk": 5, "range": 30, "attack_cooldown": 5000, "target_priority": "building", "size_multiplier": 2}, 
+    "Goblin": {"name": "Goblin", "image": "assets/characters/goblin.png", "speed": 5, "hp": 8, "atk": 1, "range": 15, "attack_cooldown": 1500, "target_priority": "building"},
+    "GoblinArcher": {"name": "Goblin Archer", "image": "assets/characters/archerGob.png", "speed": 7, "hp": 3, "atk": 2, "range": 25, "attack_cooldown": 3000, "target_priority": "unit"},
+    "Orc": {"name": "Orc", "image": "assets/characters/orc.png", "speed": 3, "hp": 12, "atk": 2, "range": 5, "attack_cooldown": 2000, "target_priority": "unit"},
+    "Dragon": {"name": "Dragon mini-boss", "image": "assets/characters/dragon.png", "speed": 2, "hp": 250, "atk": 10, "range": 30, "attack_cooldown": 5000, "target_priority": "building", "size_multiplier": 2}, 
 }
