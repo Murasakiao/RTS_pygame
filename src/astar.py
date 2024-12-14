@@ -58,8 +58,19 @@ def distance(node1, node2):
 #     return diagonal_steps * math.sqrt(2) + straight_steps
 
 # Modified h_score function using Manhattan distance
+# def h_score(start, end):
+    # return abs(end.x - start.x) + abs(end.y - start.y)
+    # return max(abs(end.x - start.x), abs(end.y - start.y))
+
+# def h_score(start, end):
+#     dx = abs(end.x - start.x)
+#     dy = abs(end.y - start.y)
+#     return dx + dy + (math.sqrt(2) - 2) * min(dx, dy)
+
 def h_score(start, end):
-    return abs(end.x - start.x) + abs(end.y - start.y)
+    dx = abs(end.x - start.x)
+    dy = abs(end.y - start.y)
+    return dx + dy + (math.sqrt(2) - 2) * min(dx, dy) + (start.x + start.y) * 0.001
 
 def reconstruct_path(grid, came_from, current):
     path = [current]
