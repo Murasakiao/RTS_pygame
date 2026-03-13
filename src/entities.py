@@ -101,7 +101,7 @@ class Unit(GameObject):
         path_needs_update = False  # Flag to track path updates
         movement_threshold = 2 * GRID_SIZE # Adjust this threshold as needed
 
-        if self.target and self.target.hp > 0 and self.destination is None:
+        if self.target and self.target.hp > 0:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
             distance_to_target = math.hypot(dx, dy)
@@ -119,8 +119,8 @@ class Unit(GameObject):
                 target_movement = math.hypot(self.target.x - self.previous_target_position[0], self.target.y - self.previous_target_position[1])
                 if target_movement > movement_threshold:
                      path_needs_update = True
-            else:
-                 path_needs_update = True # First time, recalculate
+            elif not self.destination:
+                 path_needs_update = True # First time or reached destination, recalculate
 
             if path_needs_update:
                 start_grid_x = int(self.x // GRID_SIZE)
