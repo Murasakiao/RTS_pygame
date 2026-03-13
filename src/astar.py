@@ -79,15 +79,17 @@ def a_star(grid, start_coords, end_coords):
     end_node = nodes[end_coords[1]][end_coords[0]]
 
     open_set = []
-    heapq.heappush(open_set, (start_node.f_score, start_node))
+    counter = 0
+    heapq.heappush(open_set, (start_node.f_score, counter, start_node))
     closed_set = set()
     came_from = {}
 
     start_node.g_score = 0
     start_node.f_score = h_score(start_node, end_node)
 
+    counter = 0
     while open_set:
-        _, current = heapq.heappop(open_set)
+        _, _, current = heapq.heappop(open_set)
 
         if current == end_node:
             return reconstruct_path(came_from, current)
@@ -100,13 +102,15 @@ def a_star(grid, start_coords, end_coords):
 
             tentative_g_score = current.g_score + distance(current, neighbor)
 
-            if neighbor not in [item[1] for item in open_set]:
+            if neighbor not in [item[2] for item in open_set]:
                 neighbor.g_score = tentative_g_score
-                neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node) # Tie-breaker removed
-                heapq.heappush(open_set, (neighbor.f_score, neighbor))
+                neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
+                counter += 1
+                heapq.heappush(open_set, (neighbor.f_score, counter, neighbor))
+                came_from[(neighbor.x, neighbor.y)] = current
             elif tentative_g_score < neighbor.g_score:
                 came_from[(neighbor.x, neighbor.y)] = current
                 neighbor.g_score = tentative_g_score
-                neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node) # Tie-breaker removed
+                neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
 
 

@@ -108,8 +108,8 @@ class Unit(GameObject):
             unit_range = self.get_attack_range()
 
             if distance_to_target <= unit_range:
-                self.destination = None  # Stop if in attack range
                 self.path = []  # Clear path if in range
+                self.destination = None
             elif not self.path:  # Recalculate path if no path exists
                 path_needs_update = True
             # elif self.path and self.previous_target_position != (self.target.x, self.target.y): # Recalculate if target moved
@@ -142,18 +142,11 @@ class Unit(GameObject):
         # Destination handling (for both mouse clicks and path following)
         if self.path:  # Prioritize following the path
              next_node = self.path[0]  # Get the next node from the path
-             dx = next_node.x * GRID_SIZE - self.x
-             dy = next_node.y * GRID_SIZE - self.y
+             target_x = next_node.x * GRID_SIZE
+             target_y = next_node.y * GRID_SIZE
+             dx = target_x - self.x
+             dy = target_y - self.y
              distance_to_next_node = math.hypot(dx, dy)
-
-             # Check if target is within attack range
-             if self.target:
-                 dx_target = self.target.x - self.x
-                 dy_target = self.target.y - self.y
-                 distance_to_target = math.hypot(dx_target, dy_target)
-                 if distance_to_target <= self.get_attack_range():
-                     self.path = []  # Clear path if target is within range
-                     return  # Stop moving
 
              travel_distance = self.speed * (dt / 1000)
 
