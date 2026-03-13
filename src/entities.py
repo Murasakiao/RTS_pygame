@@ -316,6 +316,7 @@ class EnemyUnit(Unit):
     def __init__(self, unit_type, x, y, buildings, units, font=None):
         targets = buildings + units
         super().__init__(unit_type, x, y, targets, font)
+        self.target_priority = "building"
 
     def should_attack(self):
         """
