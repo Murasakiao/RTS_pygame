@@ -93,6 +93,8 @@ class Unit(GameObject):
         """
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
+            if self.target:
+                print(f"{self.name} targeted {getattr(self.target, 'name', self.target.type)}")
 
     def move_towards_target(self, dt, grid):
         """Moves the unit towards its target or destination, using A* pathfinding."""
@@ -132,6 +134,8 @@ class Unit(GameObject):
                 grid_height = len(grid)
                 if 0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height and 0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height:
                     self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or [] # Find path to target
+                    if self.path:
+                        self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE)
                 else:
                     self.path = []  # Clear path if out of bounds
 
@@ -161,6 +165,8 @@ class Unit(GameObject):
 
                  if not self.path:  # If path is empty, clear destination
                      self.destination = None
+                 else:
+                     self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE)
              else:  # Move towards the next node
                  self.x += (dx / distance_to_next_node) * travel_distance
                  self.y += (dy / distance_to_next_node) * travel_distance
