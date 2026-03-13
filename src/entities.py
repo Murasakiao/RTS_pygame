@@ -110,23 +110,20 @@ class Unit(GameObject):
             if distance_to_target <= unit_range:
                 self.path = []  # Clear path if in range
                 self.destination = None
-            elif not self.path:  # Recalculate path if no path exists
+            elif not self.path or self.destination is None:  # Recalculate path if no path or destination exists
                 path_needs_update = True
-            # elif self.path and self.previous_target_position != (self.target.x, self.target.y): # Recalculate if target moved
-            #     # path_needs_update = True
-            #     self.previous_target_position = (self.target.x, self.target.y)
             elif self.previous_target_position: # Check if previous position is available
                 target_movement = math.hypot(self.target.x - self.previous_target_position[0], self.target.y - self.previous_target_position[1])
                 if target_movement > movement_threshold:
                      path_needs_update = True
-            elif not self.destination:
-                 path_needs_update = True # First time or reached destination, recalculate
 
             if path_needs_update:
                 start_grid_x = int(self.x // GRID_SIZE)
                 start_grid_y = int(self.y // GRID_SIZE)
                 end_grid_x = int(self.target.x // GRID_SIZE)
                 end_grid_y = int(self.target.y // GRID_SIZE)
+                
+                print(f"{self.name} moving to target at x: {end_grid_x * GRID_SIZE}, y: {end_grid_y * GRID_SIZE}")
                 self.previous_target_position = (self.target.x, self.target.y) # Update previous position
 
                 # Add boundary checks here
@@ -144,6 +141,7 @@ class Unit(GameObject):
              next_node = self.path[0]  # Get the next node from the path
              target_x = next_node.x * GRID_SIZE
              target_y = next_node.y * GRID_SIZE
+             # print(f"{self.name} step to x: {target_x}, y: {target_y}")
              dx = target_x - self.x
              dy = target_y - self.y
              distance_to_next_node = math.hypot(dx, dy)
