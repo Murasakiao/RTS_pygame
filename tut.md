@@ -17,6 +17,17 @@ In this first stage, the goal is to establish the core engine loop and allow the
 - **Collision Checking**: Ensuring a building cannot be placed on top of an existing one.
 - **Rendering**: Drawing surfaces/images onto the screen based on the building list.
 
+#### Phase 1 Code Snippet
+```python
+# Simple grid-based building placement
+if event.type == MOUSEBUTTONDOWN and event.button == 1:
+    grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
+    grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+    if not any(b.rect.collidepoint(mouse_pos) for b in buildings):
+        new_building = Building(grid_x, grid_y, current_building_type)
+        buildings.append(new_building)
+```
+
 ---
 
 ## Phase 2: Biological Warfare - Units, Combat, & Simple AI
@@ -36,6 +47,19 @@ Once we have a static world, we introduce mobile entities that can interact with
 - **Attack Cooldowns**: Using delta time (`dt`) to prevent units from attacking every single frame.
 - **State Management**: Removing objects from the game lists when their HP hits zero.
 
+#### Phase 2 Code Snippet
+```python
+# Linear movement toward a target
+def move_simple(self, dt):
+    if self.target:
+        dx, dy = self.target.x - self.x, self.target.y - self.y
+        dist = math.hypot(dx, dy)
+        if dist > self.range:
+            self.x += (dx / dist) * self.speed * (dt / 1000)
+            self.y += (dy / dist) * self.speed * (dt / 1000)
+            self.rect.topleft = (self.x, self.y)
+```
+
 ---
 
 ## Phase 3: Advanced Systems - Procedural Generation & A* Pathfinding
@@ -54,6 +78,19 @@ The final stage transforms the game from a flat plane into a complex, navigable 
 ### 3.3 Optimization & Debugging
 - **Debug Overlays**: Drawing the calculated paths and grid lines to visualize AI decision-making.
 - **Performance**: Managing the A* calls so they don't lag the game loop when many units are moving simultaneously.
+
+#### Phase 3 Code Snippet
+```python
+# A* Pathfinding Integration
+def update_path(self, grid, end_pos):
+    start = (int(self.x // GRID_SIZE), int(self.y // GRID_SIZE))
+    end = (int(end_pos[0] // GRID_SIZE), int(end_pos[1] // GRID_SIZE))
+    self.path = a_star(grid, start, end)
+
+# Procedural Noise
+noise_val = noise.pnoise2(x / scale, y / scale, octaves=4)
+terrain_type = "water" if noise_val < -0.1 else "grass"
+```
 
 ---
 
