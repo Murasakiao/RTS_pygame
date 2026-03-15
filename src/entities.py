@@ -107,61 +107,75 @@ class Unit(GameObject):
             distance_to_target = math.hypot(dx, dy)
             unit_range = self.get_attack_range()
 
+            # ✅ CHECK A — do we have a valid target?
+            print(f"[A] {self.name} → target={getattr(self.target,'type','?')} hp={self.target.hp} dist={distance_to_target:.0f} range={unit_range}")
+
             if distance_to_target <= unit_range:
-                self.path = []  # Clear path if in range
+                self.path = []
                 self.destination = None
-            elif not self.path or self.destination is None:  # Recalculate path if no path or destination exists
+            elif not self.path or self.destination is None:
                 path_needs_update = True
-            elif self.previous_target_position: # Check if previous position is available
-                target_movement = math.hypot(self.target.x - self.previous_target_position[0], self.target.y - self.previous_target_position[1])
+            elif self.previous_target_position:
+                target_movement = math.hypot(
+                    self.target.x - self.previous_target_position[0],
+                    self.target.y - self.previous_target_position[1]
+                )
                 if target_movement > movement_threshold:
-                     path_needs_update = True
+                    path_needs_update = True
 
             if path_needs_update:
+                grid_width  = len(grid[0])
+                grid_height = len(grid)
+
                 start_grid_x = int(self.x // GRID_SIZE)
                 start_grid_y = int(self.y // GRID_SIZE)
-                end_grid_x = int(self.target.x // GRID_SIZE)
-                end_grid_y = int(self.target.y // GRID_SIZE)
-                
-                print(f"{self.name} moving to target at x: {end_grid_x * GRID_SIZE}, y: {end_grid_y * GRID_SIZE}")
-                self.previous_target_position = (self.target.x, self.target.y) # Update previous position
+                end_grid_x   = int(self.target.x // GRID_SIZE)
+                end_grid_y   = int(self.target.y // GRID_SIZE)
 
-                # Add boundary checks here
-                grid_width = len(grid[0])
-                grid_height = len(grid)
-                if 0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height and 0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height:
-                    self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or [] # Find path to target
+                # ✅ Clamp to valid grid range instead of skipping entirely
+                start_grid_x = max(0, min(start_grid_x, grid_width - 1))
+                start_grid_y = max(0, min(start_grid_y, grid_height - 1))
+                end_grid_x   = max(0, min(end_grid_x,   grid_width - 1))
+                end_grid_y   = max(0, min(end_grid_y,   grid_height - 1))
+
+                self.previous_target_position = (self.target.x, self.target.y)
+                self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or []
+                if self.path:
+                    self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE)
+                if (0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height and
+                        0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height):
+                    self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or []
                     if self.path:
                         self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE)
+
+                    # ✅ CHECK B — did A* find a path?
+                    print(f"[B] a_star({start_grid_x},{start_grid_y})→({end_grid_x},{end_grid_y}): {len(self.path)} nodes | grid cell passable={grid[start_grid_y][start_grid_x][1]==0}/{grid[end_grid_y][end_grid_x][1]==0}")
                 else:
-                    self.path = []  # Clear path if out of bounds
+                    self.path = []
+                    print(f"[B] OUT OF BOUNDS start=({start_grid_x},{start_grid_y}) end=({end_grid_x},{end_grid_y})")
 
-        # Destination handling (for both mouse clicks and path following)
-        if self.path:  # Prioritize following the path
-             next_node = self.path[0]  # Get the next node from the path
-             target_x = next_node.x * GRID_SIZE
-             target_y = next_node.y * GRID_SIZE
-             # print(f"{self.name} step to x: {target_x}, y: {target_y}")
-             dx = target_x - self.x
-             dy = target_y - self.y
-             distance_to_next_node = math.hypot(dx, dy)
+        if self.path:
+            next_node = self.path[0]
+            target_x = next_node.x * GRID_SIZE
+            target_y = next_node.y * GRID_SIZE
+            dx = target_x - self.x
+            dy = target_y - self.y
+            distance_to_next_node = math.hypot(dx, dy)
+            travel_distance = self.speed * (dt / 1000)
 
-             travel_distance = self.speed * (dt / 1000)
+            # ✅ CHECK C — is movement math working?
+            print(f"[C] speed={self.speed} travel={travel_distance:.2f} dist_to_node={distance_to_next_node:.2f}")
 
-             if distance_to_next_node <= travel_distance:  # Reached the next node
-                 self.x = next_node.x * GRID_SIZE
-                 self.y = next_node.y * GRID_SIZE
-                 self.rect.topleft = (self.x, self.y)
-                 self.path.pop(0)  # Remove the current node from the path
-
-                 if not self.path:  # If path is empty, clear destination
-                     self.destination = None
-                 else:
-                     self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE)
-             else:  # Move towards the next node
-                 self.x += (dx / distance_to_next_node) * travel_distance
-                 self.y += (dy / distance_to_next_node) * travel_distance
-                 self.rect.topleft = (self.x, self.y)
+            if distance_to_next_node <= travel_distance:
+                self.x = next_node.x * GRID_SIZE
+                self.y = next_node.y * GRID_SIZE
+                self.rect.topleft = (self.x, self.y)
+                self.path.pop(0)
+                self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE) if self.path else None
+            else:
+                self.x += (dx / distance_to_next_node) * travel_distance
+                self.y += (dy / distance_to_next_node) * travel_distance
+                self.rect.topleft = (self.x, self.y)
 
         elif self.destination:  # Move towards clicked destination if no path
              dx = self.destination[0] - self.x

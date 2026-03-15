@@ -82,22 +82,33 @@ def check_collision(preview_rect, buildings, units):
     return False
 
 def generate_spawn_point():
-    side = random.choice(["left", "right", "top", "bottom"])
-    if side == "left":
-        return -GRID_SIZE, random.randint(0, SCREEN_HEIGHT - GRID_SIZE)
+    grid_width  = SCREEN_WIDTH  // GRID_SIZE
+    grid_height = SCREEN_HEIGHT // GRID_SIZE
+
+    side = random.choice(["top", "bottom", "left", "right"])
+    if side == "top":
+        return random.randint(0, grid_width  - 1) * GRID_SIZE, 0
+    elif side == "bottom":
+        return random.randint(0, grid_width  - 1) * GRID_SIZE, (grid_height - 1) * GRID_SIZE
+    elif side == "left":
+        return 0, random.randint(0, grid_height - 1) * GRID_SIZE
     elif side == "right":
-        return SCREEN_WIDTH, random.randint(0, SCREEN_HEIGHT - GRID_SIZE)
-    elif side == "top":
-        return random.randint(0, SCREEN_WIDTH - GRID_SIZE), -GRID_SIZE
-    else:  # bottom
-        return random.randint(0, SCREEN_WIDTH - GRID_SIZE), SCREEN_HEIGHT
+        return (grid_width - 1) * GRID_SIZE, random.randint(0, grid_height - 1) * GRID_SIZE
 
 def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
+    grid_width  = SCREEN_WIDTH  // GRID_SIZE
+    grid_height = SCREEN_HEIGHT // GRID_SIZE
+
     spawned_enemies = []
     for _ in range(current_wave * enemy_spawn_rate):
         spawn_x, spawn_y = generate_spawn_point()
+
+        # ✅ Clamp to valid pixel range so units never spawn off-grid
+        spawn_x = max(0, min(spawn_x, (grid_width  - 1) * GRID_SIZE))
+        spawn_y = max(0, min(spawn_y, (grid_height - 1) * GRID_SIZE))
+
         enemy_type = random.choice(list(ENEMY_DATA.keys()))
-        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)  # Pass buildings and units separately
+        enemy = EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)
         spawned_enemies.append(enemy)
 
     return spawned_enemies
