@@ -17,15 +17,47 @@ In this first stage, the goal is to establish the core engine loop and allow the
 - **Collision Checking**: Ensuring a building cannot be placed on top of an existing one.
 - **Rendering**: Drawing surfaces/images onto the screen based on the building list.
 
-#### Phase 1 Code Snippet
+#### Phase 1: Constants (Basic Setup)
 ```python
-# Simple grid-based building placement
-if event.type == MOUSEBUTTONDOWN and event.button == 1:
-    grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
-    grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
-    if not any(b.rect.collidepoint(mouse_pos) for b in buildings):
-        new_building = Building(grid_x, grid_y, current_building_type)
-        buildings.append(new_building)
+SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+GRID_SIZE = 40
+FPS = 60
+WHITE, BLACK, GREEN = (255, 255, 255), (0, 0, 0), (0, 255, 0)
+
+BUILDING_DATA = {
+    "Castle": {"hp": 500, "color": GREEN, "cost": 100},
+    "House": {"hp": 100, "color": (150, 75, 0), "cost": 20}
+}
+```
+
+#### Phase 1: Utils (Placement Logic)
+```python
+def check_collision(rect, buildings):
+    return any(rect.colliderect(b.rect) for b in buildings)
+
+def get_grid_pos(mouse_pos):
+    x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
+    y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+    return x, y
+```
+
+#### Phase 1: RTS (Main Loop)
+```python
+import pygame
+# ... imports ...
+while running:
+    screen.fill(WHITE)
+    mouse_pos = pygame.mouse.get_pos()
+    
+    for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            gx, gy = get_grid_pos(mouse_pos)
+            new_rect = pygame.Rect(gx, gy, GRID_SIZE, GRID_SIZE)
+            if not check_collision(new_rect, buildings):
+                buildings.append(Building(gx, gy, "Castle"))
+    
+    for b in buildings: b.draw(screen)
+    pygame.display.flip()
 ```
 
 ---
@@ -47,17 +79,33 @@ Once we have a static world, we introduce mobile entities that can interact with
 - **Attack Cooldowns**: Using delta time (`dt`) to prevent units from attacking every single frame.
 - **State Management**: Removing objects from the game lists when their HP hits zero.
 
-#### Phase 2 Code Snippet
+#### Phase 2: Constants (Combat & Units)
 ```python
-# Linear movement toward a target
-def move_simple(self, dt):
-    if self.target:
-        dx, dy = self.target.x - self.x, self.target.y - self.y
-        dist = math.hypot(dx, dy)
-        if dist > self.range:
-            self.x += (dx / dist) * self.speed * (dt / 1000)
-            self.y += (dy / dist) * self.speed * (dt / 1000)
-            self.rect.topleft = (self.x, self.y)
+ALLY_DATA = {"Swordsman": {"speed": 50, "hp": 50, "atk": 5, "range": 20}}
+ENEMY_DATA = {"Orc": {"speed": 30, "hp": 40, "atk": 3, "range": 15}}
+```
+
+#### Phase 2: Utils (Enemy Spawning)
+```python
+def spawn_enemy(side):
+    if side == "left": return 0, random.randint(0, SCREEN_HEIGHT)
+    # ... logic for other sides ...
+```
+
+#### Phase 2: RTS (Simple AI Movement)
+```python
+# Inside Unit.update()
+def move_simple(self, target, dt):
+    dx = target.x - self.x
+    dy = target.y - self.y
+    distance = math.hypot(dx, dy)
+    
+    if distance > self.range:
+        self.x += (dx / distance) * self.speed * (dt / 1000)
+        self.y += (dy / distance) * self.speed * (dt / 1000)
+        self.rect.topleft = (self.x, self.y)
+    else:
+        self.attack(target)
 ```
 
 ---
@@ -79,17 +127,37 @@ The final stage transforms the game from a flat plane into a complex, navigable 
 - **Debug Overlays**: Drawing the calculated paths and grid lines to visualize AI decision-making.
 - **Performance**: Managing the A* calls so they don't lag the game loop when many units are moving simultaneously.
 
-#### Phase 3 Code Snippet
+#### Phase 3: Constants (Final)
 ```python
-# A* Pathfinding Integration
-def update_path(self, grid, end_pos):
-    start = (int(self.x // GRID_SIZE), int(self.y // GRID_SIZE))
-    end = (int(end_pos[0] // GRID_SIZE), int(end_pos[1] // GRID_SIZE))
-    self.path = a_star(grid, start, end)
+# Full resource rates and thresholds
+WAVE_INTERVAL = 30000 # 30 seconds
+WATER_THRESHOLD = -0.1
+```
 
-# Procedural Noise
-noise_val = noise.pnoise2(x / scale, y / scale, octaves=4)
-terrain_type = "water" if noise_val < -0.1 else "grass"
+#### Phase 3: Utils (Grid Updating)
+```python
+def update_grid(terrain, buildings):
+    grid = []
+    for y, row in enumerate(terrain):
+        grid_row = []
+        for x, tile in enumerate(row):
+            is_obstacle = 1 if tile == "water" else 0
+            # Overwrite with buildings
+            for b in buildings:
+                if b.rect.collidepoint(x * GRID_SIZE, y * GRID_SIZE):
+                    is_obstacle = 1
+            grid_row.append(is_obstacle)
+        grid.append(grid_row)
+    return grid
+```
+
+#### Phase 3: RTS (A* Integration)
+```python
+# Triggering pathfinding on Right Click
+if event.button == 3 and selected_unit:
+    start = (selected_unit.x // GRID_SIZE, selected_unit.y // GRID_SIZE)
+    end = (mouse_pos[0] // GRID_SIZE, mouse_pos[1] // GRID_SIZE)
+    selected_unit.path = a_star(current_grid, start, end)
 ```
 
 ---
