@@ -47,9 +47,9 @@ def main():
     pygame.init()
 
     # Internal low resolution for pixel effect                                                                          
-    internal_width = 160
-    internal_height = 120
-    scale = 5
+    internal_width = 400
+    internal_height = 300
+    scale = 2
     screen_width = 800
     screen_height = 600
                                                                                                                         
@@ -61,7 +61,7 @@ def main():
     clock = pygame.time.Clock()
     running = True
     
-    fish = Fish(80, 60)
+    fish = Fish(200, 150)
 
     while running:
         for event in pygame.event.get():
