@@ -1,6 +1,28 @@
 import pygame
 import sys
 
+class Fish:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.color = (255, 165, 0)  # Orange
+
+    def update(self):
+        self.y -= 0.1  # Move upward slowly
+
+    def draw(self, surface):
+        # Upper body (triangle, 3px height)
+        pygame.draw.polygon(surface, self.color, [(self.x, self.y), (self.x - 2, self.y + 2), (self.x + 2, self.y + 2)])
+        # Middle body (rectangle, 4px height)
+        pygame.draw.rect(surface, self.color, (self.x - 2, self.y + 2, 5, 4))
+        # Lower body (triangle, 3px height)
+        pygame.draw.polygon(surface, self.color, [(self.x, self.y + 8), (self.x - 2, self.y + 6), (self.x + 2, self.y + 6)])
+        # Side Fins
+        pygame.draw.line(surface, self.color, (self.x - 3, self.y + 4), (self.x - 4, self.y + 4)) # Left fin
+        pygame.draw.line(surface, self.color, (self.x + 3, self.y + 4), (self.x + 4, self.y + 4)) # Right fin
+        # Tail
+        pygame.draw.polygon(surface, self.color, [(self.x, self.y + 8), (self.x - 2, self.y + 10), (self.x + 2, self.y + 10)])
+
 def main():
     pygame.init()
 
@@ -18,6 +40,8 @@ def main():
 
     clock = pygame.time.Clock()
     running = True
+    
+    fish = Fish(32, 20)
 
     while running:
         for event in pygame.event.get():
@@ -26,20 +50,8 @@ def main():
 
         display_surface.fill((0, 0, 0))
 
-        # Draw a simple pixel fish (top-down view)                                                                      
-        fish_color = (255, 165, 0) # Orange                                                                             
-        # Body
-        # Upper body (triangle, 3px height)
-        pygame.draw.polygon(display_surface, fish_color, [(32, 20), (30, 22), (34, 22)])
-        # Middle body (rectangle, 10-6 = 4px height)
-        pygame.draw.rect(display_surface, fish_color, (30, 22, 5, 4))
-        # Lower body (triangle, 3px height)
-        pygame.draw.polygon(display_surface, fish_color, [(32, 28), (30, 26), (34, 26)])
-        # Side Fins                                                                                                     
-        pygame.draw.line(display_surface, fish_color, (29, 24), (28, 24)) # Left fin                                    
-        pygame.draw.line(display_surface, fish_color, (35, 24), (36, 24)) # Right fin                                   
-        # Tail                                                                                                          
-        pygame.draw.polygon(display_surface, fish_color, [(32, 28), (30, 30), (34, 30)])   
+        fish.update()
+        fish.draw(display_surface)
 
         # Scale the low-res surface to the screen size
         scaled_surface = pygame.transform.scale(display_surface, (screen_width, screen_height))
