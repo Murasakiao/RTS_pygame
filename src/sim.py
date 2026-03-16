@@ -27,7 +27,7 @@ def main():
         # Draw a simple pixel fish (top-down view)                                                                      
         fish_color = (255, 165, 0) # Orange                                                                             
         # Body                                                                                                          
-        pygame.draw.ellipse(display_surface, fish_color, (29, 20, 6, 10))                                               
+        pygame.draw.rect(display_surface, fish_color, (29, 20, 6, 10))                                               
         # Side Fins                                                                                                     
         pygame.draw.line(display_surface, fish_color, (28, 25), (27, 25)) # Left fin                                    
         pygame.draw.line(display_surface, fish_color, (35, 25), (36, 25)) # Right fin                                   
