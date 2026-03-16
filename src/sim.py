@@ -13,6 +13,7 @@ def main():
     screen = pygame.display.set_mode((screen_width, screen_height))
     display_surface = pygame.Surface((internal_width, internal_height))
     pygame.display.set_caption("fish simulation")
+    font = pygame.font.SysFont(None, 24)
 
     clock = pygame.time.Clock()
     running = True
@@ -42,6 +43,11 @@ def main():
         # Scale the low-res surface to the screen size
         scaled_surface = pygame.transform.scale(display_surface, (screen_width, screen_height))
         screen.blit(scaled_surface, (0, 0))
+
+        # Mouse coordinate tracker
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        coord_text = font.render(f"Pos: {mouse_x}, {mouse_y}", True, (255, 255, 255))
+        screen.blit(coord_text, (10, 10))
         
         pygame.display.flip()
         clock.tick(60)
