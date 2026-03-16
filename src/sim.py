@@ -18,6 +18,12 @@ def main():
                 running = False
 
         screen.fill((0, 0, 0))
+
+        # Draw a simple pixel fish
+        fish_color = (255, 165, 0) # Orange
+        pygame.draw.ellipse(screen, fish_color, (380, 290, 40, 20)) # Body
+        pygame.draw.polygon(screen, fish_color, [(380, 300), (365, 285), (365, 315)]) # Tail
+
         pygame.display.flip()
         clock.tick(60)
 
