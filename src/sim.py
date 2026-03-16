@@ -24,15 +24,15 @@ def main():
 
         display_surface.fill((0, 0, 0))
 
-        # Draw a simple pixel fish (top-down view)
-        fish_color = (255, 165, 0) # Orange
-        # Body
-        pygame.draw.ellipse(display_surface, fish_color, (29, 20, 6, 10))
-        # Side Fins
-        pygame.draw.line(display_surface, fish_color, (28, 25), (26, 25)) # Left fin
-        pygame.draw.line(display_surface, fish_color, (35, 25), (37, 25)) # Right fin
-        # Tail
-        pygame.draw.polygon(display_surface, fish_color, [(32, 30), (29, 33), (35, 33)])
+        # Draw a simple pixel fish (top-down view)                                                                      
+        fish_color = (255, 165, 0) # Orange                                                                             
+        # Body                                                                                                          
+        pygame.draw.ellipse(display_surface, fish_color, (29, 20, 6, 10))                                               
+        # Side Fins                                                                                                     
+        pygame.draw.line(display_surface, fish_color, (28, 25), (27, 25)) # Left fin                                    
+        pygame.draw.line(display_surface, fish_color, (35, 25), (36, 25)) # Right fin                                   
+        # Tail                                                                                                          
+        pygame.draw.polygon(display_surface, fish_color, [(32, 30), (30, 32), (34, 32)])   
 
         # Scale the low-res surface to the screen size
         scaled_surface = pygame.transform.scale(display_surface, (screen_width, screen_height))
