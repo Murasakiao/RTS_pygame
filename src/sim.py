@@ -23,21 +23,55 @@ class Fish:
         pygame.draw.line(self.base_surf, self.color, (8, 4), (9, 4)) # Right
         pygame.draw.polygon(self.base_surf, self.color, [(5, 8), (3, 10), (7, 10)])
 
-    def update(self):
+    def update(self, screen_width, screen_height):
         current_time = pygame.time.get_ticks()
         if current_time - self.last_change_time > self.change_interval:
             self.direction = random.choice(['up', 'down', 'left', 'right'])
             self.last_change_time = current_time
             self.change_interval = random.randint(500, 3000)
 
+        # Determine next position
+        next_x, next_y = self.x, self.y
         if self.direction == 'up':
-            self.y -= self.speed
+            next_y -= self.speed
         elif self.direction == 'down':
-            self.y += self.speed
+            next_y += self.speed
         elif self.direction == 'left':
-            self.x -= self.speed
+            next_x -= self.speed
         elif self.direction == 'right':
-            self.x += self.speed
+            next_x += self.speed
+
+        offset = 6  # Half of fish size (11/2 rounded up) for boundary checks
+
+        # Check and apply X-axis movement and boundary
+        hit_x_boundary = False
+        if next_x - offset < 0:
+            self.x = offset
+            self.direction = 'right'
+            hit_x_boundary = True
+        elif next_x + offset > screen_width:
+            self.x = screen_width - offset
+            self.direction = 'left'
+            hit_x_boundary = True
+        else:
+            self.x = next_x
+        
+        # Check and apply Y-axis movement and boundary
+        hit_y_boundary = False
+        if next_y - offset < 0:
+            self.y = offset
+            self.direction = 'down'
+            hit_y_boundary = True
+        elif next_y + offset > screen_height:
+            self.y = screen_height - offset
+            self.direction = 'up'
+            hit_y_boundary = True
+        else:
+            self.y = next_y
+
+        # If a boundary was hit, reset last_change_time to avoid immediate random re-direction
+        if hit_x_boundary or hit_y_boundary:
+            self.last_change_time = current_time
 
     def draw(self, surface):
         angle_map = {'up': 0, 'down': 180, 'left': 90, 'right': 270}
@@ -72,7 +106,8 @@ def main():
 
         display_surface.fill((0, 0, 0))
 
-        fish.update()
+        # Pass the internal resolution dimensions to the fish update method
+        fish.update(internal_width, internal_height)
         fish.draw(display_surface)
 
         # Scale the low-res surface to the screen size
