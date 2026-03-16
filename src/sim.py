@@ -1,14 +1,30 @@
 import pygame
 import sys
+import random
 
 class Fish:
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.color = (255, 165, 0)  # Orange
+        self.direction = random.choice(['up', 'down', 'left', 'right'])
+        self.last_change_time = pygame.time.get_ticks()
+        self.speed = 0.5
 
     def update(self):
-        self.y -= 0.1  # Move upward slowly
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_change_time > 2000:
+            self.direction = random.choice(['up', 'down', 'left', 'right'])
+            self.last_change_time = current_time
+
+        if self.direction == 'up':
+            self.y -= self.speed
+        elif self.direction == 'down':
+            self.y += self.speed
+        elif self.direction == 'left':
+            self.x -= self.speed
+        elif self.direction == 'right':
+            self.x += self.speed
 
     def draw(self, surface):
         # Upper body (triangle, 3px height)
