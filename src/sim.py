@@ -19,10 +19,15 @@ def main():
 
         screen.fill((0, 0, 0))
 
-        # Draw a simple pixel fish
+        # Draw a simple pixel fish (top-down view)
         fish_color = (255, 165, 0) # Orange
-        pygame.draw.ellipse(screen, fish_color, (380, 290, 40, 20)) # Body
-        pygame.draw.polygon(screen, fish_color, [(380, 300), (365, 285), (365, 315)]) # Tail
+        # Body
+        pygame.draw.ellipse(screen, fish_color, (385, 280, 30, 40))
+        # Side Fins
+        pygame.draw.polygon(screen, fish_color, [(385, 295), (375, 290), (375, 300)]) # Left fin
+        pygame.draw.polygon(screen, fish_color, [(415, 295), (425, 290), (425, 300)]) # Right fin
+        # Tail
+        pygame.draw.polygon(screen, fish_color, [(400, 320), (385, 335), (415, 335)])
 
         pygame.display.flip()
         clock.tick(60)
