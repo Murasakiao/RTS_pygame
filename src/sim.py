@@ -68,9 +68,9 @@ def main():
     pygame.init()
 
     # Internal low resolution for pixel effect                                                                          
-    internal_width = 64
-    internal_height = 48
-    scale = 1
+    internal_width = 160
+    internal_height = 120
+    scale = 5
     screen_width = 800
     screen_height = 600
                                                                                                                         
@@ -82,7 +82,7 @@ def main():
     clock = pygame.time.Clock()
     running = True
     
-    fish = Fish(32, 20)
+    fish = Fish(80, 60)
 
     while running:
         for event in pygame.event.get():
@@ -94,8 +94,9 @@ def main():
         fish.update()
         fish.draw(display_surface)
 
-        # Draw the low-res surface to the screen center or top-left
-        screen.blit(display_surface, (0, 0))
+        # Scale the low-res surface to the screen size
+        scaled_surface = pygame.transform.scale(display_surface, (screen_width, screen_height))
+        screen.blit(scaled_surface, (0, 0))
 
         # Mouse coordinate tracker                                                                                      
         raw_mouse_x, raw_mouse_y = pygame.mouse.get_pos()                                                               
