@@ -34,12 +34,12 @@ def main():
         # Middle body (rectangle, 10-6 = 4px height)
         pygame.draw.rect(display_surface, fish_color, (30, 22, 5, 4))
         # Lower body (triangle, 3px height)
-        pygame.draw.polygon(display_surface, fish_color, [(32, 30), (30, 28), (34, 28)])
+        pygame.draw.polygon(display_surface, fish_color, [(32, 28), (30, 26), (34, 26)])
         # Side Fins                                                                                                     
         pygame.draw.line(display_surface, fish_color, (29, 25), (28, 25)) # Left fin                                    
         pygame.draw.line(display_surface, fish_color, (35, 25), (36, 25)) # Right fin                                   
         # Tail                                                                                                          
-        pygame.draw.polygon(display_surface, fish_color, [(32, 30), (30, 32), (34, 32)])   
+        pygame.draw.polygon(display_surface, fish_color, [(32, 28), (30, 30), (34, 30)])   
 
         # Scale the low-res surface to the screen size
         scaled_surface = pygame.transform.scale(display_surface, (screen_width, screen_height))
