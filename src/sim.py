@@ -43,8 +43,8 @@ def main():
     pygame.init()
 
     # Internal low resolution for pixel effect                                                                          
-    internal_width = 64                                                                                                 
-    internal_height = 48                                                                                                
+    internal_width = 128
+    internal_height = 96
     scale = 12                                                                                                          
     screen_width = internal_width * scale                                                                               
     screen_height = internal_height * scale                                                                             
