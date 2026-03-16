@@ -10,6 +10,17 @@ class Fish:
         self.direction = random.choice(['up', 'down', 'left', 'right'])
         self.last_change_time = pygame.time.get_ticks()
         self.speed = 0.5
+        
+        # Create a base surface for the fish (upward facing)
+        self.base_surf = pygame.Surface((11, 11), pygame.SRCALPHA)
+        # Coordinates relative to surface center (approx 5, 5)
+        # Drawing the upward fish centered on the surface
+        pygame.draw.polygon(self.base_surf, self.color, [(5, 0), (3, 2), (7, 2)])
+        pygame.draw.rect(self.base_surf, self.color, (3, 2, 5, 4))
+        pygame.draw.polygon(self.base_surf, self.color, [(5, 8), (3, 6), (7, 6)])
+        pygame.draw.line(self.base_surf, self.color, (2, 4), (1, 4)) # Left
+        pygame.draw.line(self.base_surf, self.color, (8, 4), (9, 4)) # Right
+        pygame.draw.polygon(self.base_surf, self.color, [(5, 8), (3, 10), (7, 10)])
 
     def update(self):
         current_time = pygame.time.get_ticks()
@@ -27,42 +38,10 @@ class Fish:
             self.x += self.speed
 
     def draw(self, surface):
-        if self.direction == 'up':
-            # Upper body (triangle, 3px height)
-            pygame.draw.polygon(surface, self.color, [(self.x, self.y), (self.x - 2, self.y + 2), (self.x + 2, self.y + 2)])
-            # Middle body (rectangle, 4px height)
-            pygame.draw.rect(surface, self.color, (self.x - 2, self.y + 2, 5, 4))
-            # Lower body (triangle, 3px height)
-            pygame.draw.polygon(surface, self.color, [(self.x, self.y + 8), (self.x - 2, self.y + 6), (self.x + 2, self.y + 6)])
-            # Side Fins
-            pygame.draw.line(surface, self.color, (self.x - 3, self.y + 4), (self.x - 4, self.y + 4)) # Left fin
-            pygame.draw.line(surface, self.color, (self.x + 3, self.y + 4), (self.x + 4, self.y + 4)) # Right fin
-            # Tail
-            pygame.draw.polygon(surface, self.color, [(self.x, self.y + 8), (self.x - 2, self.y + 10), (self.x + 2, self.y + 10)])
-        elif self.direction == 'down':
-            # Upper body (actually tail in this orientation)
-            pygame.draw.polygon(surface, self.color, [(self.x, self.y), (self.x - 2, self.y - 2), (self.x + 2, self.y - 2)])
-            # Middle body
-            pygame.draw.rect(surface, self.color, (self.x - 2, self.y + 2, 5, 4))
-            # Head (lower body in coord space)
-            pygame.draw.polygon(surface, self.color, [(self.x, self.y + 8), (self.x - 2, self.y + 6), (self.x + 2, self.y + 6)])
-            # Side Fins
-            pygame.draw.line(surface, self.color, (self.x - 3, self.y + 4), (self.x - 4, self.y + 4)) 
-            pygame.draw.line(surface, self.color, (self.x + 3, self.y + 4), (self.x + 4, self.y + 4))
-        elif self.direction == 'left':
-            # Horizontal body parts
-            pygame.draw.rect(surface, self.color, (self.x + 2, self.y + 1, 4, 5))
-            # Head (pointing left)
-            pygame.draw.polygon(surface, self.color, [(self.x, self.y + 3), (self.x + 2, self.y + 1), (self.x + 2, self.y + 5)])
-            # Tail (pointing right)
-            pygame.draw.polygon(surface, self.color, [(self.x + 8, self.y + 1), (self.x + 8, self.y + 5), (self.x + 10, self.y + 3)])
-        elif self.direction == 'right':
-            # Horizontal body parts
-            pygame.draw.rect(surface, self.color, (self.x + 2, self.y + 1, 4, 5))
-            # Head (pointing right)
-            pygame.draw.polygon(surface, self.color, [(self.x + 8, self.y + 3), (self.x + 6, self.y + 1), (self.x + 6, self.y + 5)])
-            # Tail (pointing left)
-            pygame.draw.polygon(surface, self.color, [(self.x, self.y + 3), (self.x + 2, self.y + 1), (self.x + 2, self.y + 5)])
+        angle_map = {'up': 0, 'down': 180, 'left': 90, 'right': 270}
+        rotated_surf = pygame.transform.rotate(self.base_surf, angle_map[self.direction])
+        rect = rotated_surf.get_rect(center=(int(self.x), int(self.y)))
+        surface.blit(rotated_surf, rect.topleft)
 
 def main():
     pygame.init()
