@@ -4,15 +4,15 @@ import sys
 def main():
     pygame.init()
 
-    # Internal low resolution for pixel effect
-    internal_width = 64
-    internal_height = 48
-    scale = 12
-    screen_width = internal_width * scale
-    screen_height = internal_height * scale
-    
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    display_surface = pygame.Surface((internal_width, internal_height))
+    # Internal low resolution for pixel effect                                                                          
+    internal_width = 64                                                                                                 
+    internal_height = 48                                                                                                
+    scale = 12                                                                                                          
+    screen_width = internal_width * scale                                                                               
+    screen_height = internal_height * scale                                                                             
+                                                                                                                        
+    screen = pygame.display.set_mode((screen_width, screen_height))                                                     
+    display_surface = pygame.Surface((internal_width, internal_height))  
     pygame.display.set_caption("fish simulation")
     font = pygame.font.SysFont(None, 24)
 
@@ -45,11 +45,11 @@ def main():
         scaled_surface = pygame.transform.scale(display_surface, (screen_width, screen_height))
         screen.blit(scaled_surface, (0, 0))
 
-        # Mouse coordinate tracker
-        raw_mouse_x, raw_mouse_y = pygame.mouse.get_pos()
-        mouse_x = raw_mouse_x // scale
-        mouse_y = raw_mouse_y // scale
-        coord_text = font.render(f"Pos: {mouse_x}, {mouse_y}", True, (255, 255, 255))
+        # Mouse coordinate tracker                                                                                      
+        raw_mouse_x, raw_mouse_y = pygame.mouse.get_pos()                                                               
+        mouse_x = raw_mouse_x // scale                                                                                  
+        mouse_y = raw_mouse_y // scale                                                                                  
+        coord_text = font.render(f"Pos: {mouse_x}, {mouse_y}", True, (255, 255, 255))                       
         screen.blit(coord_text, (10, 10))
         
         pygame.display.flip()
