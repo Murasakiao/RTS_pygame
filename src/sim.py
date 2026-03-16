@@ -28,11 +28,11 @@ def main():
         fish_color = (255, 165, 0) # Orange                                                                             
         # Body
         # Upper body (triangle, 3px height)
-        pygame.draw.polygon(display_surface, fish_color, [(32, 20), (30, 23), (34, 23)])
+        pygame.draw.polygon(display_surface, fish_color, [(32, 20), (30, 22), (34, 22)])
         # Middle body (rectangle, 10-6 = 4px height)
-        pygame.draw.rect(display_surface, fish_color, (30, 23, 5, 4))
+        pygame.draw.rect(display_surface, fish_color, (30, 22, 5, 4))
         # Lower body (triangle, 3px height)
-        pygame.draw.polygon(display_surface, fish_color, [(32, 30), (30, 27), (34, 27)])
+        pygame.draw.polygon(display_surface, fish_color, [(32, 30), (30, 28), (34, 28)])
         # Side Fins                                                                                                     
         pygame.draw.line(display_surface, fish_color, (29, 25), (28, 25)) # Left fin                                    
         pygame.draw.line(display_surface, fish_color, (35, 25), (36, 25)) # Right fin                                   
