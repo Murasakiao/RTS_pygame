@@ -9,6 +9,7 @@ class Fish:
         self.color = (255, 165, 0)  # Orange
         self.direction = random.choice(['up', 'down', 'left', 'right'])
         self.last_change_time = pygame.time.get_ticks()
+        self.change_interval = random.randint(500, 3000)
         self.speed = 0.5
         
         # Create a base surface for the fish (upward facing)
@@ -24,9 +25,10 @@ class Fish:
 
     def update(self):
         current_time = pygame.time.get_ticks()
-        if current_time - self.last_change_time > 2000:
+        if current_time - self.last_change_time > self.change_interval:
             self.direction = random.choice(['up', 'down', 'left', 'right'])
             self.last_change_time = current_time
+            self.change_interval = random.randint(500, 3000)
 
         if self.direction == 'up':
             self.y -= self.speed
