@@ -7,8 +7,8 @@ def main():
     screen_width = 800
     screen_height = 600
     # Internal low resolution for pixel effect
-    internal_width = 160
-    internal_height = 120
+    internal_width = 64
+    internal_height = 48
     
     screen = pygame.display.set_mode((screen_width, screen_height))
     display_surface = pygame.Surface((internal_width, internal_height))
@@ -27,12 +27,12 @@ def main():
         # Draw a simple pixel fish (top-down view)
         fish_color = (255, 165, 0) # Orange
         # Body
-        pygame.draw.ellipse(display_surface, fish_color, (75, 55, 10, 15))
+        pygame.draw.ellipse(display_surface, fish_color, (29, 20, 6, 10))
         # Side Fins
-        pygame.draw.polygon(display_surface, fish_color, [(75, 62), (72, 60), (72, 64)]) # Left fin
-        pygame.draw.polygon(display_surface, fish_color, [(85, 62), (88, 60), (88, 64)]) # Right fin
+        pygame.draw.line(display_surface, fish_color, (28, 25), (26, 25)) # Left fin
+        pygame.draw.line(display_surface, fish_color, (35, 25), (37, 25)) # Right fin
         # Tail
-        pygame.draw.polygon(display_surface, fish_color, [(80, 70), (75, 75), (85, 75)])
+        pygame.draw.polygon(display_surface, fish_color, [(32, 30), (29, 33), (35, 33)])
 
         # Scale the low-res surface to the screen size
         scaled_surface = pygame.transform.scale(display_surface, (screen_width, screen_height))
