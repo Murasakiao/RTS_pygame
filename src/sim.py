@@ -36,8 +36,8 @@ def main():
         # Lower body (triangle, 3px height)
         pygame.draw.polygon(display_surface, fish_color, [(32, 28), (30, 26), (34, 26)])
         # Side Fins                                                                                                     
-        pygame.draw.line(display_surface, fish_color, (29, 25), (28, 25)) # Left fin                                    
-        pygame.draw.line(display_surface, fish_color, (35, 25), (36, 25)) # Right fin                                   
+        pygame.draw.line(display_surface, fish_color, (29, 24), (28, 24)) # Left fin                                    
+        pygame.draw.line(display_surface, fish_color, (35, 24), (36, 24)) # Right fin                                   
         # Tail                                                                                                          
         pygame.draw.polygon(display_surface, fish_color, [(32, 28), (30, 30), (34, 30)])   
 
