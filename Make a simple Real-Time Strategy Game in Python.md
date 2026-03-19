@@ -410,61 +410,45 @@ pygame.quit()
 sys.exit()
 ```
 ## Phase 2: Biological Warfare - Units, Combat, & Simple AI
-Once we have a static world, we introduce mobile entities that can interact with each other.
+Once we have a static world, we introduce mobile entities that can interact with each other and the environment.
 
 ### 2.1 The Unit Class and Inheritance
-In this phase, we move beyond static buildings. We use a base `GameObject` class so that both buildings and units can share logic for drawing and health. The `Unit` class introduces movement, speed, and combat stats.
+We expand our `GameObject` to handle health bars and more complex stats. The `Unit` class acts as the base for all mobile entities, introducing states like `destination` and `target`.
 
-### 2.2 Movement and Target Acquisition
-Units need to know where to go. We implement a `find_nearest_target` method that uses the Pythagorean theorem (`math.hypot`) to find the closest enemy. Once a target is found, the unit moves towards it using basic vector math (normalizing the distance to move at a constant speed).
+### 2.2 Movement and State Management
+Units in this game use a hybrid movement system. They can move to a specific clicked `destination` or automatically track a `target`. We calculate the distance using `math.hypot` and update coordinates based on `dt` (Delta Time) to ensure movement is framerate-independent.
 
-### 2.3 Combat and Spawning
-We define "Ally" and "Enemy" data structures to specify different unit types.
-- **Allied Units**: Trained from specific buildings (like a Barracks) by spending resources.
-- **Enemy Units**: Spawned in waves from the edges of the screen.
-
-Combat is handled via an `attack_cooldown`. Instead of dealing damage every frame, units wait for a specific duration (e.g., 1 second) before striking again.
+### 2.3 Combat Logic and Spawning
+- **Target Selection**: Units automatically find the nearest valid target from their assigned `targets` list.
+- **Attack Cooldown**: To prevent units from dealing damage every frame, we use a timer (cooldown) that resets after each attack.
+- **Wave Spawning**: We implement a system in `utils.py` that picks a random edge of the screen to spawn enemy waves based on the current difficulty level.
 
 ### Complete Code for Phase 2 (Entities & Combat)
 
 **src/entities.py (Updated)**
 ```python
 class Unit(GameObject):
-    def __init__(self, unit_type, x, y, targets, data_dict):
-        stats = data_dict[unit_type]
-        super().__init__(x, y, stats["image"])
+    def __init__(self, unit_type, x, y, targets, font=None):
+        unit_data = ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)
+        super().__init__(x, y, unit_data["image"])
         self.type = unit_type
-        self.speed = stats["speed"]
-        self.hp = stats["hp"]
-        self.atk = stats["atk"]
-        self.range = stats["range"]
+        self.speed = unit_data["speed"]
+        self.hp = unit_data["hp"]
+        self.attack = unit_data["atk"]
         self.targets = targets
         self.target = None
-        self.atk_cooldown = 0
+        self.attack_cooldown = 0
 
-    def update(self, dt):
-        if self.atk_cooldown > 0:
-            self.atk_cooldown -= dt
+    def handle_attack(self, dt, game_messages):
+        if self.target and self.attack_cooldown <= 0:
+            if self.should_attack():
+                self.target.hp -= self.attack
+                self.attack_cooldown = self.get_attack_cooldown()
+                if self.target.hp <= 0:
+                    add_game_message(f"{self.type} destroyed target", game_messages)
+                    self.target = None
 
-        if not self.target or self.target.hp <= 0:
-            self.target = self.find_nearest()
-        
-        if self.target:
-            dx = self.target.x - self.x
-            dy = self.target.y - self.y
-            dist = math.hypot(dx, dy)
-            
-            if dist > self.range:
-                # Move towards target
-                self.x += (dx / dist) * self.speed * (dt / 1000)
-                self.y += (dy / dist) * self.speed * (dt / 1000)
-                self.rect.topleft = (self.x, self.y)
-            elif self.atk_cooldown <= 0:
-                # Attack target
-                self.target.hp -= self.atk
-                self.atk_cooldown = 1000 # 1 second cooldown
-
-    def find_nearest(self):
+    def find_nearest_target(self):
         active_targets = [t for t in self.targets if t.hp > 0]
         if not active_targets: return None
         return min(active_targets, key=lambda t: math.hypot(t.x - self.x, t.y - self.y))
@@ -472,14 +456,21 @@ class Unit(GameObject):
 
 **src/utils.py (Enemy Spawning)**
 ```python
-def spawn_enemies(current_wave):
+def generate_spawn_point():
     side = random.choice(["top", "bottom", "left", "right"])
-    if side == "left": x, y = 0, random.randint(0, SCREEN_HEIGHT)
-    elif side == "right": x, y = SCREEN_WIDTH, random.randint(0, SCREEN_HEIGHT)
-    elif side == "top": x, y = random.randint(0, SCREEN_WIDTH), 0
-    else: x, y = random.randint(0, SCREEN_WIDTH), SCREEN_HEIGHT
-    
-    return EnemyUnit("Orc", x, y)
+    if side == "top": return random.randint(0, SCREEN_WIDTH), 0
+    elif side == "bottom": return random.randint(0, SCREEN_WIDTH), SCREEN_HEIGHT
+    elif side == "left": return 0, random.randint(0, SCREEN_HEIGHT)
+    else: return SCREEN_WIDTH, random.randint(0, SCREEN_HEIGHT)
+
+def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
+    spawned_enemies = []
+    for _ in range(current_wave * enemy_spawn_rate):
+        x, y = generate_spawn_point()
+        enemy_type = random.choice(list(ENEMY_DATA.keys()))
+        enemy = EnemyUnit(enemy_type, x, y, buildings, units)
+        spawned_enemies.append(enemy)
+    return spawned_enemies
 ```
 
-By the end of Phase 2, you have a functional game where you can build a base, train units, and defend against incoming enemy waves!
+By the end of Phase 2, you have a functional game where you can build a base, train units (from the Barracks), and defend against incoming enemy waves that spawn from the screen edges!
