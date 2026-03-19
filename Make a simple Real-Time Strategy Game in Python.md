@@ -412,45 +412,74 @@ sys.exit()
 ## Phase 2: Biological Warfare - Units, Combat, & Simple AI
 Once we have a static world, we introduce mobile entities that can interact with each other.
 
-### 2.1 The Unit Class
-- **Inheritance**: Creating a base `GameObject` class that both Buildings and Units share.
-- **Unit Properties**: Adding speed, attack damage, and health points.
+### 2.1 The Unit Class and Inheritance
+In this phase, we move beyond static buildings. We use a base `GameObject` class so that both buildings and units can share logic for drawing and health. The `Unit` class introduces movement, speed, and combat stats.
 
-### 2.2 Movement and Spawning
-- **Unit Production**: Linking building types (like Barracks) to unit creation logic.
-- **Linear Interpolation (Lerp)**: Moving units in a straight line toward a target by calculating the vector between start and end.
-- **Enemy Waves**: Implementing a timer-based system that spawns enemies at the screen boundaries.
+### 2.2 Movement and Target Acquisition
+Units need to know where to go. We implement a `find_nearest_target` method that uses the Pythagorean theorem (`math.hypot`) to find the closest enemy. Once a target is found, the unit moves towards it using basic vector math (normalizing the distance to move at a constant speed).
 
-### 2.3 Combat Logic
-- **Target Selection**: Units scanning for the nearest enemy or building.
-- **Attack Cooldowns**: Using delta time (`dt`) to prevent units from attacking every single frame.
-- **State Management**: Removing objects from the game lists when their HP hits zero.
+### 2.3 Combat and Spawning
+We define "Ally" and "Enemy" data structures to specify different unit types.
+- **Allied Units**: Trained from specific buildings (like a Barracks) by spending resources.
+- **Enemy Units**: Spawned in waves from the edges of the screen.
 
-#### Phase 2: Constants (Combat & Units)
+Combat is handled via an `attack_cooldown`. Instead of dealing damage every frame, units wait for a specific duration (e.g., 1 second) before striking again.
+
+### Complete Code for Phase 2 (Entities & Combat)
+
+**src/entities.py (Updated)**
 ```python
-ALLY_DATA = {"Swordsman": {"speed": 50, "hp": 50, "atk": 5, "range": 20}}
-ENEMY_DATA = {"Orc": {"speed": 30, "hp": 40, "atk": 3, "range": 15}}
+class Unit(GameObject):
+    def __init__(self, unit_type, x, y, targets, data_dict):
+        stats = data_dict[unit_type]
+        super().__init__(x, y, stats["image"])
+        self.type = unit_type
+        self.speed = stats["speed"]
+        self.hp = stats["hp"]
+        self.atk = stats["atk"]
+        self.range = stats["range"]
+        self.targets = targets
+        self.target = None
+        self.atk_cooldown = 0
+
+    def update(self, dt):
+        if self.atk_cooldown > 0:
+            self.atk_cooldown -= dt
+
+        if not self.target or self.target.hp <= 0:
+            self.target = self.find_nearest()
+        
+        if self.target:
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            dist = math.hypot(dx, dy)
+            
+            if dist > self.range:
+                # Move towards target
+                self.x += (dx / dist) * self.speed * (dt / 1000)
+                self.y += (dy / dist) * self.speed * (dt / 1000)
+                self.rect.topleft = (self.x, self.y)
+            elif self.atk_cooldown <= 0:
+                # Attack target
+                self.target.hp -= self.atk
+                self.atk_cooldown = 1000 # 1 second cooldown
+
+    def find_nearest(self):
+        active_targets = [t for t in self.targets if t.hp > 0]
+        if not active_targets: return None
+        return min(active_targets, key=lambda t: math.hypot(t.x - self.x, t.y - self.y))
 ```
 
-#### Phase 2: Utils (Enemy Spawning)
+**src/utils.py (Enemy Spawning)**
 ```python
-def spawn_enemy(side):
-    if side == "left": return 0, random.randint(0, SCREEN_HEIGHT)
-    # ... logic for other sides ...
-```
-
-#### Phase 2: RTS (Simple AI Movement)
-```python
-# Inside Unit.update()
-def move_simple(self, target, dt):
-    dx = target.x - self.x
-    dy = target.y - self.y
-    distance = math.hypot(dx, dy)
+def spawn_enemies(current_wave):
+    side = random.choice(["top", "bottom", "left", "right"])
+    if side == "left": x, y = 0, random.randint(0, SCREEN_HEIGHT)
+    elif side == "right": x, y = SCREEN_WIDTH, random.randint(0, SCREEN_HEIGHT)
+    elif side == "top": x, y = random.randint(0, SCREEN_WIDTH), 0
+    else: x, y = random.randint(0, SCREEN_WIDTH), SCREEN_HEIGHT
     
-    if distance > self.range:
-        self.x += (dx / distance) * self.speed * (dt / 1000)
-        self.y += (dy / distance) * self.speed * (dt / 1000)
-        self.rect.topleft = (self.x, self.y)
-    else:
-        self.attack(target)
+    return EnemyUnit("Orc", x, y)
 ```
+
+By the end of Phase 2, you have a functional game where you can build a base, train units, and defend against incoming enemy waves!
