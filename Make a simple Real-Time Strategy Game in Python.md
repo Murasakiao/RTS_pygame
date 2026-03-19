@@ -260,6 +260,36 @@ BUILDING_DATA = {
 }
 ```
 
+**src/entities.py**
+```python
+# src/entities.py
+import pygame
+from constants import *
+
+class GameObject:
+    def __init__(self, x, y, image_path, size=(GRID_SIZE, GRID_SIZE)):
+        self.x = x
+        self.y = y
+        try:
+            self.image = pygame.transform.scale(pygame.image.load(image_path), size)
+        except:
+            self.image = pygame.Surface(size)
+            self.image.fill(BLACK)
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+
+class Building(GameObject):
+    def __init__(self, x, y, building_type):
+        self.type = building_type
+        data = BUILDING_DATA[building_type]
+        size_multiplier = data.get("size_multiplier", 1)
+        size = (GRID_SIZE * size_multiplier, GRID_SIZE * size_multiplier)
+        super().__init__(x, y, data["image"], size)
+        self.hp = data["hp"]
+```
+
 **src/utils.py**
 ```python
 # src/utils.py
