@@ -262,12 +262,15 @@ BUILDING_DATA = {
 
 **src/entities.py**
 
-		This script manages the "living" objects in our game. We use a base `GameObject` class to handle basic image loading and drawing, and a `Building` class that inherits from it to store specific structure data like HP.
+		This script manages the "living" objects in our game. We use a base `GameObject` class to handle basic image loading and drawing, and a `Building` class that inherits from it to store specific structure data like HP. We also define `Unit`, `AlliedUnit`, and `EnemyUnit` to handle AI and combat.
 
 ```python
 # src/entities.py
+import math
 import pygame
 from constants import *
+from utils import *
+from astar import a_star, Node
 
 class GameObject:
     def __init__(self, x, y, image_path, size=(GRID_SIZE, GRID_SIZE)):
@@ -279,17 +282,18 @@ class GameObject:
             self.image = pygame.Surface(size)
             self.image.fill(BLACK)
         self.rect = self.image.get_rect(topleft=(x, y))
+        self.hp = 0
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
 
 class Building(GameObject):
     def __init__(self, x, y, building_type):
-        self.type = building_type
         data = BUILDING_DATA[building_type]
         size_multiplier = data.get("size_multiplier", 1)
         size = (GRID_SIZE * size_multiplier, GRID_SIZE * size_multiplier)
         super().__init__(x, y, data["image"], size)
+        self.type = building_type
         self.hp = data["hp"]
 ```
 
@@ -300,6 +304,7 @@ import pygame
 from constants import *
 
 def update_preview_rect(mouse_pos, current_building_type):
+    if not current_building_type: return None
     grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
     grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
     size_multiplier = BUILDING_DATA.get(current_building_type, {}).get("size_multiplier", 1)
@@ -321,6 +326,9 @@ def draw_resources(screen, font, resources, gold):
         resource_text += f", {resource.capitalize()}: {int(amount)}"
     text_surface = font.render(resource_text, True, BLACK)
     screen.blit(text_surface, (10, 10))
+
+def add_game_message(message, game_messages):
+    game_messages.append({"text": message, "start_time": pygame.time.get_ticks(), "duration": 3000})
 ```
 
 **src/rts.py**
@@ -329,8 +337,8 @@ def draw_resources(screen, font, resources, gold):
 import pygame
 import sys
 from constants import *
+from entities import *
 from utils import update_preview_rect, check_collision, draw_resources
-from entities import Building
 
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -354,40 +362,37 @@ while game_running:
     
     # Update Resources
     gold += resource_increase_rates["gold"] * (dt / 1000)
-    for res in resources:
-        resources[res] += resource_increase_rates.get(res, 0) * (dt / 1000)
+    for res, rate in resource_increase_rates.items():
+        if res != "gold": resources[res] += rate * (dt / 1000)
 
     # Building Logic
-    building_cooldown = max(0, building_cooldown - dt)
     preview_rect = update_preview_rect(mouse_pos, current_building_type)
-    collision = check_collision(preview_rect, buildings, units)
+    collision = check_collision(preview_rect, buildings, units) if preview_rect else False
     
-    cost = BUILDING_DATA[current_building_type]["resources"]
+    cost = BUILDING_DATA[current_building_type]["resources"] if current_building_type else {}
     affordable = all(resources.get(r, gold if r == "gold" else 0) >= a for r, a in cost.items())
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game_running = False
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if not collision and affordable and building_cooldown <= 0:
+            if current_building_type and not collision and affordable:
                 new_b = Building(preview_rect.x, preview_rect.y, current_building_type)
                 buildings.append(new_b)
-                # Deduct costs
                 for r, a in cost.items():
                     if r == "gold": gold -= a
                     else: resources[r] -= a
-                building_cooldown = BUILDING_COOLDOWN_TIME
 
     # Draw
     screen.fill(WHITE)
     for b in buildings: b.draw(screen)
-    
-    # Draw Preview
-    color = GREEN if not collision and affordable else RED
-    pygame.draw.rect(screen, color, preview_rect, 2)
+    if preview_rect:
+        color = GREEN if not collision and affordable else RED
+        pygame.draw.rect(screen, color, preview_rect, 2)
     
     draw_resources(screen, font, resources, gold)
     pygame.display.flip()
 
 pygame.quit()
+sys.exit()
 ```
