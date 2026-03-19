@@ -448,6 +448,35 @@ class Unit(GameObject):
 ### 2.2 Movement and State Management
 Units in this game use a hybrid movement system. They can move to a specific clicked `destination` or automatically track a `target`. We calculate the distance using `math.hypot` and update coordinates based on `dt` (Delta Time) to ensure movement is framerate-independent.
 
+```python
+    def move_towards_target(self, dt, grid):
+        """Moves the unit towards its target or destination"""
+        if self.target and self.target.hp > 0:
+            dx = self.target.x - self.x
+            dy = self.target.y - self.y
+            dist = math.hypot(dx, dy)
+            
+            if dist > self.get_attack_range():
+                travel = self.speed * (dt / 1000)
+                self.x += (dx / dist) * travel
+                self.y += (dy / dist) * travel
+                self.rect.topleft = (self.x, self.y)
+        
+        elif self.destination:
+            dx = self.destination[0] - self.x
+            dy = self.destination[1] - self.y
+            dist = math.hypot(dx, dy)
+            travel = self.speed * (dt / 1000)
+
+            if dist <= travel:
+                self.x, self.y = self.destination
+                self.destination = None
+            else:
+                self.x += (dx / dist) * travel
+                self.y += (dy / dist) * travel
+            self.rect.topleft = (self.x, self.y)
+```
+
 ### 2.3 Combat Logic and Spawning
 - **Target Selection**: Units automatically find the nearest valid target from their assigned `targets` list.
 - **Attack Cooldown**: To prevent units from dealing damage every frame, we use a timer (cooldown) that resets after each attack.
