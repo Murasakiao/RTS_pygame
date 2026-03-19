@@ -409,3 +409,48 @@ while game_running:
 pygame.quit()
 sys.exit()
 ```
+## Phase 2: Biological Warfare - Units, Combat, & Simple AI
+Once we have a static world, we introduce mobile entities that can interact with each other.
+
+### 2.1 The Unit Class
+- **Inheritance**: Creating a base `GameObject` class that both Buildings and Units share.
+- **Unit Properties**: Adding speed, attack damage, and health points.
+
+### 2.2 Movement and Spawning
+- **Unit Production**: Linking building types (like Barracks) to unit creation logic.
+- **Linear Interpolation (Lerp)**: Moving units in a straight line toward a target by calculating the vector between start and end.
+- **Enemy Waves**: Implementing a timer-based system that spawns enemies at the screen boundaries.
+
+### 2.3 Combat Logic
+- **Target Selection**: Units scanning for the nearest enemy or building.
+- **Attack Cooldowns**: Using delta time (`dt`) to prevent units from attacking every single frame.
+- **State Management**: Removing objects from the game lists when their HP hits zero.
+
+#### Phase 2: Constants (Combat & Units)
+```python
+ALLY_DATA = {"Swordsman": {"speed": 50, "hp": 50, "atk": 5, "range": 20}}
+ENEMY_DATA = {"Orc": {"speed": 30, "hp": 40, "atk": 3, "range": 15}}
+```
+
+#### Phase 2: Utils (Enemy Spawning)
+```python
+def spawn_enemy(side):
+    if side == "left": return 0, random.randint(0, SCREEN_HEIGHT)
+    # ... logic for other sides ...
+```
+
+#### Phase 2: RTS (Simple AI Movement)
+```python
+# Inside Unit.update()
+def move_simple(self, target, dt):
+    dx = target.x - self.x
+    dy = target.y - self.y
+    distance = math.hypot(dx, dy)
+    
+    if distance > self.range:
+        self.x += (dx / distance) * self.speed * (dt / 1000)
+        self.y += (dy / distance) * self.speed * (dt / 1000)
+        self.rect.topleft = (self.x, self.y)
+    else:
+        self.attack(target)
+```
