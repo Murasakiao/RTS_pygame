@@ -206,9 +206,22 @@ def check_collision(preview_rect, buildings, units):
     return False
 ```
 
+- **Defining Building Objects**: Creating a class structure to represent structures.
+
+		Instead of just drawing images, we wrap our buildings into a class. This allows every structure to track its own position, type, and health (HP). By inheriting from a base `GameObject`, we keep our code modular and ready for units later on.
+
+```python
+# src/entities.py
+class Building(GameObject):
+    def __init__(self, x, y, building_type):
+        self.type = building_type
+        data = BUILDING_DATA[building_type]
+        # ... initialization logic
+```
+
 - **Rendering**: Drawing surfaces/images onto the screen based on the building list.
 
-		In our main loop in `src/rts.py`, we iterate through the `buildings` list and call their `draw` method. We also draw a "ghost" preview of the building following the mouse cursor to show where it *would* be placed.
+		In our main loop in `src/rts.py`, we iterate through the `buildings` list and call their `draw` method. We also draw a "ghost" preview rectangle following the mouse cursor to show the player where the building will snap to.
 
 ```python
 # src/rts.py (Inside the drawing section)
