@@ -174,14 +174,49 @@ BUILDING_DATA = {
 
 ### 1.3 Placing Buildings
 
-  
+	Now for the exciting part: interaction! We need to allow the player to select a building type and place it on the map. This involves snapping the mouse to our grid and validating the location.
 
 - **Mouse Input**: Converting `pygame.mouse.get_pos()` into grid-aligned coordinates.
 
-  
+		To make the game feel like a classic RTS, buildings should "snap" to the grid. We achieve this by taking the raw pixel position of the mouse and rounding it down to the nearest multiple of `GRID_SIZE`. We've wrapped this logic into a helper in `src/utils.py`.
+
+```python
+# src/utils.py
+def update_preview_rect(mouse_pos, current_building_type):
+    grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
+    grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+    size_multiplier = BUILDING_DATA.get(current_building_type, {}).get("size_multiplier", 1)
+    size = GRID_SIZE * size_multiplier
+    return pygame.Rect(grid_x, grid_y, size, size)
+```
 
 - **Collision Checking**: Ensuring a building cannot be placed on top of an existing one.
 
-  
+		We can't have buildings overlapping. Before placing, we check the `preview_rect` against the rectangles of all existing `buildings` and `units`.
+
+```python
+# src/utils.py
+def check_collision(preview_rect, buildings, units):
+    for building in buildings:
+        if preview_rect.colliderect(building.rect):
+            return True
+    for unit in units:
+        if preview_rect.colliderect(unit.rect):
+            return True
+    return False
+```
 
 - **Rendering**: Drawing surfaces/images onto the screen based on the building list.
+
+		In our main loop in `src/rts.py`, we iterate through the `buildings` list and call their `draw` method. We also draw a "ghost" preview of the building following the mouse cursor to show where it *would* be placed.
+
+```python
+# src/rts.py (Inside the drawing section)
+for building in buildings:
+    building.draw(screen)
+
+# Draw the preview (Green if valid, Red if blocked)
+if preview_rect:
+    color = GREEN if not collision and affordable else RED
+    pygame.draw.rect(screen, color, preview_rect, 2)
+```
