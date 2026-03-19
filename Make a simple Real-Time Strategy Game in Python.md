@@ -261,6 +261,9 @@ BUILDING_DATA = {
 ```
 
 **src/entities.py**
+
+		This script manages the "living" objects in our game. We use a base `GameObject` class to handle basic image loading and drawing, and a `Building` class that inherits from it to store specific structure data like HP.
+
 ```python
 # src/entities.py
 import pygame
