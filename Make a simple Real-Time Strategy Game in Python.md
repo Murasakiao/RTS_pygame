@@ -415,6 +415,36 @@ Once we have a static world, we introduce mobile entities that can interact with
 ### 2.1 The Unit Class and Inheritance
 We expand our `GameObject` to handle health bars and more complex stats. The `Unit` class acts as the base for all mobile entities, introducing states like `destination` and `target`.
 
+```python
+class GameObject:
+    def __init__(self, x, y, image_path, size=(GRID_SIZE, GRID_SIZE)):
+        self.x = x
+        self.y = y
+        try:
+            self.image = pygame.transform.scale(pygame.image.load(image_path), size)
+        except:
+            self.image = pygame.Surface(size)
+            self.image.fill(BLACK)
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+        hp_text = self.font.render(f"HP: {self.hp}", True, BLACK)
+        screen.blit(hp_text, (self.rect.centerx - hp_text.get_width() // 2, self.rect.bottom + 5))
+
+class Unit(GameObject):
+    def __init__(self, unit_type, x, y, targets, font=None):
+        unit_data = ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)
+        super().__init__(x, y, unit_data["image"])
+        self.type = unit_type
+        self.speed = unit_data["speed"]
+        self.hp = unit_data["hp"]
+        self.attack = unit_data["atk"]
+        self.targets = targets
+        self.destination = None
+        self.path = []
+```
+
 ### 2.2 Movement and State Management
 Units in this game use a hybrid movement system. They can move to a specific clicked `destination` or automatically track a `target`. We calculate the distance using `math.hypot` and update coordinates based on `dt` (Delta Time) to ensure movement is framerate-independent.
 
