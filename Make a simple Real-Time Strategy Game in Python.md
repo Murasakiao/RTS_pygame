@@ -79,12 +79,51 @@ pygame.quit()
 
 - **Coordinate Systems**: Understanding the difference between pixel coordinates and the underlying grid logic.
 
-  
+		In an RTS, we don't just place things anywhere; we want them to snap to a grid. This makes collision detection and pathfinding much easier. We define a `GRID_SIZE` (like 16 pixels) and calculate our grid width and height by dividing the screen dimensions.
+
+```python
+grid_width = SCREEN_WIDTH // GRID_SIZE
+grid_height = SCREEN_HEIGHT // GRID_SIZE
+# Initialize a 2D array to represent our map
+grid = [[(0, 0) for _ in range(grid_width)] for _ in range(grid_height)]
+```
+
 ### 1.2 Resource Management & Data Structures
+
+	Every good RTS needs an economy! We need to track various resources that the player will collect and spend.
 
 - **Global State**: Tracking gold, wood, and stone.
 
+		We'll initialize our starting resources and define the base rates at which they increase over time in a dictionary. This keeps the game moving even if the player hasn't built specialized structures yet.
+
+```python
+gold = 150
+resources = {"wood": 200, "stone": 200, "food": 200, "people": 3}
+resource_increase_rates = {
+    "gold": 1.5, "wood": 0.5, "stone": 0.5, "food": 0.25, "people": 0.1
+}
+```
+
 - **Building Dictionaries**: Using a central dictionary to store HP, image paths, and resource costs for different building types.
+
+		Instead of hardcoding every building class, we use a central data structure. This makes it super easy to add new buildings like "Markets" or "Barracks" later just by adding a new entry to `BUILDING_DATA`.
+
+```python
+BUILDING_DATA = {
+    "Castle": {
+        "hp": 275, 
+        "image": "assets/buildings/castle.png", 
+        "resources": {"gold": 75, "wood": 50, "stone": 100}, 
+        "size_multiplier": 2
+    },
+    "House": {
+        "hp": 20, 
+        "image": "assets/buildings/house.png", 
+        "resources": {"gold": 20, "wood": 15}
+    },
+    # ... more buildings defined in constants.py
+}
+```
 
 
 ### 1.3 Placing Buildings
