@@ -482,6 +482,28 @@ Units in this game use a hybrid movement system. They can move to a specific cli
 - **Attack Cooldown**: To prevent units from dealing damage every frame, we use a timer (cooldown) that resets after each attack.
 - **Wave Spawning**: We implement a system in `utils.py` that picks a random edge of the screen to spawn enemy waves based on the current difficulty level.
 
+```python
+    def handle_attack(self, dt, game_messages=None):
+        """Handle attack cooldown and attacking"""
+        if self.target and self.attack_cooldown <= 0:
+            if self.should_attack():
+                self.target.hp -= self.attack
+                self.attack_cooldown = self.get_attack_cooldown()
+                
+                if self.target.hp <= 0:
+                    add_game_message(f"{self.type} destroyed target", game_messages)
+                    self.target = None
+
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= dt
+
+    def find_nearest_target(self):
+        """Find the nearest valid target from the targets list"""
+        active_targets = [t for t in self.targets if t.hp > 0]
+        if not active_targets: return None
+        return min(active_targets, key=lambda t: math.hypot(t.x - self.x, t.y - self.y))
+```
+
 ### Complete Code for Phase 2 (Entities & Combat)
 
 **src/entities.py (Updated)**
