@@ -220,3 +220,141 @@ if preview_rect:
     color = GREEN if not collision and affordable else RED
     pygame.draw.rect(screen, color, preview_rect, 2)
 ```
+
+### Complete Code for Phase 1
+
+To wrap up Phase 1, here are the complete files you need to run the game and start placing buildings. Make sure these are in a folder named `src/`.
+
+**src/constants.py**
+```python
+# src/constants.py
+SCREEN_WIDTH = 768
+SCREEN_HEIGHT = 576
+GRID_SIZE = 16
+FPS = 30
+BUILDING_COOLDOWN_TIME = 1000
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+
+BUILDING_DATA = {
+    "Castle": {
+        "hp": 275, 
+        "image": "assets/buildings/castle.png", 
+        "resources": {"gold": 75, "wood": 50, "stone": 100}, 
+        "size_multiplier": 2
+    },
+    "House": {
+        "hp": 20, 
+        "image": "assets/buildings/house.png", 
+        "resources": {"gold": 20, "wood": 15}
+    },
+    "Market": {
+        "hp": 30, 
+        "image": "assets/buildings/market.png", 
+        "resources": {"gold": 30, "wood": 20, "stone": 25}
+    }
+}
+```
+
+**src/utils.py**
+```python
+# src/utils.py
+import pygame
+from constants import *
+
+def update_preview_rect(mouse_pos, current_building_type):
+    grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
+    grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+    size_multiplier = BUILDING_DATA.get(current_building_type, {}).get("size_multiplier", 1)
+    size = GRID_SIZE * size_multiplier
+    return pygame.Rect(grid_x, grid_y, size, size)
+
+def check_collision(preview_rect, buildings, units):
+    for building in buildings:
+        if preview_rect.colliderect(building.rect):
+            return True
+    for unit in units:
+        if preview_rect.colliderect(unit.rect):
+            return True
+    return False
+
+def draw_resources(screen, font, resources, gold):
+    resource_text = f"Gold: {int(gold)}"
+    for resource, amount in resources.items():
+        resource_text += f", {resource.capitalize()}: {int(amount)}"
+    text_surface = font.render(resource_text, True, BLACK)
+    screen.blit(text_surface, (10, 10))
+```
+
+**src/rts.py**
+```python
+# src/rts.py
+import pygame
+import sys
+from constants import *
+from utils import update_preview_rect, check_collision, draw_resources
+from entities import Building
+
+pygame.init()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Kingdom Conquer")
+clock = pygame.time.Clock()
+font = pygame.font.Font(None, 20)
+
+# State
+gold = 150
+resources = {"wood": 200, "stone": 200, "food": 200, "people": 3}
+resource_increase_rates = {"gold": 1.5, "wood": 0.5, "stone": 0.5, "food": 0.25, "people": 0.1}
+buildings = []
+units = []
+current_building_type = "House"
+building_cooldown = 0
+
+game_running = True
+while game_running:
+    dt = clock.tick(FPS)
+    mouse_pos = pygame.mouse.get_pos()
+    
+    # Update Resources
+    gold += resource_increase_rates["gold"] * (dt / 1000)
+    for res in resources:
+        resources[res] += resource_increase_rates.get(res, 0) * (dt / 1000)
+
+    # Building Logic
+    building_cooldown = max(0, building_cooldown - dt)
+    preview_rect = update_preview_rect(mouse_pos, current_building_type)
+    collision = check_collision(preview_rect, buildings, units)
+    
+    cost = BUILDING_DATA[current_building_type]["resources"]
+    affordable = all(resources.get(r, gold if r == "gold" else 0) >= a for r, a in cost.items())
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            game_running = False
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if not collision and affordable and building_cooldown <= 0:
+                new_b = Building(preview_rect.x, preview_rect.y, current_building_type)
+                buildings.append(new_b)
+                # Deduct costs
+                for r, a in cost.items():
+                    if r == "gold": gold -= a
+                    else: resources[r] -= a
+                building_cooldown = BUILDING_COOLDOWN_TIME
+
+    # Draw
+    screen.fill(WHITE)
+    for b in buildings: b.draw(screen)
+    
+    # Draw Preview
+    color = GREEN if not collision and affordable else RED
+    pygame.draw.rect(screen, color, preview_rect, 2)
+    
+    draw_resources(screen, font, resources, gold)
+    pygame.display.flip()
+
+pygame.quit()
+```
