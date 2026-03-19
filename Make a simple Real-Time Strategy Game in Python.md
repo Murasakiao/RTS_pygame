@@ -21,60 +21,56 @@
 
 - **Game Window & Constants**: Defining `SCREEN_WIDTH`, `SCREEN_HEIGHT`, and `GRID_SIZE`.
 
-		Next is to setup the game window and constants. Be sure to store it in a python script file (ending with a .py) you can name it however you want. I'll gonna name it rts.py. 
-		
-```
-import pygame
+		Next is to setup the game window and constants. To keep things clean, we'll store our settings in `src/constants.py` and our main logic in `src/rts.py`. This separation makes the project much easier to manage as it grows.
 
+```python
+# src/constants.py
 SCREEN_WIDTH = 768
 SCREEN_HEIGHT = 576
 GRID_SIZE = 16
 FPS = 30
 
-# Initialize Pygame
-
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-	
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
 ```
 
-- **The Main Loop**: Implementing the standard `while running` loop with event handling for quitting and frame rate capping (FPS).
+- **The Main Loop**: Implementing the standard `while game_running` loop with event handling for quitting and frame rate capping (FPS).
 
-		Now, let us implement the game loop and initialize pygame properly. Try to read it line by line to help you understand the code. This is very easy to understand. After that, you can now run the entire code to show the actual game window. A pygame window will popup titled "RTS Game Tutorial" at the top of the window with a green screen. If you get the same, congrats! you have properly setup a basic pygame window. This would be the foundation of our next steps. 
+		Now, let us implement the game loop and initialize pygame properly in `src/rts.py`. This loop is the heart of our game, handling events, updates, and drawing. After running this, a window will popup titled "Kingdom Conquer".
 
-```
+```python
+# src/rts.py
 import pygame
-
-SCREEN_WIDTH = 768
-SCREEN_HEIGHT = 576
-GRID_SIZE = 16
-FPS = 30
+import sys
+from constants import *
 
 # Initialize Pygame
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("RTS Game Tutorial")
+pygame.display.set_caption("Kingdom Conquer")
 clock = pygame.time.Clock()
-font = pygame.font.Font(None, 20)  
+font = pygame.font.Font(None, 20)
 
 # Game loop
-running = True
-while running:
-	for event in pygame.event.get():
-		if event.type == pygame.QUIT:
-			running = False  
+game_running = True
+while game_running:
+    dt = clock.tick(FPS) # Get time delta to ensure smooth logic
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            game_running = False  
 	
-	# Fill with green screen
-	screen.fill((0, 255, 0)) # This is color value for (Red, Green, Blue)
+    # Clear screen with white
+    screen.fill(WHITE)
   
+    # Update the display
+    pygame.display.flip()
 
-	# Update the display
-	pygame.display.flip()
-	clock.tick(FPS)
-
-# Quit Pygame
 pygame.quit()
-	
+sys.exit()
 ```
 
 - **Coordinate Systems**: Understanding the difference between pixel coordinates and the underlying grid logic.
@@ -94,9 +90,10 @@ grid = [[(0, 0) for _ in range(grid_width)] for _ in range(grid_height)]
 
 - **Global State**: Tracking gold, wood, and stone.
 
-		We'll initialize our starting resources and define the base rates at which they increase over time in a dictionary. This keeps the game moving even if the player hasn't built specialized structures yet.
+		We'll initialize our starting resources and define the base rates at which they increase over time. In our loop, we'll calculate the increase based on `dt` (milliseconds since last frame) to keep growth consistent.
 
 ```python
+# src/rts.py initialization
 gold = 150
 resources = {"wood": 200, "stone": 200, "food": 200, "people": 3}
 resource_increase_rates = {
@@ -106,9 +103,10 @@ resource_increase_rates = {
 
 - **Building Dictionaries**: Using a central dictionary to store HP, image paths, and resource costs for different building types.
 
-		Instead of hardcoding every building class, we use a central data structure. This makes it super easy to add new buildings like "Markets" or "Barracks" later just by adding a new entry to `BUILDING_DATA`.
+		Instead of hardcoding every building, we use `BUILDING_DATA` in `src/constants.py`. This acts as a database for our construction logic. Note the `size_multiplier` for larger structures!
 
 ```python
+# src/constants.py
 BUILDING_DATA = {
     "Castle": {
         "hp": 275, 
@@ -121,7 +119,11 @@ BUILDING_DATA = {
         "image": "assets/buildings/house.png", 
         "resources": {"gold": 20, "wood": 15}
     },
-    # ... more buildings defined in constants.py
+    "Market": {
+        "hp": 30, 
+        "image": "assets/buildings/market.png", 
+        "resources": {"gold": 30, "wood": 20, "stone": 25}
+    },
 }
 ```
 
