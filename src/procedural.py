@@ -22,7 +22,6 @@ class TerrainGenerator:
                 self.grass_tiles.append(tile)
             except Exception as e:
                 print(f"Error loading grass_{i}.png: {e}")
-
         try:
             tile = pygame.image.load(f'assets/tiles/plains/water_1.png')
             tile = pygame.transform.scale(tile, (self.grid_size, self.grid_size))

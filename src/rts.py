@@ -22,7 +22,7 @@ font = pygame.font.Font(None, 20)
 gold = 150
 resources = {"wood": 200, "stone": 200, "food": 200, "people": 3}
 resource_increase_rates = {
-    "gold": 3, "wood": 2, "stone": 1, "food": 1, "people": 0.1
+    "gold": 1.5, "wood": 0.5, "stone": 0.5, "food": 0.25, "people": 0.1
 }
 
 # --- Grid Setup ---

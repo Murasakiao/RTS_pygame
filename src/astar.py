@@ -87,7 +87,7 @@ def find_nearest_walkable(nodes, target_x, target_y):
                 visited.add((nx, ny))
                 candidate = nodes[ny][nx]
                 if candidate.type != 'wall':
-                    return candidate  # ✅ Found nearest walkable cell
+                    return candidate  # Found nearest walkable cell
                 queue.append((nx, ny))
 
     return None  # No walkable cell found at all
@@ -96,7 +96,7 @@ def a_star(grid, start_coords, end_coords):
     nodes = create_nodes_from_grid(grid)
     start_node = nodes[start_coords[1]][start_coords[0]]
 
-    # ✅ Fix Bug 1: if end cell is a wall, reroute to nearest walkable neighbour
+    # if end cell is a wall, reroute to nearest walkable neighbour
     end_node = find_nearest_walkable(nodes, end_coords[0], end_coords[1])
     if end_node is None:
         return []
@@ -105,7 +105,7 @@ def a_star(grid, start_coords, end_coords):
         return []
 
     open_set = []
-    in_open_set = set()  # ✅ Fix Bug 2: O(1) membership check
+    in_open_set = set()  # O(1) membership check
     counter = 0
     came_from = {}
 
