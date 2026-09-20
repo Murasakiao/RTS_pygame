@@ -1,12 +1,29 @@
 # entities.py
 
 import math
-import pygame
-from constants import *
-from utils import *
-from astar import a_star, Node
 
-pygame.init()
+import pygame
+
+from .astar import a_star
+from .constants import (
+    ALLY_DATA,
+    BLACK,
+    BLUE,
+    BUILDING_DATA,
+    ENEMY_ATTACK_COOLDOWN,
+    ENEMY_ATTACK_RANGE,
+    ENEMY_DATA,
+    GRID_SIZE,
+    RED,
+    UNIT_ATTACK_COOLDOWN,
+    UNIT_ATTACK_RANGE,
+)
+from .utils import (
+    add_game_message,
+    check_collision_with_building,
+    check_collision_with_enemy,
+    check_collision_with_unit,
+)
 
 # --- Classes ---
 class GameObject:
@@ -353,25 +370,3 @@ class EnemyUnit(Unit):
         Get the attack cooldown for enemy units
         """
         return ENEMY_DATA.get(self.type, {}).get("attack_cooldown", ENEMY_ATTACK_COOLDOWN)
-    
-# --- other Funtions --- 
-def check_collision_with_building(unit, buildings):
-    for building in buildings:
-        if unit.colliderect(building.rect):
-            return True
-    return False
-
-def check_collision_with_unit(unit, units, exclude_unit=None):
-    for other_unit in units:
-        if other_unit is not exclude_unit and unit.colliderect(other_unit.rect):
-            return True
-    return False
-
-def check_collision_with_enemy(unit, enemies):
-    for enemy in enemies:
-        if unit.colliderect(enemy.rect):
-            return True
-    return False
-
-# Import add_game_message after Enemy class is defined
-from src.utils import add_game_message

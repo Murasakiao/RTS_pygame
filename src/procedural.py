@@ -1,7 +1,7 @@
 import pygame
 import noise
-import os
-from constants import *
+
+from .constants import BLUE, GREEN
 
 class TerrainGenerator:
     def __init__(self, screen_width, screen_height, grid_size, noise_seed):

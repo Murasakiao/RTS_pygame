@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,100 lines of Python across seven source files, plus 23 PNG assets. It now has pinned runtime and development dependency manifests, but no committed automated test source, save system, or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,200 lines of Python across eight source files, plus 23 PNG assets. It has pinned runtime and development dependency manifests, but no committed automated test source, save system, or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,100 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. All seven Python files parsed, and Pygame loaded all 23 PNG files.
 
-A headless smoke test exercised the menu, building a Barracks, training and selecting a Swordsman, right-click movement, enemy-wave spawning, the `T` and `D` keys, and closing the game. The test used synthetic mouse/keyboard events and 1-second simulation ticks. Separate checks reproduced the terrain, import-identity, and pathfinding issues described below.
+A headless smoke test exercised the menu, building a Barracks, training and selecting a Swordsman, right-click movement, enemy-wave spawning, the `T` and `D` keys, and closing the game. The test used synthetic mouse/keyboard events and 1-second simulation ticks. A later P0 smoke test confirmed that importing `src.rts` does not initialize Pygame and that the module entry point can start and close a match. The terrain and pathfinding issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army. No test suite was added to the repository during this review.
 
@@ -154,14 +154,14 @@ Use package metadata for the `noise` version. In the reviewed environment, `nois
 ### 2.5 Launch from the repository root
 
 ```sh
-python src/rts.py
+python -m src.rts
 ```
 
 Expect the **KINGDOM CONQUER** menu with a castle image and Start New Game / Exit buttons.
 
 Keep the working directory at the repository root. The code loads images using paths such as `assets/buildings/castle.png`; those paths depend on your working directory.
 
-**Do not substitute `python -m src.rts` in the current checkout.** That command fails with `ModuleNotFoundError: No module named 'constants'`. [Section 4](#4-find-your-way-around-the-source) explains the import arrangement.
+The source uses package-relative imports, so `python src/rts.py` is not supported. [Section 4](#4-find-your-way-around-the-source) explains the package arrangement.
 
 Close the window to stop playing. Run `deactivate` in the terminal when you finish using the environment.
 
@@ -170,7 +170,7 @@ Close the window to stop playing. Run `deactivate` in the terminal when you fini
 | Symptom | Check or action |
 |---|---|
 | `No module named 'pygame'` or `'noise'` | Check `sys.executable`; install with that interpreter's `-m pip` |
-| `No module named 'constants'` | Use `python src/rts.py`, not the module command |
+| `No module named 'src'` | Run `python -m src.rts` from the repository root, not from inside `src/` |
 | Missing `assets/...` file | Launch from the root and confirm that the asset files exist |
 | `noise` fails to build | It includes native code. If pip cannot find a compatible wheel, install a C/C++ toolchain and Python development headers for your interpreter |
 | Compiler missing on macOS | Install Xcode Command Line Tools with `xcode-select --install` |
@@ -249,7 +249,8 @@ rts-pygame/
 │   ├── constants.py           Settings, building data, unit data
 │   ├── rts.py                 Startup, menu, global state, main loop
 │   ├── entities.py            Game objects, targeting, movement, combat
-│   ├── utils.py               UI helpers, placement checks, enemy spawning
+│   ├── utils.py               UI helpers and placement checks
+│   ├── spawning.py            Enemy spawn-point selection and construction
 │   ├── procedural.py          Tile loading and Perlin terrain
 │   └── astar.py               Grid nodes and route search
 └── assets/
@@ -278,27 +279,35 @@ An **instance** is one object made from a class. Two Swordsmen share the same cl
 
 The game uses ordinary Python lists and objects. It does not use Pygame sprite groups or a separate engine framework.
 
-### The import problem
+### Package imports and startup
 
-Current imports mix two naming styles:
-
-```text
-rts.py   -> entities, constants, astar, src.procedural
-entities -> utils, constants, astar, src.utils
-utils    -> src.entities, constants
-```
-
-`utils.py` appends the project root to `sys.path`. That workaround lets the script launch, but the circular imports also load the entity file under both `entities` and `src.entities`.
-
-Python treats those module names as different modules. As a result:
+`src` is the package boundary. Modules now import one another explicitly:
 
 ```text
-entities.Building is not src.entities.Building
+src.rts       -> src.entities, src.procedural, src.spawning, src.utils
+src.entities  -> src.astar, src.constants, src.utils
+src.spawning  -> src.constants, src.entities
+src.utils     -> src.constants
 ```
 
-This affects gameplay. `rts.py` creates `entities.Building` objects, while `spawn_enemies()` creates `src.entities.EnemyUnit` objects. The spawned enemy's `isinstance(target, Building)` check uses the other `Building` class, so it does not recognize the player's building as that type. Enemy priority selection then falls back to distance.
+`utils.py` no longer edits `sys.path` or imports entity classes. Enemy creation lives in `src/spawning.py`, which the controller imports separately. That removes the old `entities -> utils -> src.entities` cycle and ensures Python loads one `src.entities` module.
 
-**Suggested change:** choose one package import style, remove the circular dependency, and put startup inside `main()` with an `if __name__ == "__main__":` guard. Move enemy spawning out of a utility module that the entity module imports. Changing the launch command alone will not fix the current imports.
+`rts.py` defines `main()` and starts it only under:
+
+```python
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+Importing `src.rts` for a test therefore does not open a window, create fonts, enter the menu, or initialize Pygame. `main()` initializes Pygame, the display, fonts, menu rectangles, and clock at runtime, then resets the clock before gameplay so menu time does not become the first game `dt`.
+
+Run the module from the repository root:
+
+```sh
+python -m src.rts
+```
+
+This arrangement favors predictable imports and testable startup. It also means `python src/rts.py` no longer works; direct script execution has no package context for the leading-dot imports.
 
 ## 5. Define the game environment
 
@@ -719,7 +728,7 @@ The affordability code uses `resources.get(resource, gold)` to handle the separa
 
 ## 10. Define units, combat, and enemy waves
 
-**Source:** [`src/entities.py`](../src/entities.py), [`src/constants.py`](../src/constants.py), spawning helpers in [`src/utils.py`](../src/utils.py).
+**Source:** [`src/entities.py`](../src/entities.py), [`src/constants.py`](../src/constants.py), and [`src/spawning.py`](../src/spawning.py).
 
 ### Class structure
 
@@ -783,7 +792,7 @@ Units keep a living target until it dies; they do not switch to a closer target 
 
 `EnemyUnit.__init__()` sets `self.target_priority = "building"` for both types. It does not read the declared Orc priority.
 
-The duplicate-module class problem in [Section 4](#4-find-your-way-around-the-source) further prevents spawned enemies from recognizing main-loop buildings and allies by class. In the current script path, the priority groups therefore fail to reflect the declared data. Fix module identity before evaluating priority behavior, then load the priority from `ENEMY_DATA`.
+The duplicate-module class problem is resolved by the package imports. The Orc priority bug remains: `EnemyUnit.__init__()` still sets `self.target_priority = "building"` for both types instead of reading `ENEMY_DATA`. Fix that behavior separately from the import cleanup.
 
 ### Attack cycle
 
@@ -1143,7 +1152,7 @@ Keep fixes smaller than feature additions. The table groups the current findings
 
 | Order | Area | Repair target |
 |---:|---|---|
-| 1 | Imports and startup | Use one module identity; remove circular imports; introduce `main()`; initialize menu rectangles before events |
+| 1 | Imports and startup | Complete in P0: one module identity, no circular import, guarded `main()`, runtime menu/display setup |
 | 2 | Timing | Cap the menu; reset the clock before gameplay; define long-frame behavior |
 | 3 | Navigation correctness | Match heuristic and movement costs; prevent corner cutting; handle stale heap entries and explicit outcomes |
 | 4 | Movement safety | Remove straight-line failure fallback; separate move/chase intent; invalidate stale paths; avoid duplicate searches |
@@ -1167,25 +1176,23 @@ With the environment active, from the root:
 ```sh
 python -m pip check
 python -m compileall -q src
-python src/rts.py
+python -m src.rts
 ```
 
 `compileall` checks Python syntax and creates bytecode caches. It does not validate imports, assets, menu behavior, or gameplay. The repository already tracks some old caches; review your diff before committing generated files.
 
 ### Headless terrain check
 
-Save this as a temporary root-level script. It uses an SDL dummy display, so it will not open a visible window. The `sys.path` insertion matches the current source layout; it is a test workaround, not a recommended architecture.
+Save this as a temporary root-level script. It uses an SDL dummy display, so it will not open a visible window. Run it from the repository root so the `src` package is importable.
 
 ```python
 import os
-import sys
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
-sys.path.insert(0, "src")
 
 import pygame
-from procedural import TerrainGenerator
+from src.procedural import TerrainGenerator
 
 pygame.init()
 pygame.display.set_mode((768, 576))

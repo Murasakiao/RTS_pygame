@@ -70,8 +70,8 @@ These findings come from the current source and the earlier review. Each needs a
 
 | ID | Priority | Current problem and player effect | Source | Main phase |
 |---|---|---|---|---|
-| B01 | Blocker | Mixed imports load two entity class identities; circular imports hide dependencies | `entities.py`, `utils.py`, `rts.py` imports | P0 |
-| B02 | Blocker | Startup runs on import; menu buttons may be read before creation; menu time enters the first game tick | `rts.py` initialization/menu; import-time `pygame.init()` in helpers | P0 |
+| B01 | Resolved in P0 | Mixed imports loaded two entity class identities; circular imports hid dependencies | `entities.py`, `utils.py`, `rts.py` imports | P0 |
+| B02 | Resolved in P0 | Startup ran on import; menu buttons could be read before creation; menu time entered the first game tick | `rts.py` initialization/menu; import-time `pygame.init()` in helpers | P0 |
 | B03 | Blocker | Rendered terrain and collision terrain have separate owners; `T` reuses the seed; water identity depends on loaded images | `TerrainGenerator`, `update_grid()` | P1, P2 |
 | B04 | Blocker | Manhattan heuristic conflicts with diagonal costs; corner cutting, stale heap entries, ambiguous empty results, unchecked inputs | `astar.py` | P1 |
 | B05 | Blocker | Failed paths allow straight-line travel through obstacles; paths go stale; duplicate searches and discarded waypoint travel | `Unit.move_towards_target()`, right-click handler | P1 |
@@ -307,15 +307,15 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 **Depends on:** none. Fixes B01, B02, and the startup portion of B12.
 
 - [x] Add runtime dependency pins based on the verified environment and a separate development dependency file with a tested pytest version. `requirements.txt` and `requirements-dev.txt` are verified on macOS 26.6.2 arm64 with Python 3.12.13; `pytest==9.1.1` passed a temporary A* smoke test. Other platforms remain unverified.
-- [ ] Put startup behind `main()`; initialize Pygame, display, fonts, menu rectangles, and the clock at runtime.
-- [ ] Keep `src/` as the package for now. Use explicit package-relative imports and remove wildcard imports and `sys.path` edits. Move spawning out of helpers imported by entities to break the cycle.
+- [x] Put startup behind `main()`; initialize Pygame, display, fonts, menu rectangles, and the clock at runtime.
+- [x] Keep `src/` as the package for now. Use explicit package-relative imports and remove wildcard imports and `sys.path` edits. Move spawning into `src/spawning.py` so entities no longer depend on a helper that imports entities back.
 - [ ] Introduce a small game-state owner and fixed-step runner. Make a fresh state on a new match; avoid mutable gameplay globals in `constants.py`.
 - [ ] Resolve asset paths from the repository/module location. Load shared images/fonts through one asset loader, outside rule-object constructors; keep asset keys in model state. Handle missing files with clear diagnostics and development placeholders.
 - [ ] Add import, startup, asset, and timing smoke tests. Route diagnostics through configurable logging with normal play quiet.
 
 **Exit checks:** import the model/path modules without creating a window or entering a loop; assert one `Building`/`Unit` class identity; wait in the menu for 60 seconds without gaining resources; close from the first menu frame without an exception; exercise missing assets without an unexplained traceback.
 
-**Launch migration:** after this phase, make `python -m src.rts` the root-level launch command and update the README/guide together. It fails in the current checkout. Do not recommend the new command before fixing imports, or restore the old workaround just to support two import styles.
+**Launch migration:** complete. Use `python -m src.rts` from the repository root. The direct script command `python src/rts.py` is no longer supported because the source now uses package-relative imports.
 
 ### P1. Make movement, placement, and damage trustworthy
 
@@ -416,6 +416,7 @@ Grow these boundaries only as the phases need them:
 | `game.py` | Match state, fixed tick, command application, pause/restart | Mutable state and loop from `rts.py` |
 | `world.py` | Terrain, bounds, occupancy, revision, placement and spawn validation | `update_grid()` and scattered cell checks |
 | `entities.py` | Buildings/units and their runtime state/behavior | Existing classes, without import-time initialization |
+| `spawning.py` | Enemy spawn-point selection and enemy construction | Moved out of `utils.py` during P0 |
 | `astar.py` | Pure route search and explicit path results | Existing search, with correctness fixes |
 | `procedural.py` | Seeded terrain generation, independent of image loading | Existing noise sampling |
 | `economy.py` | Balances, production, population, queue transactions | Resource and training blocks |
@@ -520,9 +521,9 @@ The first P0 checklist item is complete. The manifests pin `pygame==2.6.1`, `noi
 Start the remaining P0 work with a narrow patch rather than touching combat balance and imports together.
 
 1. Record the current working launch, dependency versions, and a headless startup check. Keep unrelated local edits out of the implementation change. The dependency versions are now recorded in the two requirements files.
-2. Reproduce the duplicate `entities` / `src.entities` identity and import-time startup in small checks.
-3. Break the entity/utility cycle, adopt one import style, and put startup behind `main()`.
-4. Confirm module imports do not start the game, then verify menu start/exit with the new launch command.
-5. Update launch documentation and add the regression tests. Leave terrain, costs, and combat values unchanged in this patch.
+2. Reproduce the duplicate `entities` / `src.entities` identity and import-time startup in small checks. **Done:** the current package import test now exposes one `src.entities` identity and importing `src.rts` does not initialize Pygame.
+3. Break the entity/utility cycle, adopt one import style, and put startup behind `main()`. **Done:** spawning moved to `src/spawning.py`, startup is guarded, and the module launch works.
+4. Confirm module imports do not start the game, then verify menu start/exit with the new launch command. **Done:** headless start/quit smoke test passed.
+5. Update launch documentation and add the regression tests. **Partly done:** launch documentation is updated; committed regression tests remain part of the next P0 task.
 
-The following patches can handle the fixed clock/state reset and asset loader before P1. Mark progress and attach test evidence to this document as work happens. Retain the workspace's dormant status until gameplay development is actually resumed; planning alone does not start a new active project.
+The next patches should handle the fixed simulation clock/state owner, asset loader, and committed smoke tests before P1. Mark progress and attach test evidence to this document as work happens. Retain the workspace's dormant status until gameplay development is actually resumed; planning alone does not start a new active project.
