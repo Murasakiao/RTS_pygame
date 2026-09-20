@@ -31,7 +31,7 @@ The pinned dependencies were verified with **Python 3.12.13 on macOS 26.6.2 arm6
 python3.12 -m venv venv
 source venv/bin/activate
 python -m pip install -r requirements.txt
-python src/rts.py
+python -m src.rts
 ```
 
 For development tools, including the tested `pytest==9.1.1` version:
@@ -42,7 +42,7 @@ python -m pip install -r requirements-dev.txt
 
 For Windows, compiler requirements, the development install, and environment troubleshooting, use the [setup instructions](docs/DEVELOPER_GUIDE.md#2-set-up-python-and-run-the-game).
 
-The current imports require the script command above; `python -m src.rts` fails. Asset paths also require the root working directory.
+Launch with `python -m src.rts` from the repository root. Asset paths still require the root working directory.
 
 ## Controls
 
