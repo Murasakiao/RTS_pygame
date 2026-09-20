@@ -1,0 +1,4 @@
+# Runtime dependencies verified on macOS 26.6.2 arm64 with Python 3.12.13.
+# Other operating systems and Python versions are not verified by this project.
+pygame==2.6.1
+noise==1.2.2
