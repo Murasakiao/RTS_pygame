@@ -27,23 +27,13 @@ from .utils import (
 
 # --- Classes ---
 class GameObject:
-    def __init__(self, x, y, image_path, size=(GRID_SIZE, GRID_SIZE)):
+    def __init__(self, x, y, asset_key, image, font, size=(GRID_SIZE, GRID_SIZE)):
         self.x = x
         self.y = y
-        # Use a default image path if not provided
-        default_image = 'default_unit.png'  # Make sure this exists
-        try:
-            self.image = pygame.transform.scale(
-                pygame.image.load(image_path or default_image), 
-                size
-            )
-        except pygame.error:
-            # Fallback to a simple surface if image loading fails
-            self.image = pygame.Surface(size)
-            self.image.fill(BLACK)  # Fallback image
-        
+        self.asset_key = asset_key
+        self.image = image
         self.rect = self.image.get_rect(topleft=(x, y))
-        self.font = pygame.font.Font(None, 12)
+        self.font = font
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
@@ -51,22 +41,35 @@ class GameObject:
         screen.blit(hp, (self.rect.centerx - hp.get_width() // 2, self.rect.top + self.rect.height + 5))
 
 class Building(GameObject):
-    def __init__(self, x, y, building_type):
+    def __init__(self, x, y, building_type, image, font):
         self.type = building_type
         data = BUILDING_DATA[building_type]
         size_multiplier = data.get("size_multiplier", 1)
         size = (GRID_SIZE * size_multiplier, GRID_SIZE * size_multiplier)
-        super().__init__(x, y, data["image"], size)
+        super().__init__(
+            x,
+            y,
+            data["asset_key"],
+            image,
+            font,
+            size,
+        )
         self.hp = data["hp"]
 
 class Unit(GameObject):
-    def __init__(self, unit_type, x, y, targets, font=None):
+    def __init__(self, unit_type, x, y, targets, image, font):
         # Get unit data based on type
         unit_data = ALLY_DATA.get(unit_type) or ENEMY_DATA.get(unit_type)
         if unit_data is None:
             raise ValueError(f"Invalid unit_type: {unit_type}")
         
-        super().__init__(x, y, unit_data["image"])
+        super().__init__(
+            x,
+            y,
+            unit_data["asset_key"],
+            image,
+            font,
+        )
         
         self.name = unit_data['name']  # Store the name separately
         self.type = unit_type  # Store the unit type as a string
@@ -76,8 +79,6 @@ class Unit(GameObject):
         self.attack = unit_data.get("atk", 10)  # Renamed to 'attack'
         self.path = [] # Initialize path as an empty list
 
-        self.font = font or pygame.font.Font(None, 12)
-        
         # Ensure targets is a list
         if targets is None:
             self.targets = []
@@ -312,8 +313,8 @@ class Unit(GameObject):
                     pygame.draw.rect(screen, BLUE, rect, 2)
 
 class AlliedUnit(Unit):
-    def __init__(self, unit_type, x, y, targets, font=None):
-        super().__init__(unit_type, x, y, targets, font)
+    def __init__(self, unit_type, x, y, targets, image, font):
+        super().__init__(unit_type, x, y, targets, image, font)
 
     def should_attack(self):
         """
@@ -341,9 +342,9 @@ class AlliedUnit(Unit):
         return ALLY_DATA.get(self.type, {}).get("attack_cooldown", UNIT_ATTACK_COOLDOWN)
 
 class EnemyUnit(Unit):
-    def __init__(self, unit_type, x, y, buildings, units, font=None):
+    def __init__(self, unit_type, x, y, buildings, units, image, font):
         targets = buildings + units
-        super().__init__(unit_type, x, y, targets, font)
+        super().__init__(unit_type, x, y, targets, image, font)
         self.target_priority = "building"
 
     def should_attack(self):

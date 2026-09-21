@@ -1,7 +1,7 @@
 # Kingdom Conquer: improvement plan
 
 **Date:** 2026-09-15<br>
-**Status:** proposed; implementation has not started<br>
+**Status:** P0 implementation in progress<br>
 **Chosen direction:** short, single-player base-defense RTS matches<br>
 **First release target:** `v0.1`, a complete, replayable small game
 
@@ -81,7 +81,7 @@ These findings come from the current source and the earlier review. Each needs a
 | B09 | High | Orc priority is ignored; targets can remain unreachable; automatic chasing can override player movement | `EnemyUnit.__init__()`, target selection, order handling | P1, P4 |
 | B10 | High | Removing buildings while drawing can skip objects; dead selections and target references remain | `rts.py` update/draw blocks | P1 |
 | B11 | High | Text overlaps or clips; HUD clicks reach the map; build mode can linger; input uses current mouse position instead of each click's position | `rts.py` events, UI helpers | P3 |
-| B12 | High | Missing object/logo images can crash; image/font loading repeats per entity; diagnostics print during normal play | Object constructor, menu logo, movement prints | P0, P5 |
+| B12 | Partly resolved in P0 | Shared image/font loading now has repository-relative lookup, diagnostics, and placeholders; movement diagnostics and final presentation cleanup remain | `assets.py`, object construction, movement prints | P0, P5 |
 
 Current source: [`rts.py`](../src/rts.py), [`entities.py`](../src/entities.py), [`astar.py`](../src/astar.py), [`procedural.py`](../src/procedural.py), [`utils.py`](../src/utils.py), [`constants.py`](../src/constants.py).
 
@@ -309,9 +309,9 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 - [x] Add runtime dependency pins based on the verified environment and a separate development dependency file with a tested pytest version. `requirements.txt` and `requirements-dev.txt` are verified on macOS 26.6.2 arm64 with Python 3.12.13; `pytest==9.1.1` passed a temporary A* smoke test. Other platforms remain unverified.
 - [x] Put startup behind `main()`; initialize Pygame, display, fonts, menu rectangles, and the clock at runtime.
 - [x] Keep `src/` as the package for now. Use explicit package-relative imports and remove wildcard imports and `sys.path` edits. Move spawning into `src/spawning.py` so entities no longer depend on a helper that imports entities back.
-- [ ] Introduce a small game-state owner and fixed-step runner. Make a fresh state on a new match; avoid mutable gameplay globals in `constants.py`.
-- [ ] Resolve asset paths from the repository/module location. Load shared images/fonts through one asset loader, outside rule-object constructors; keep asset keys in model state. Handle missing files with clear diagnostics and development placeholders.
-- [ ] Add import, startup, asset, and timing smoke tests. Route diagnostics through configurable logging with normal play quiet.
+- [x] Introduce `src.game.GameState` and `FixedStepRunner`. `create_match()` builds fresh lists, timers, resources, terrain, and navigation state; runtime flags no longer live in `constants.py`.
+- [x] Resolve asset paths from the repository/module location with `src.assets.AssetLoader`. Shared images/fonts are cached before they are passed into rule objects; entities retain asset keys. Missing files produce logger diagnostics and visible development placeholders.
+- [x] Add committed import, startup, asset, and timing smoke tests in `tests/test_p0_runtime.py`. Diagnostics use an injectable logger and remain quiet when all assets exist.
 
 **Exit checks:** import the model/path modules without creating a window or entering a loop; assert one `Building`/`Unit` class identity; wait in the menu for 60 seconds without gaining resources; close from the first menu frame without an exception; exercise missing assets without an unexplained traceback.
 
@@ -412,8 +412,8 @@ Grow these boundaries only as the phases need them:
 
 | Area | Responsibility | Starting point |
 |---|---|---|
-| `rts.py` | Entry point and Pygame lifetime | Existing initialization and menu bootstrap |
-| `game.py` | Match state, fixed tick, command application, pause/restart | Mutable state and loop from `rts.py` |
+| `rts.py` | Entry point, Pygame lifetime, commands, and rendering | Existing initialization and menu bootstrap |
+| `game.py` | Match state and fixed simulation tick | `GameState` and `FixedStepRunner` introduced in P0 |
 | `world.py` | Terrain, bounds, occupancy, revision, placement and spawn validation | `update_grid()` and scattered cell checks |
 | `entities.py` | Buildings/units and their runtime state/behavior | Existing classes, without import-time initialization |
 | `spawning.py` | Enemy spawn-point selection and enemy construction | Moved out of `utils.py` during P0 |
@@ -421,9 +421,9 @@ Grow these boundaries only as the phases need them:
 | `procedural.py` | Seeded terrain generation, independent of image loading | Existing noise sampling |
 | `economy.py` | Balances, production, population, queue transactions | Resource and training blocks |
 | `waves.py` | Wave definitions, pending spawn schedule, lane selection | Timer and spawn helpers |
-| `ui.py` / `assets.py` | Input routing, rendering, asset paths/cache, normal/debug feedback | Drawing helpers and per-object loads |
+| `ui.py` / `assets.py` | Input routing, rendering, asset paths/cache, normal/debug feedback | Drawing helpers and the shared `AssetLoader` introduced in P0 |
 | `constants.py` | Validated configuration and content data, no mutable match state | Existing tables |
-| `tests/` | Small pure-rule fixtures plus headless integration checks | New; no committed test source currently |
+| `tests/` | Small pure-rule fixtures plus headless integration checks | P0 runtime smoke tests committed; broader rule fixtures remain |
 
 These paths are proposed destinations, not files to create empty at the start. Keep related functions together until moving them removes a real dependency.
 

@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,200 lines of Python across eight source files, plus 23 PNG assets. It has pinned runtime and development dependency manifests, but no committed automated test source, save system, or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and five committed P0 runtime tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -113,7 +113,7 @@ PowerShell may block activation scripts. You can use the environment without cha
 
 ```powershell
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
-.\venv\Scripts\python.exe src/rts.py
+.\venv\Scripts\python.exe -m src.rts
 ```
 
 A virtual environment contains machine-specific paths. Do not copy one from another computer. If an old environment no longer runs after a move or Python upgrade, create a fresh environment rather than editing its internal paths.
@@ -139,7 +139,7 @@ python -m pip install -r requirements-dev.txt
 python -m pytest --version
 ```
 
-`requirements-dev.txt` includes `requirements.txt`, so this command also installs the runtime packages. The repository does not yet contain committed test source; `pytest==9.1.1` ran a temporary A* smoke test in the reviewed environment.
+`requirements-dev.txt` includes `requirements.txt`, so this command also installs the runtime packages. The repository contains committed P0 runtime tests in `tests/test_p0_runtime.py`; broader A*, movement, placement, combat, and match tests remain to be added.
 
 The manifests pin the direct package versions verified on **macOS 26.6.2 arm64 with Python 3.12.13**. Other operating systems and Python versions are not verified by this project. The files do not claim cross-platform compatibility.
 
@@ -159,7 +159,7 @@ python -m src.rts
 
 Expect the **KINGDOM CONQUER** menu with a castle image and Start New Game / Exit buttons.
 
-Keep the working directory at the repository root. The code loads images using paths such as `assets/buildings/castle.png`; those paths depend on your working directory.
+The shared `AssetLoader` resolves image paths from the repository location. Running from the repository root is still the documented launch convention, but changing the working directory no longer silently changes which asset files are found.
 
 The source uses package-relative imports, so `python src/rts.py` is not supported. [Section 4](#4-find-your-way-around-the-source) explains the package arrangement.
 
@@ -171,7 +171,7 @@ Close the window to stop playing. Run `deactivate` in the terminal when you fini
 |---|---|
 | `No module named 'pygame'` or `'noise'` | Check `sys.executable`; install with that interpreter's `-m pip` |
 | `No module named 'src'` | Run `python -m src.rts` from the repository root, not from inside `src/` |
-| Missing `assets/...` file | Launch from the root and confirm that the asset files exist |
+| Missing `assets/...` file | Check `AssetLoader.diagnostics`; confirm the asset key and file exist. The game shows a visible development placeholder instead of crashing. |
 | `noise` fails to build | It includes native code. If pip cannot find a compatible wheel, install a C/C++ toolchain and Python development headers for your interpreter |
 | Compiler missing on macOS | Install Xcode Command Line Tools with `xcode-select --install` |
 | Compiler missing on Windows | Install Visual Studio Build Tools with the C++ workload |
@@ -247,33 +247,40 @@ rts-pygame/
 ├── src/
 │   ├── __init__.py            Empty package marker
 │   ├── constants.py           Settings, building data, unit data
-│   ├── rts.py                 Startup, menu, global state, main loop
+│   ├── rts.py                 Startup, menu, commands, rendering, main loop
+│   ├── game.py                Match state and fixed-step simulation runner
+│   ├── assets.py              Repository-relative asset cache and diagnostics
 │   ├── entities.py            Game objects, targeting, movement, combat
 │   ├── utils.py               UI helpers and placement checks
 │   ├── spawning.py            Enemy spawn-point selection and construction
-│   ├── procedural.py          Tile loading and Perlin terrain
+│   ├── procedural.py          Seeded Perlin terrain from supplied tile surfaces
 │   └── astar.py               Grid nodes and route search
+├── tests/
+│   ├── conftest.py           Headless SDL test configuration
+│   └── test_p0_runtime.py    Import, asset, state, timing, and startup tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
     └── tiles/plains/         Six grass tiles and one water tile
 ```
 
-The file split lets you change an Archer's stats without rewriting movement, or test A* without opening a window. Read `constants.py`, then the main loop in `rts.py`. Follow units into `entities.py`; study terrain and pathfinding in their own files.
+The file split lets you change an Archer's stats without rewriting movement, or test A* without opening a window. Read `constants.py`, `game.py`, and `assets.py`, then the main loop in `rts.py`. Follow units into `entities.py`; study terrain and pathfinding in their own files.
 
 `sys.exit()` and `temp` are root-level scratch files, not game modules. The program's `sys.exit()` call uses Python's `sys` module. Treat `__pycache__` as generated bytecode, not editable source.
 
 ### Shared game state
 
-Game state is what the game remembers between frames. Drawing "Gold: 150" does not store a balance; purchases need a number they can check and subtract from. In `rts.py`, the main state consists of:
+Game state is what the game remembers between frames. Drawing "Gold: 150" does not store a balance; purchases need a number they can check and subtract from. `src.game.GameState` owns the mutable state for one match:
 
 - `buildings`, `units`, and `enemies`: lists of object instances.
-- `gold` and `resources`: current balances.
-- `terrain`: tile appearance IDs.
-- `grid`: tile IDs plus pathfinding obstacle flags.
+- `gold`, `resources`, and `resource_increase_rates`: current balances and income rules.
+- `terrain`, `grid`, and `terrain_generator`: the map and derived navigation data.
 - `selected_unit`, `current_building_type`, and `building_cooldown`: player interaction state.
 - `game_messages`: text and expiration timestamps.
 - `wave_timer` and `current_wave`: enemy-spawn progress.
+- `show_debug`: match UI state rather than a module-level flag.
+
+`GameState.new_match()` creates fresh lists, dictionaries, timers, and a navigation grid. `rts.create_match()` also creates a new terrain generator, so retrying a match does not reuse old entities or balances.
 
 An **instance** is one object made from a class. Two Swordsmen share the same class and starting data, but each has its own position, HP, path, and target.
 
@@ -284,9 +291,11 @@ The game uses ordinary Python lists and objects. It does not use Pygame sprite g
 `src` is the package boundary. Modules now import one another explicitly:
 
 ```text
-src.rts       -> src.entities, src.procedural, src.spawning, src.utils
+src.rts       -> src.assets, src.astar, src.entities, src.game, src.procedural, src.spawning, src.utils
+src.game      -> src.constants
+src.assets    -> pygame and repository asset paths
 src.entities  -> src.astar, src.constants, src.utils
-src.spawning  -> src.constants, src.entities
+src.spawning  -> asset-loader argument, src.constants, src.entities
 src.utils     -> src.constants
 ```
 
@@ -299,7 +308,7 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-Importing `src.rts` for a test therefore does not open a window, create fonts, enter the menu, or initialize Pygame. `main()` initializes Pygame, the display, fonts, menu rectangles, and clock at runtime, then resets the clock before gameplay so menu time does not become the first game `dt`.
+Importing `src.rts` for a test therefore does not open a window, create fonts, enter the menu, or initialize Pygame. `main()` initializes Pygame, the display, menu fonts, menu rectangles, and menu clock at runtime. It creates a new `FixedStepRunner` with a fresh clock after the menu, so menu time does not become gameplay time. `AssetLoader` is also created at runtime; importing the module does not load images or fonts.
 
 Run the module from the repository root:
 
@@ -378,7 +387,7 @@ For a future larger world, keep world size separate from display size and introd
 
 ## 6. Load and use art assets
 
-**Source:** `GameObject.__init__()` in [`src/entities.py`](../src/entities.py), `TerrainGenerator.load_plains_tiles()` in [`src/procedural.py`](../src/procedural.py).
+**Source:** `AssetLoader` in [`src/assets.py`](../src/assets.py), entity constructors in [`src/entities.py`](../src/entities.py), and terrain setup in [`src/rts.py`](../src/rts.py).
 
 ### Current asset inventory
 
@@ -396,17 +405,15 @@ The asset filenames and game names need not match. The Archer uses `bowman.png`;
 
 ### The load, size, position, draw sequence
 
-The existing object constructor follows this pattern:
+The controller asks the shared loader for a keyed, scaled surface before constructing an entity:
 
 ```python
-self.image = pygame.transform.scale(
-    pygame.image.load(image_path),
-    size,
-)
-self.rect = self.image.get_rect(topleft=(x, y))
+image = assets.image("building.castle", (32, 32))
+font = assets.font(12)
+castle = Building(100, 100, "Castle", image, font)
 ```
 
-During drawing:
+`AssetLoader` resolves the key from the repository location, caches the result, records a diagnostic for a missing file, and returns a visible magenta placeholder. Entities keep the key in `asset_key` for diagnostics and future model/view separation. During drawing:
 
 ```python
 screen.blit(self.image, self.rect)
@@ -438,12 +445,13 @@ The crop uses `(left, top, width, height)` in source-image pixels. For animation
 ### Replace or add artwork
 
 1. Put the image in the matching `assets/` folder.
-2. Set its path in `BUILDING_DATA`, `ALLY_DATA`, or `ENEMY_DATA`.
-3. Check its proportions at the runtime size. Units use 16 × 16; buildings use their size multiplier.
-4. Test mouse selection and building overlap. Changing visible artwork does not create a new collision shape.
-5. Record the source, artist, license, and required attribution before distribution.
+2. Add a stable key and repository-relative path to `src/assets.py`.
+3. Put that key in `BUILDING_DATA`, `ALLY_DATA`, or `ENEMY_DATA`.
+4. Check its proportions at the runtime size. Units use 16 × 16; buildings use their size multiplier.
+5. Test mouse selection and building overlap. Changing visible artwork does not create a new collision shape.
+6. Record the source, artist, license, and required attribution before distribution.
 
-**Current limits:** each new entity loads and scales its own image and creates a font. There is no shared asset cache. `GameObject` catches `pygame.error`, but a missing image raised `FileNotFoundError` in the reviewed environment and bypassed that fallback. The menu logo has no fallback. Terrain loading catches failures and supplies colored tiles if it cannot load any grass or water images.
+**Current limits:** the loader uses nearest-style `pygame.transform.scale()` and does not crop sprite sheets automatically. It intentionally does not call `convert_alpha()`, so display-format conversion is a later rendering improvement. Missing assets are safe for development but still need a real art/license decision before release.
 
 The earlier README claimed MIT licensing, but this checkout has no `LICENSE` file or asset-credit record. Do not assume an intended code license also covers the artwork. Confirm both before redistributing the project or its assets.
 
@@ -470,7 +478,7 @@ That blending lets small changes in position give small changes in value. This m
 
 ### 7.2 Sample the field
 
-`TerrainGenerator` loads the tile images and calls `generate_terrain()` in its constructor. The generator visits screen positions in 16-pixel steps and samples:
+`rts.create_terrain_generator()` loads and scales the tile surfaces once through `AssetLoader`, then passes those surfaces into `TerrainGenerator`. The generator only samples noise and draws the supplied surfaces. It calls `generate_terrain()` in its constructor and visits screen positions in 16-pixel steps:
 
 ```python
 noise_value = noise.pnoise2(
@@ -548,31 +556,18 @@ The grass IDs select images from `grass_tiles`. The water ID selects `water_tile
 
 The terrain contains grass patches and water shapes. It has no dedicated river carving, erosion, coastline autotiling, biome system, or connectivity guarantee. A water shape might resemble a river, but the code does not enforce a source, mouth, or continuous river path.
 
-### 7.5 The regeneration bug
+### 7.5 Terrain regeneration limits
 
-There are two terrain references:
+The match has two cooperating references:
 
 - `terrain_generator.terrain`, which `draw_terrain()` reads.
-- The global `terrain` in `rts.py`, which placement and `update_grid()` read.
+- `GameState.terrain`, which placement and `update_grid()` read.
 
-The constructor sets the first. Startup calls `generate_terrain()` again to set the second. Both contain equal values because they use the same parameters.
+`create_match()` creates the generator, then `GameState.new_match()` stores its terrain reference. Both references initially point to the same generated map.
 
-Pressing `T` assigns another result to the global `terrain`, but:
+Pressing `T` asks the match's generator to regenerate using the same seed. `generate_terrain()` now updates `TerrainGenerator.terrain`, and `rts.py` assigns the returned list to `GameState.terrain`, so the renderer and collision grid share the same reference. The map therefore looks the same rather than pretending to be a new map.
 
-1. The code keeps the same `noise_seed`, so it returns the same map values.
-2. `generate_terrain()` returns a list without replacing `self.terrain`, so the renderer keeps its original map reference.
-
-Changing the seed alone would leave visible terrain and collision terrain out of sync.
-
-**Suggested change, partial example:** keep the two references aligned while testing regeneration:
-
-```python
-terrain_generator.noise_seed += 1
-terrain = terrain_generator.generate_terrain()
-terrain_generator.terrain = terrain
-```
-
-A complete regeneration feature must also rebuild the navigation grid, clear obsolete paths, and decide what to do with buildings and units now standing in water. This example does not implement those policies.
+A complete regeneration feature still needs a new seed, navigation rebuild, path invalidation, and a policy for buildings and units now standing in water. Normal base-defense matches should eventually disable live regeneration and make a new map start a fresh `GameState`.
 
 For a playable procedural map, add validation after generation: reserve starting land, check connected walkable regions, and choose spawn points with routes into the play area.
 
@@ -584,42 +579,26 @@ In an RTS, income and enemies keep advancing while you decide what to build. The
 
 ### Startup and menu
 
-At module scope, the script initializes Pygame, the display, a clock, fonts, resource balances, entity lists, and terrain. It draws the menu terrain onto a background surface and loads the castle logo.
+At module scope, the script only defines functions and imports safe modules. `main()` initializes Pygame, the display, the menu clock, fonts, the shared `AssetLoader`, and menu surfaces. Start New Game calls `create_match()`, which creates a new `TerrainGenerator` and `GameState`.
 
-The menu loop reads events and draws its buttons. Start New Game leaves the menu loop and enters the game loop. Exit or closing the menu leaves the program.
+The menu loop has its own capped clock. Gameplay creates a new `FixedStepRunner`; menu waiting cannot become income or wave time. The runner caps catch-up work after a long frame and calls the simulation with a constant `fixed_dt_ms` of `1000 / FPS`.
 
-Two timing details need repair:
-
-- The menu has no `clock.tick()` call, so it has no frame-rate cap.
-- The game creates the clock before entering the menu. Its first gameplay `dt` includes time spent in the menu, which can cause an income jump and advance the wave timer.
-
-The menu also creates `start_button` and `exit_button` after processing events. A mouse event in its first iteration can reference a button before assignment.
-
-### One gameplay frame, in source order
+### One rendered frame and its fixed simulation steps
 
 ```text
-Rebuild navigation grid from water and buildings
-    ↓
-Read dt and mouse; assemble debug text
-    ↓
-Add resource income; reduce placement cooldown
-    ↓
-Compute building preview and overlap flag
-    ↓
-Process keyboard and mouse events
-    ↓
-Update allies, then enemies: target → move → attack
-    ↓
-Check wave timer; spawn enemies if due
-    ↓
-Remove dead allies and enemies
-    ↓
-Draw terrain, HUD, objects, preview, messages, debug
-    ↓
+runner.begin_frame()              # accumulate wall-clock time
+Read and apply queued input events
+Repeat up to the catch-up limit:
+    rebuild navigation grid
+    add fixed-step resource income and cooldown progress
+    update allies, then enemies
+    check the wave timer and spawn enemies if due
+    remove dead actors
+Compute the current preview and draw terrain, HUD, objects, messages, debug
 Present the frame
 ```
 
-The order has gameplay effects. A building placed during event handling does not enter the navigation grid until the next frame. A building removed during drawing still blocked the grid earlier that frame. Preview collision data comes from before the event loop, so changing building type and clicking within one frame can use an outdated footprint.
+Rendering may happen without a simulation step, or one render may contain several fixed steps after a stall. Gameplay rules do not receive the variable wall-clock delta. Building placement still updates the navigation grid on the next simulation step; P1 will make placement and navigation revisions immediate.
 
 ### Controls
 
@@ -637,9 +616,9 @@ The order has gameplay effects. A building placed during event handling does not
 | Left-click Barracks / Stable | Train its assigned unit if affordable |
 | Left-click other land | Attempt to place the chosen building |
 | Right-click with a unit selected | Request a route to the clicked cell |
-| `Esc` | Clear the building choice; it does not pause, quit, or clear unit selection |
+| `Esc` | Clear the building choice; pause is not implemented yet |
 | `D` | Toggle on-screen debug information and print the navigation grid |
-| `T` | Call terrain generation, with the regeneration limits above |
+| `T` | Regenerate the same seeded terrain and update the match terrain reference; full map replacement is not implemented |
 | Close window | Quit |
 
 Number keys also clear unit selection. There is no box selection, shift selection, attack-move command, or explicit hold-position mode.
@@ -1153,17 +1132,17 @@ Keep fixes smaller than feature additions. The table groups the current findings
 | Order | Area | Repair target |
 |---:|---|---|
 | 1 | Imports and startup | Complete in P0: one module identity, no circular import, guarded `main()`, runtime menu/display setup |
-| 2 | Timing | Cap the menu; reset the clock before gameplay; define long-frame behavior |
+| 2 | Timing | P0 complete: cap the menu, use a fresh gameplay clock, fixed 30 Hz updates, and bound long-frame catch-up |
 | 3 | Navigation correctness | Match heuristic and movement costs; prevent corner cutting; handle stale heap entries and explicit outcomes |
 | 4 | Movement safety | Remove straight-line failure fallback; separate move/chase intent; invalidate stale paths; avoid duplicate searches |
 | 5 | Placement and spawning | Validate entire footprints, bounds, occupancy, and terrain; choose valid unit/enemy spawns |
 | 6 | Combat | Honor configured priorities; choose reachable attack positions; use consistent distance geometry |
-| 7 | Terrain ownership | Keep one authoritative map, change the seed for regeneration, and handle affected objects/routes |
+| 7 | Terrain ownership | P0 partially complete: keep generator and `GameState` references aligned; P1/P2 must validate maps and handle affected objects/routes |
 | 8 | Entity lifecycle | Skip dead actors, clean lists outside drawing, clear dead selections |
 | 9 | UI and diagnostics | Fix clipping/overlap, align preview with placement rules, gate prints, cache debug grid |
-| 10 | Project hygiene | Add dependency metadata and tests; resolve code/art licensing; remove tracked caches and irrelevant scratch artifacts in a separate cleanup |
+| 10 | Project hygiene | Dependency metadata and P0 runtime tests are complete; resolve code/art licensing and remove tracked caches/scratch artifacts in a separate cleanup |
 
-The separate [improvement plan](IMPROVEMENT_PLAN.md) puts these repairs into a proposed short base-defense release, with gameplay rules and phase-by-phase acceptance tests. Implementation has not started; `STATUS.md` retains the dormant lifecycle.
+The separate [improvement plan](IMPROVEMENT_PLAN.md) puts these repairs into a proposed short base-defense release, with gameplay rules and phase-by-phase acceptance tests. P0 implementation is underway; `STATUS.md` retains the dormant lifecycle until the game work resumes as a sustained effort.
 
 ## 15. Validate changes
 
@@ -1192,12 +1171,14 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 import pygame
-from src.procedural import TerrainGenerator
+from src.assets import AssetLoader
+from src.rts import create_terrain_generator
 
 pygame.init()
 pygame.display.set_mode((768, 576))
 
-generator = TerrainGenerator(768, 576, 16, noise_seed=123)
+assets = AssetLoader()
+generator = create_terrain_generator(assets, noise_seed=123)
 terrain = generator.terrain
 assert len(terrain) == 36
 assert all(len(row) == 48 for row in terrain)
@@ -1210,9 +1191,9 @@ pygame.quit()
 print("Terrain dimensions, tile IDs, repeatability, and drawing passed.")
 ```
 
-A dummy display cannot establish that the real window, input devices, or visual layout feel correct. Importing `rts.py` for a unit test also starts its top-level menu/game code; avoid that until startup has a main guard.
+A dummy display cannot establish that the real window, input devices, or visual layout feel correct. `import src.rts` is safe because the menu is behind the `main()` guard.
 
-### Regression tests to add
+### Regression tests still needed
 
 For **A***, test an open diagonal route, an unreachable goal, a blocked goal, an already-reached goal, invalid coordinates, and the corner-cutting map. Compare path cost against Dijkstra on small generated grids. First record current behavior, then update expectations with each intended fix.
 
@@ -1264,7 +1245,7 @@ read input -> create commands -> validate/apply commands
            -> simulate -> remove dead entities -> render
 ```
 
-This structure is a proposal; no `World`, command system, or central `Game` class exists now. Introduce one boundary at a time. A shared placement validator is a smaller first change than rewriting the entire main loop.
+This structure is still a proposal for later `World`, command, and economy boundaries. P0 now has a small `GameState` and `FixedStepRunner`; introduce additional boundaries only when they remove a real dependency. A shared placement validator is a smaller next change than rewriting the entire main loop.
 
 Keep drawing free of gameplay mutations. Then you can test income, combat, and route rules without opening a window.
 
@@ -1289,7 +1270,7 @@ Worker gathering needs resource nodes, worker orders, travel, harvesting time, c
 
 Animation needs cropped frames, animation state, and elapsed-time frame selection. Sound needs licensed files and event-triggered playback. Victory/defeat needs a defined objective and a state transition that stops or replaces active play.
 
-Larger maps need camera/world coordinate separation. Multiplayer needs an authority model and synchronized commands or state; the current global, random, variable-time simulation is not a multiplayer foundation without further design work.
+Larger maps need camera/world coordinate separation. Multiplayer needs an authority model and synchronized commands or state; the current local random streams and single-player command flow are not a multiplayer foundation without further design work.
 
 ## 17. Glossary and further reading
 
@@ -1297,8 +1278,8 @@ Larger maps need camera/world coordinate separation. Multiplayer needs an author
 |---|---|
 | RTS | Real-time strategy: players issue orders while the simulation continues |
 | Frame | One pass of updates and drawing |
-| FPS | Frames per second |
-| Delta time / `dt` | Time elapsed since a previous clock tick |
+| FPS | Frames per second; also the current fixed simulation rate |
+| Fixed step | A constant simulation interval; this game advances rules at `1 / FPS` seconds |
 | Tile | A small image used for one map cell |
 | Sprite | A drawable game image; this project does not require `pygame.sprite.Sprite` |
 | Sprite sheet | Several images or animation frames packed into one image |

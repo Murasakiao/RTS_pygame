@@ -88,3 +88,81 @@ Use this format:
 - This update does not implement the fixed simulation clock, game-state owner, asset loader, pathfinding repairs, or new gameplay features.
 - Existing movement, placement, combat, terrain, and wave limitations remain documented in the developer guide and improvement plan.
 - The next P0 task is to introduce the small game-state owner and fixed-step runner, then add committed import/startup regression tests.
+
+## 2026-09-21 · Add match state, fixed timing, and shared asset loading
+
+### Changed
+- Added `src/game.py` with `GameState.new_match()` and an accumulator-based `FixedStepRunner`.
+- Moved mutable match values such as resources, entity lists, wave timers, selection, and debug visibility into `GameState`; `constants.py` now contains configuration/content data rather than runtime loop flags.
+- Added `src/assets.py` with repository-relative keyed image/font caching, injectable logging, diagnostics, and visible placeholders for missing files.
+- Changed entity construction to receive preloaded image surfaces and shared fonts while retaining each asset key in model state.
+- Changed terrain setup to receive preloaded tile surfaces and kept regenerated terrain references aligned between the generator and `GameState`.
+- Updated `src/rts.py` to create a fresh match state, run simulation updates at a fixed 30 Hz, and use local menu/game flow flags.
+- Added five committed P0 tests covering import safety, asset fallback/path resolution, fresh state isolation, fixed-step catch-up, and headless start/quit shutdown.
+- Updated the README, status, improvement plan, and developer guide for the new runtime structure.
+
+### Why
+- A match should be restartable without leaking entities, balances, timers, or selection from a previous match.
+- Simulation rules should not change speed when rendering stalls or the display rate varies.
+- Asset loading should not depend on the current working directory or repeat filesystem/font work for every entity.
+- Missing development art should be diagnosable without crashing startup.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `5 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless manual smoke: menu start, gameplay entry, and window quit passed.
+- Scripted headless gameplay smoke: Barracks placement and Swordsman training passed with the keyed asset loader.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Navigation correctness, placement/spawn validation, combat range, finite match endings, pause, and terrain map validation remain P1/P2 work.
+- PR #21 remains open; merge the startup/import branch before beginning the next gameplay phase.
+
+## 2026-09-21 · Correct P0 developer-guide details
+
+### Changed
+- Updated the developer guide's asset-key instructions and terrain-regeneration section to match `AssetLoader`, `GameState`, and the fixed-step loop.
+- Corrected the asset checklist numbering and removed stale claims that the working directory controls asset lookup or that terrain regeneration leaves the renderer reference stale.
+
+### Why
+- Developer documentation should describe the implemented P0 boundaries rather than the pre-refactor prototype.
+
+### Verification
+- Re-read the affected guide sections and ran `git diff --check`.
+
+### Scope
+- No source or gameplay rules changed. P1 navigation and placement repairs remain out of scope.
+
+## 2026-09-21 · Refresh validation examples
+
+### Changed
+- Updated the developer guide's repair-order and headless terrain examples for the new `AssetLoader`/`GameState` boundaries.
+- Marked the implemented P0 timing and runtime-test work without changing the remaining P1/P2 repair list.
+
+### Why
+- The validation instructions should be runnable against the current constructor signatures and should distinguish completed P0 work from future gameplay repairs.
+
+### Verification
+- Ran `venv/bin/python -m pytest -q`: `5 passed`.
+- Re-read the updated example and ran `git diff --check`.
+
+### Scope
+- Documentation only; no source or gameplay rules changed.
+
+## 2026-09-21 · Document committed test coverage
+
+### Changed
+- Updated the developer guide and improvement-plan structure table to list the committed P0 tests and the new `assets.py`/`game.py` boundaries.
+- Removed stale statements that the repository had no committed test source.
+
+### Why
+- Setup and architecture documentation should point new contributors to the tests that now protect import safety, assets, state isolation, fixed timing, and shutdown.
+
+### Verification
+- Ran `venv/bin/python -m pytest -q`: `5 passed`.
+- Ran `git diff --check`.
+
+### Scope
+- Documentation only; broader A*, movement, placement, combat, and match tests remain future work.
