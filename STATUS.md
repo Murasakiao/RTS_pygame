@@ -6,7 +6,7 @@ status: dormant
 stack: pygame · Python (venv)
 entry: python -m src.rts
 has_repo: true
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # rts-pygame
@@ -16,17 +16,15 @@ Dormant Kingdom Conquer RTS prototype. Implements Perlin-noise grass/water terra
 
 Documentation review: 2026-09-15. Existing macOS environment: Python 3.12.13, pygame 2.6.1, noise distribution 1.2.2; pytest 9.1.1 passed a temporary A* smoke test. Source parsing, all 23 PNG loads, dependency checks, and a headless scripted gameplay smoke test passed. This was not a cross-platform installation or full gameplay/performance test; no game code changed.
 
-P0 startup/import work is complete: Pygame initializes inside `main()`, package imports are explicit, and spawning lives in `src/spawning.py`. Remaining gaps include terrain regeneration with the same seed and a stale render reference; navigation permits corner cutting and obstacle-bypassing movement; placement/spawning and building attack range need repair. Runtime and development dependency manifests pin the verified macOS environment, but no committed test source, save/load, or win/lose state exists. Code and art licensing need confirmation.
+P0 startup/import work is complete: Pygame initializes inside `main()`, package imports are explicit, and spawning lives in `src/spawning.py`. The new `src.game.GameState` owns per-match mutable data, `FixedStepRunner` advances simulation at 30 Hz, and `src.assets.AssetLoader` owns shared repository-relative image/font loading with placeholders and diagnostics. Remaining gaps include terrain regeneration rules, navigation corner cutting and obstacle-bypassing movement, placement/spawning validation, and building attack range. Runtime and development dependency manifests pin the verified macOS environment; five committed P0 regression tests now cover import safety, assets, fresh state, fixed timing, and start/quit shutdown. Code and art licensing still need confirmation.
 
 ## Next action
-Improvement planning complete; gameplay implementation has not started. Chosen direction: short, single-player base-defense RTS matches. Retain dormant status until development resumes.
-
-If resumed, start P0 in `docs/IMPROVEMENT_PLAN.md`: make imports/startup testable, establish game state and timing, then fix navigation before adding match and army-control features.
+P0 state/timing/asset work is implemented on the active refactor branch. Keep the five committed startup, asset, and fixed-step regression tests green, then review/merge PR #21 before beginning P1 navigation and movement repairs. Chosen direction remains short, single-player base-defense RTS matches; retain dormant status until development resumes.
 
 ## Conventions
 - Launch from the unit root with `python -m src.rts` using the project `venv`.
-- Relative asset paths require the repository root as the working directory.
-- Treat documented suggested changes as proposals, not implemented features.
+- Launch with `python -m src.rts`; `src.assets.AssetLoader` resolves asset files relative to the repository/module location.
+- Treat documented suggested changes as proposals, not implemented features. The P0 state owner, fixed-step runner, and asset loader are implemented; P1 gameplay repairs are not.
 - Append a specific entry to [docs/LOGS.md](docs/LOGS.md) after each implementation, bug-fix, dependency, or documentation update.
 
 ## Pointers

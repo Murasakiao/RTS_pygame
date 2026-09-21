@@ -10,7 +10,7 @@ Read **[the developer guide](docs/DEVELOPER_GUIDE.md)** for a beginner-to-interm
 
 - Python virtual environments, dependency installation, and troubleshooting.
 - Pygame windows, surfaces, input, coordinates, and the game loop.
-- Loading PNG art, cropping sprite sheets, and handling asset licenses.
+- Loading PNG art through the shared repository-relative asset loader, cropping sprite sheets, and handling asset licenses.
 - Perlin-noise parameters and converting noise into grass and water.
 - Buildings, resource income, unit training, combat, and enemy waves.
 - A* search, heuristics, blocked goals, and smooth waypoint movement.
@@ -42,7 +42,7 @@ python -m pip install -r requirements-dev.txt
 
 For Windows, compiler requirements, the development install, and environment troubleshooting, use the [setup instructions](docs/DEVELOPER_GUIDE.md#2-set-up-python-and-run-the-game).
 
-Launch with `python -m src.rts` from the repository root. Asset paths still require the root working directory.
+Launch with `python -m src.rts` from the repository root. The asset loader resolves files from the repository location, so moving the working directory does not silently change asset lookup.
 
 ## Controls
 

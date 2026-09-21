@@ -19,7 +19,14 @@ def generate_spawn_point():
     return (grid_width - 1) * GRID_SIZE, random.randint(0, grid_height - 1) * GRID_SIZE
 
 
-def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
+def spawn_enemies(
+    buildings,
+    units,
+    current_wave,
+    enemy_spawn_rate,
+    asset_loader,
+    entity_font,
+):
     """Create the current wave's enemies at grid-aligned map-edge points."""
     grid_width = SCREEN_WIDTH // GRID_SIZE
     grid_height = SCREEN_HEIGHT // GRID_SIZE
@@ -32,8 +39,20 @@ def spawn_enemies(buildings, units, current_wave, enemy_spawn_rate):
         spawn_y = max(0, min(spawn_y, (grid_height - 1) * GRID_SIZE))
 
         enemy_type = random.choice(list(ENEMY_DATA))
+        image = asset_loader.image(
+            ENEMY_DATA[enemy_type]["asset_key"],
+            (GRID_SIZE, GRID_SIZE),
+        )
         spawned_enemies.append(
-            EnemyUnit(enemy_type, spawn_x, spawn_y, buildings, units)
+            EnemyUnit(
+                enemy_type,
+                spawn_x,
+                spawn_y,
+                buildings,
+                units,
+                image,
+                entity_font,
+            )
         )
 
     return spawned_enemies
