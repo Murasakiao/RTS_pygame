@@ -326,7 +326,7 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 - [x] Introduce `src.world.World`, stable `TerrainKind`/`TerrainTile` values, shared geometry helpers, and a navigation revision that changes only when walkability changes.
 - [x] Correct A*: use octile costs/heuristic, reject diagonal corner cutting, skip stale heap entries, validate inputs, and return explicit `PathResult` statuses. Attack-position candidate search remains part of the later combat step.
 - [x] Remove obstacle-bypassing motion, reuse routes, consume residual waypoint travel, and limit failed-route retries. Store the world navigation revision with each route and invalidate it after walkability changes.
-- [ ] Separate orders from targets/waypoints. Implement single-unit Move, Stop/Hold, and explicit attack behavior before group controls.
+- [x] Separate `UnitOrder` intent from current targets and waypoints. Implement single-unit Move, Attack, and Hold/Stop behavior before group controls.
 - [ ] Add the shared footprint validator and valid exit/spawn-cell selection. Commit costs and walkability changes together.
 - [ ] Share attack-range and sight rules between targeting and damage. Load enemy priorities from data, then add bounded unreachable-target handling.
 - [ ] Move cleanup out of drawing. Remove dead targets/selections and prevent dead actors taking another turn.
