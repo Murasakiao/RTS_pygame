@@ -1,5 +1,7 @@
 import noise
 
+from .world import TerrainKind, TerrainTile, World
+
 
 class TerrainGenerator:
     def __init__(
@@ -15,11 +17,18 @@ class TerrainGenerator:
         self.screen_height = screen_height
         self.grid_size = grid_size
         self.noise_seed = noise_seed
-        self.grass_tiles = list(grass_tiles)
-        self.water_tiles = list(water_tiles)
+        self.grass_tiles = tuple(grass_tiles)
+        self.water_tiles = tuple(water_tiles)
         if not self.grass_tiles or not self.water_tiles:
             raise ValueError("TerrainGenerator needs at least one grass and water tile")
-        self.terrain = self.generate_terrain()
+
+    @property
+    def grid_width(self):
+        return self.screen_width // self.grid_size
+
+    @property
+    def grid_height(self):
+        return self.screen_height // self.grid_size
 
     def generate_terrain(self):
         terrain = []
@@ -44,29 +53,24 @@ class TerrainGenerator:
 
                 water_threshold = -0.1
                 if noise_value < water_threshold:
-                    tile_index = len(self.grass_tiles)
+                    row.append(TerrainTile(TerrainKind.WATER))
                 else:
-                    tile_index = int(
+                    variant = int(
                         (noise_value - water_threshold)
                         / (1 - water_threshold)
                         * len(self.grass_tiles)
                     )
-                    tile_index = max(
-                        0,
-                        min(tile_index, len(self.grass_tiles) - 1),
-                    )
-
-                row.append(tile_index)
+                    variant = max(0, min(variant, len(self.grass_tiles) - 1))
+                    row.append(TerrainTile(TerrainKind.GRASS, variant))
             terrain.append(row)
 
-        self.terrain = terrain
         return terrain
 
-    def draw_terrain(self, screen):
-        for y, row in enumerate(self.terrain):
-            for x, tile_index in enumerate(row):
-                if tile_index == len(self.grass_tiles):
-                    tile = self.water_tiles[0]
-                else:
-                    tile = self.grass_tiles[tile_index]
-                screen.blit(tile, (x * self.grid_size, y * self.grid_size))
+    def generate_world(self):
+        """Create one authoritative world from the current seed and settings."""
+        return World(
+            self.grid_size,
+            self.generate_terrain(),
+            self.grass_tiles,
+            self.water_tiles,
+        )

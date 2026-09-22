@@ -42,10 +42,8 @@ def test_asset_loader_uses_repository_root_and_placeholder(caplog):
 
 def test_new_match_state_does_not_share_mutable_values():
     class TerrainFixture:
-        screen_width = 32
-        screen_height = 16
-        grid_size = 16
-        terrain = [[0, 0]]
+        def generate_world(self):
+            return object()
 
     first = GameState.new_match(TerrainFixture())
     second = GameState.new_match(TerrainFixture())
@@ -54,7 +52,7 @@ def test_new_match_state_does_not_share_mutable_values():
 
     assert second.resources["wood"] == 200
     assert second.buildings == []
-    assert first.grid is not second.grid
+    assert first.world is not second.world
 
 
 def test_fixed_step_runner_caps_catch_up_and_uses_constant_dt():

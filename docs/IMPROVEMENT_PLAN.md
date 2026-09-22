@@ -323,7 +323,7 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 
 **Depends on:** P0. Use small hand-authored fixtures before random maps. Fixes B03–B10 at the rule level.
 
-- [ ] Introduce the single world representation, stable terrain kinds, geometry helpers, and navigation revision.
+- [x] Introduce `src.world.World`, stable `TerrainKind`/`TerrainTile` values, shared geometry helpers, and a navigation revision that changes only when walkability changes.
 - [ ] Correct A*, skip stale heap entries, validate inputs, and return explicit results. For attack goals, support reachable candidate cells with an admissible goal-set heuristic or a zero-heuristic reference search first.
 - [ ] Remove obstacle-bypassing motion, reuse routes, consume waypoint travel correctly, and limit retries. Invalidate routes after world changes.
 - [ ] Separate orders from targets/waypoints. Implement single-unit Move, Stop/Hold, and explicit attack behavior before group controls.
@@ -406,7 +406,7 @@ Start with Normal difficulty. An Easy preset is useful if newcomer tests demand 
 
 ## 5. A small technical structure
 
-The present project has about 1,100 lines of Python. It does not need an entity-component framework, plugin architecture, or generic event bus to reach `v0.1`.
+The present project has about 1,700 lines of Python. It does not need an entity-component framework, plugin architecture, or generic event bus to reach `v0.1`.
 
 Grow these boundaries only as the phases need them:
 
@@ -414,7 +414,7 @@ Grow these boundaries only as the phases need them:
 |---|---|---|
 | `rts.py` | Entry point, Pygame lifetime, commands, and rendering | Existing initialization and menu bootstrap |
 | `game.py` | Match state and fixed simulation tick | `GameState` and `FixedStepRunner` introduced in P0 |
-| `world.py` | Terrain, bounds, occupancy, revision, placement and spawn validation | `update_grid()` and scattered cell checks |
+| `world.py` | Terrain, bounds, occupancy, revision, placement and spawn validation | Stable terrain kinds, geometry helpers, and navigation revision introduced in P1 |
 | `entities.py` | Buildings/units and their runtime state/behavior | Existing classes, without import-time initialization |
 | `spawning.py` | Enemy spawn-point selection and enemy construction | Moved out of `utils.py` during P0 |
 | `astar.py` | Pure route search and explicit path results | Existing search, with correctness fixes |

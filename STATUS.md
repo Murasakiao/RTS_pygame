@@ -16,15 +16,15 @@ Dormant Kingdom Conquer RTS prototype. Implements Perlin-noise grass/water terra
 
 Documentation review: 2026-09-15. Existing macOS environment: Python 3.12.13, pygame 2.6.1, noise distribution 1.2.2; pytest 9.1.1 passed a temporary A* smoke test. Source parsing, all 23 PNG loads, dependency checks, and a headless scripted gameplay smoke test passed. This was not a cross-platform installation or full gameplay/performance test; no game code changed.
 
-P0 startup/import work is complete: Pygame initializes inside `main()`, package imports are explicit, and spawning lives in `src/spawning.py`. The new `src.game.GameState` owns per-match mutable data, `FixedStepRunner` advances simulation at 30 Hz, and `src.assets.AssetLoader` owns shared repository-relative image/font loading with placeholders and diagnostics. Remaining gaps include terrain regeneration rules, navigation corner cutting and obstacle-bypassing movement, placement/spawning validation, and building attack range. Runtime and development dependency manifests pin the verified macOS environment; five committed P0 regression tests now cover import safety, assets, fresh state, fixed timing, and start/quit shutdown. Code and art licensing still need confirmation.
+P0 startup/import work is complete: Pygame initializes inside `main()`, package imports are explicit, and spawning lives in `src/spawning.py`. The new `src.game.GameState` owns per-match mutable data, `FixedStepRunner` advances simulation at 30 Hz, and `src.assets.AssetLoader` owns shared repository-relative image/font loading with placeholders and diagnostics. P1 world groundwork is now implemented in `src.world`: stable terrain kinds, shared cell geometry helpers, one authoritative world representation, and revisioned navigation data. Remaining gaps include A* corner cutting and invalid-input handling, obstacle-bypassing movement, placement/spawning validation, and building attack range. Runtime and development dependency manifests pin the verified macOS environment; committed P0/P1 tests cover startup, assets, fresh state, fixed timing, world semantics, revisions, and geometry. Code and art licensing still need confirmation.
 
 ## Next action
-P0 state/timing/asset work is implemented on the active refactor branch. Keep the five committed startup, asset, and fixed-step regression tests green, then review/merge PR #21 before beginning P1 navigation and movement repairs. Chosen direction remains short, single-player base-defense RTS matches; retain dormant status until development resumes.
+Review the stacked P1 world-model update after PRs #21 and #22, then implement the next P1 step: correct A* inputs, stale heap entries, diagonal corner cutting, and explicit path results. Keep the committed headless tests green. Chosen direction remains short, single-player base-defense RTS matches; retain dormant status until development resumes.
 
 ## Conventions
 - Launch from the unit root with `python -m src.rts` using the project `venv`.
 - Launch with `python -m src.rts`; `src.assets.AssetLoader` resolves asset files relative to the repository/module location.
-- Treat documented suggested changes as proposals, not implemented features. The P0 state owner, fixed-step runner, and asset loader are implemented; P1 gameplay repairs are not.
+- Treat documented suggested changes as proposals, not implemented features. P0 is implemented; P1 world groundwork is implemented, while movement, placement, combat, and match repairs remain.
 - Append a specific entry to [docs/LOGS.md](docs/LOGS.md) after each implementation, bug-fix, dependency, or documentation update.
 
 ## Pointers

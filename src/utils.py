@@ -10,6 +10,7 @@ from .constants import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from .world import cell_to_pixel, pixel_to_cell
 
 
 def draw_grid(screen, color=BLACK, line_width=1, opacity=150):
@@ -52,8 +53,8 @@ def add_game_message(message, game_messages, duration=MESSAGE_DURATION):
 
 
 def update_preview_rect(mouse_pos, current_building_type):
-    grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
-    grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+    cell = pixel_to_cell(mouse_pos, GRID_SIZE)
+    grid_x, grid_y = cell_to_pixel(cell, GRID_SIZE)
     size_multiplier = BUILDING_DATA.get(current_building_type, {}).get(
         "size_multiplier", 1
     )
