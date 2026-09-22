@@ -5,6 +5,7 @@ import math
 import pygame
 
 from .astar import a_star
+from .world import cell_to_pixel, pixel_to_cell
 from .constants import (
     ALLY_DATA,
     BLACK,
@@ -111,22 +112,17 @@ class Unit(GameObject):
         """
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
-            if self.target:
-                print(f"{self.name} targeted {getattr(self.target, 'name', self.target.type)}")
 
     def move_towards_target(self, dt, grid):
-        """Moves the unit towards its target or destination, using A* pathfinding."""
-        path_needs_update = False  # Flag to track path updates
-        movement_threshold = 2 * GRID_SIZE # Adjust this threshold as needed
+        """Follow a valid route toward a target without a direct fallback."""
+        path_needs_update = False
+        movement_threshold = 2 * GRID_SIZE
 
         if self.target and self.target.hp > 0:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
             distance_to_target = math.hypot(dx, dy)
             unit_range = self.get_attack_range()
-
-            # ✅ CHECK A — do we have a valid target?
-            print(f"[A] {self.name} → target={getattr(self.target,'type','?')} hp={self.target.hp} dist={distance_to_target:.0f} range={unit_range}")
 
             if distance_to_target <= unit_range:
                 self.path = []
@@ -136,90 +132,57 @@ class Unit(GameObject):
             elif self.previous_target_position:
                 target_movement = math.hypot(
                     self.target.x - self.previous_target_position[0],
-                    self.target.y - self.previous_target_position[1]
+                    self.target.y - self.previous_target_position[1],
                 )
                 if target_movement > movement_threshold:
                     path_needs_update = True
 
             if path_needs_update:
-                grid_width  = len(grid[0])
-                grid_height = len(grid)
-
-                start_grid_x = int(self.x // GRID_SIZE)
-                start_grid_y = int(self.y // GRID_SIZE)
-                end_grid_x   = int(self.target.x // GRID_SIZE)
-                end_grid_y   = int(self.target.y // GRID_SIZE)
-
-                # ✅ Clamp to valid grid range instead of skipping entirely
-                start_grid_x = max(0, min(start_grid_x, grid_width - 1))
-                start_grid_y = max(0, min(start_grid_y, grid_height - 1))
-                end_grid_x   = max(0, min(end_grid_x,   grid_width - 1))
-                end_grid_y   = max(0, min(end_grid_y,   grid_height - 1))
-
+                start_cell = pixel_to_cell((self.x, self.y), GRID_SIZE)
+                target_cell = pixel_to_cell(
+                    (self.target.x, self.target.y),
+                    GRID_SIZE,
+                )
                 self.previous_target_position = (self.target.x, self.target.y)
-                self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or []
-                if self.path:
-                    self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE)
-                if (0 <= start_grid_x < grid_width and 0 <= start_grid_y < grid_height and
-                        0 <= end_grid_x < grid_width and 0 <= end_grid_y < grid_height):
-                    self.path = a_star(grid, (start_grid_x, start_grid_y), (end_grid_x, end_grid_y)) or []
-                    if self.path:
-                        self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE)
+                result = a_star(grid, start_cell, target_cell)
+                self.path = list(result.path) if result.succeeded else []
+                self.destination = (
+                    cell_to_pixel(self.path[0], GRID_SIZE)
+                    if self.path
+                    else None
+                )
 
-                    # ✅ CHECK B — did A* find a path?
-                    print(f"[B] a_star({start_grid_x},{start_grid_y})→({end_grid_x},{end_grid_y}): {len(self.path)} nodes | grid cell passable={grid[start_grid_y][start_grid_x][1]==0}/{grid[end_grid_y][end_grid_x][1]==0}")
-                else:
-                    self.path = []
-                    print(f"[B] OUT OF BOUNDS start=({start_grid_x},{start_grid_y}) end=({end_grid_x},{end_grid_y})")
+        if not self.path:
+            return
 
-        if self.path:
-            next_node = self.path[0]
-            target_x = next_node.x * GRID_SIZE
-            target_y = next_node.y * GRID_SIZE
-            dx = target_x - self.x
-            dy = target_y - self.y
-            distance_to_next_node = math.hypot(dx, dy)
-            travel_distance = self.speed * (dt / 1000)
+        next_cell = self.path[0]
+        target_x, target_y = cell_to_pixel(next_cell, GRID_SIZE)
+        dx = target_x - self.x
+        dy = target_y - self.y
+        distance_to_next_node = math.hypot(dx, dy)
+        travel_distance = self.speed * (dt / 1000)
 
-            # ✅ CHECK C — is movement math working?
-            print(f"[C] speed={self.speed} travel={travel_distance:.2f} dist_to_node={distance_to_next_node:.2f}")
-
-            if distance_to_next_node <= travel_distance:
-                self.x = next_node.x * GRID_SIZE
-                self.y = next_node.y * GRID_SIZE
-                self.rect.topleft = (self.x, self.y)
-                self.path.pop(0)
-                self.destination = (self.path[0].x * GRID_SIZE, self.path[0].y * GRID_SIZE) if self.path else None
-            else:
-                self.x += (dx / distance_to_next_node) * travel_distance
-                self.y += (dy / distance_to_next_node) * travel_distance
-                self.rect.topleft = (self.x, self.y)
-
-        elif self.destination:  # Move towards clicked destination if no path
-             dx = self.destination[0] - self.x
-             dy = self.destination[1] - self.y
-             distance_to_destination = math.hypot(dx, dy)
-
-             # Check if target is within attack range
-             if self.target:
-                 dx_target = self.target.x - self.x
-                 dy_target = self.target.y - self.y
-                 distance_to_target = math.hypot(dx_target, dy_target)
-                 if distance_to_target <= self.get_attack_range():
-                     self.destination = None  # Clear destination if target is within range
-                     return  # Stop moving
-
-             travel_distance = self.speed * (dt / 1000)
-
-             if distance_to_destination <= travel_distance:
-                 self.x = self.destination[0]
-                 self.y = self.destination[1]
-                 self.rect.topleft = (self.x, self.y)
-                 self.destination = None  # Clear destination once reached
-             else:
-                 self.x += (dx / distance_to_destination) * travel_distance
-                 self.y += (dy / distance_to_destination) * travel_distance
-                 self.rect.topleft = (self.x, self.y)
+        if distance_to_next_node == 0:
+            self.path.pop(0)
+            self.destination = (
+                cell_to_pixel(self.path[0], GRID_SIZE)
+                if self.path
+                else None
+            )
+        elif distance_to_next_node <= travel_distance:
+            self.x = target_x
+            self.y = target_y
+            self.rect.topleft = (self.x, self.y)
+            self.path.pop(0)
+            self.destination = (
+                cell_to_pixel(self.path[0], GRID_SIZE)
+                if self.path
+                else None
+            )
+        else:
+            self.x += (dx / distance_to_next_node) * travel_distance
+            self.y += (dy / distance_to_next_node) * travel_distance
+            self.rect.topleft = (self.x, self.y)
 
     def handle_attack(self, dt, game_messages=None):
         """
@@ -306,9 +269,8 @@ class Unit(GameObject):
                 
             # Draw path information    
             if self.path:  # Only draw if there's a path
-                for node in self.path:
-                    grid_x = node.x * GRID_SIZE
-                    grid_y = node.y * GRID_SIZE
+                for cell in self.path:
+                    grid_x, grid_y = cell_to_pixel(cell, GRID_SIZE)
                     rect = pygame.Rect(grid_x, grid_y, GRID_SIZE, GRID_SIZE)
                     pygame.draw.rect(screen, BLUE, rect, 2)
 

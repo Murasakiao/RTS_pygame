@@ -819,7 +819,7 @@ You give `a_star()`:
 navigation grid + start cell + goal cell
 ```
 
-It returns a list of `Node` objects. Drawing and smooth movement happen elsewhere; A* searches cell coordinates.
+It returns a `PathResult` with an explicit `PathStatus` and an immutable tuple of `(x, y)` cells. Drawing and smooth movement happen elsewhere; A* searches cell coordinates. A blocked goal is reported as `UNREACHABLE` instead of being silently replaced.
 
 A* combines two costs:
 
@@ -831,17 +831,11 @@ f(n) = g(n) + h(n)
 
 The soldier has not moved yet. The search compares possible routes: `g` counts a route's known cost, and `h` estimates the unfinished part. A* examines the lowest `f` next, considering both progress toward the goal and the cost of getting there.
 
-### 11.2 Nodes and neighbors in this implementation
+### 11.2 Neighbors and costs in this implementation
 
-`create_nodes_from_grid()` creates a fresh `Node` for each cell. Each stores:
+The search stores coordinates and scores in dictionaries; it does not create rendering `Node` objects. Each grid cell is considered walkable when its obstacle flag is zero.
 
-- `x`, `y`: cell coordinates.
-- `type`: `'wall'` if the obstacle flag is set, otherwise `'road'`.
-- `g_score` and `f_score`: infinity until the search finds a route to the node.
-
-A node's equality and hash depend on coordinates. This lets the search store nodes in a set.
-
-`get_neighbors()` permits eight directions:
+`_neighbors()` permits eight directions but rejects a diagonal if either side cell is blocked:
 
 ```text
 NW   N   NE
@@ -849,45 +843,41 @@ NW   N   NE
 SW   S   SE
 ```
 
-It checks map bounds. The main search then rejects wall neighbors and already-closed neighbors.
-
 For adjacent cells, `distance()` charges:
 
 ```text
 horizontal or vertical step = 1
-diagonal step               = 1.414
+legal diagonal step         = sqrt(2)
 ```
 
-The diagonal cost approximates `sqrt(2)`, the distance across a unit square. These costs measure cell travel, not pixels or milliseconds; all grass variants cost the same.
+These costs measure cell travel, not pixels or milliseconds; all grass variants cost the same. `TerrainKind` stays in the first navigation-grid field, while the obstacle flag remains the second.
 
 ### 11.3 The search, step by step
 
 The current implementation follows this outline:
 
-1. Build the node grid and obtain the start node.
-2. If the requested goal is a wall, choose a replacement with `find_nearest_walkable()`.
-3. Return `[]` if there is no walkable replacement or if start equals the resolved goal.
-4. Set the start's `g` score to 0 and push it into the open heap.
+1. Validate the grid shape, cell values, coordinates, and walkability.
+2. Return `ALREADY_THERE` with the start cell when start equals goal.
+3. Return `INVALID_INPUT` for a blocked start or invalid coordinate; return `UNREACHABLE` for a blocked goal.
+4. Set the start `g` score to 0 and push `(f, g, counter, cell)` into the open heap.
 5. Pop the candidate with the smallest queued `f` score.
-6. If it is the goal, reconstruct the path.
-7. Close that node and inspect its neighbors.
-8. Compute `tentative_g = current.g_score + step_cost`.
-9. If that improves a neighbor's cost, update its scores and predecessor, then push a heap entry.
-10. Continue until the goal is found or the heap is empty.
+6. Skip the entry if its queued `g` is stale compared with the best known score.
+7. If it is the goal, reconstruct the coordinate path.
+8. Inspect valid neighbors, including the no-corner-cutting diagonal rule.
+9. If a neighbor's tentative score improves, update its predecessor and push a new heap entry.
+10. Return `UNREACHABLE` when the heap empties.
 
 Important structures:
 
 | Name | Purpose |
 |---|---|
-| `open_set` | A `heapq` priority queue of candidates to explore |
-| `in_open_set` | Coordinate membership tracking; it does not choose priority |
-| `closed_set` | Nodes the search has expanded |
+| `open_set` | A `heapq` priority queue of candidate tuples |
+| `g_score` | Best known cost to each coordinate |
 | `came_from` | A coordinate-to-predecessor map for rebuilding the route |
 | `counter` | A growing number in heap entries to break equal-priority ties |
+| `PathResult` | Status, path, and optional reason returned to callers |
 
-The heap keeps the lowest-score entry ready to take next, without sorting all candidates after each addition. Entries are `(f_score, counter, node)`; `heapq.heappop()` removes the smallest queued tuple.
-
-If a better route reaches a node already in the heap, the code pushes another entry with the new score. Older entries remain. The current loop does not discard stale entries or skip an already-closed node when popping it, so it can repeat work.
+The heap keeps the lowest-score entry ready without sorting all candidates after each addition. Better routes push a new tuple; the queued `g` comparison discards stale entries when they are popped.
 
 ### 11.4 A small route
 
@@ -905,99 +895,66 @@ A diagonal path is:
 (0, 0) -> (1, 1) -> (2, 2)
 ```
 
-Its movement cost is `1.414 + 1.414 = 2.828`. The returned list includes the starting node, so three nodes represent two movement steps.
+Its movement cost is `sqrt(2) + sqrt(2)`, about `2.828`. The returned tuple includes the starting cell, so three cells represent two movement steps.
 
-To trace the first decision, expand `(0, 0)` and score its three available neighbors. With the current Manhattan heuristic and goal `(2, 2)`:
-
-| Candidate | `g`: cost from start | `h`: estimated cost to goal | `f = g + h` |
-|---|---:|---:|---:|
-| `(1, 0)` | 1 | 3 | 4 |
-| `(0, 1)` | 1 | 3 | 4 |
-| `(1, 1)` | 1.414 | 2 | 3.414 |
-
-The heap selects `(1, 1)` next because it has the lowest `f`. From there, the goal is one diagonal step away. This example produces the shortest route, but the heuristic mismatch discussed below prevents that guarantee on other maps.
+The heap uses the octile `f = g + h` score. On an open map, the diagonal candidate has the same admissible remaining estimate as its true diagonal cost.
 
 **Runnable learning example:** save as a temporary script in the repository root and run it with the environment's Python. `src.astar` has no Pygame dependency.
 
 ```python
-from src.astar import a_star
+from src.astar import PathStatus, a_star
 
-# Each cell contains (terrain_id, obstacle_flag).
+# Each cell contains (terrain_kind, obstacle_flag).
 grid = [[(0, 0) for _ in range(3)] for _ in range(3)]
-path = a_star(grid, (0, 0), (2, 2))
-print([(node.x, node.y) for node in path])
-# [(0, 0), (1, 1), (2, 2)]
+result = a_star(grid, (0, 0), (2, 2))
+assert result.status is PathStatus.FOUND
+print(result.path)
+# ((0, 0), (1, 1), (2, 2))
 ```
 
-`came_from` remembers which cell led to each improved route. This avoids copying a whole path into every candidate. Once the goal is found, `reconstruct_path()` follows those links back to the start and inserts each predecessor at the front of the result.
+`came_from` remembers which cell led to each improved route. This avoids copying a whole path into every candidate. Once the goal is found, the predecessor links are followed back to the start.
 
-### 11.5 The heuristic does not match diagonal movement
+### 11.5 The heuristic matches diagonal movement
 
-The current `h_score()` uses **Manhattan distance**:
+`h_score()` now uses octile distance, matching the movement costs:
 
 ```text
-h = abs(goal.x - node.x) + abs(goal.y - node.y)
+dx = abs(goal_x - node_x)
+dy = abs(goal_y - node_y)
+h  = sqrt(2) * min(dx, dy) + abs(dx - dy)
 ```
 
-Manhattan distance fits four-direction movement with cost 1 per step. With diagonals, it can overestimate: from `(0, 0)` to `(1, 1)`, it estimates 2 even though a legal diagonal costs 1.414.
-
-An **admissible heuristic** never overestimates the true remaining cost. The current mismatch means you cannot assume that this A* returns the shortest route. A comparison during review found a route costing 11.070 where a Dijkstra search using the same movement rules found 10.484.
-
-**Suggested change:** use octile distance, matching this file's movement costs:
-
-```text
-dx = abs(goal.x - node.x)
-dy = abs(goal.y - node.y)
-h  = 1.414 * min(dx, dy) + abs(dx - dy)
-```
-
-The existing `distance()` already computes this formula. An initial correction would be:
-
-```python
-def h_score(start, end):
-    return distance(start, end)
-```
-
-This is a proposed replacement, not the current function. Pair it with heap/closed-set tests. If you change the diagonal cost to `sqrt(2)`, use that same value in the heuristic.
-
-Setting `h` to zero gives Dijkstra-style search, which is useful as a small-map reference for checking route costs.
+An **admissible heuristic** never overestimates the true remaining cost. Octile distance is admissible for eight-direction movement with straight cost 1 and diagonal cost `sqrt(2)`. Setting `h` to zero remains useful as a Dijkstra-style reference for small-map route tests.
 
 ### 11.6 Corner cutting
 
-The current neighbor logic allows this diagonal:
+For this game, a diagonal step from `(x, y)` to `(x + dx, y + dy)` requires both `(x + dx, y)` and `(x, y + dy)` to be walkable:
 
 ```text
 S #
 # G
 ```
 
-`#` means blocked. The code returns `S -> G` because it checks the destination cell without checking the two side cells. A 16 × 16 soldier cannot fit through that shared corner without touching obstacles.
+`#` means blocked, so the example is unreachable. A 16 × 16 soldier cannot fit through that shared corner without touching obstacles.
 
-**Suggested change:** for a diagonal step from `(x, y)` to `(x + dx, y + dy)`, require both `(x + dx, y)` and `(x, y + dy)` to be walkable if your design forbids corner cutting.
+### 11.7 Blocked goals and attack positions
 
-### 11.7 Blocked goals and the BFS helper
+A building blocks its own cell, so an ordinary move request cannot end there. `a_star()` now returns `UNREACHABLE` with reason `goal_blocked` instead of silently selecting a nearby cell.
 
-A building blocks its own cell, so the pathfinder cannot end there. `find_nearest_walkable()` searches outward from a blocked goal using **breadth-first search**, or BFS.
+Combat still needs a higher-level attack-position search. It should generate candidate walkable cells around the target footprint, call A* for each candidate, and choose a reachable position that satisfies the shared attack-range rule. A single nearby empty cell is not enough to guarantee an attack.
 
-BFS visits nearby cells in layers with a first-in, first-out queue. This helper returns the first walkable cell it encounters. It may search beyond immediate neighbors and across blocked cells while looking for that candidate.
+### 11.8 Return values and input validation
 
-Its limits:
+`a_star()` returns a `PathResult` with one of these statuses:
 
-- It measures proximity outward from the goal, not reachability from the start.
-- It treats diagonal and straight search steps as equal for this outward search.
-- It does not consider the unit's attack range or the target's full footprint.
-- It can choose an unreachable replacement even if another nearby cell has a route.
-- It uses `list.pop(0)`, which shifts remaining entries; `collections.deque.popleft()` would avoid that overhead.
+| Status | Meaning |
+|---|---|
+| `FOUND` | A route contains the start and goal cells. |
+| `ALREADY_THERE` | Start equals the walkable goal; the path contains the start cell. |
+| `UNREACHABLE` | The goal is blocked or no legal route exists. |
+| `INVALID_INPUT` | The grid or coordinates are malformed, out of bounds, or the start is blocked. |
 
-For combat, generate candidate attack cells around the target, then choose one the unit can reach. A single nearby empty cell is not enough to guarantee an attack.
-
-### 11.8 Return values and input assumptions
-
-`a_star()` returns `[]` for several different outcomes: no route, no walkable goal, or already standing at the resolved goal. The caller cannot distinguish success-with-no-movement from failure through that value alone.
-
-The function assumes a nonempty rectangular grid and valid coordinates. It does not reject a blocked start; a search can leave one. Out-of-range positive coordinates can raise an index error; negative coordinates can invoke Python's negative indexing.
-
-**Suggested change:** validate inputs and return explicit status, such as `FOUND`, `ALREADY_THERE`, or `UNREACHABLE`, along with the path and resolved goal.
+The result also carries a short `reason` string for feedback and diagnostics. The grid must be non-empty and rectangular. Negative coordinates are rejected instead of invoking Python's negative indexing.
 
 ## 12. Turn paths into movement
 
@@ -1009,22 +966,22 @@ A* plans a route; movement follows it. Keeping those jobs separate lets a unit r
 
 A right-click on a selected unit:
 
-1. Snaps the click to a pixel-aligned cell position.
+1. Snaps the click to a pixel-aligned cell position using the shared geometry helpers.
 2. Stores that position in `destination` and sets `moving = True`.
 3. Converts start and goal positions into cell coordinates.
-4. Calls `a_star()` and assigns its result to `path`.
-5. Adds a movement or no-path message.
-6. Finds a nearest enemy target as well.
+4. Calls `a_star()` and copies `PathResult.path` only when the result succeeds.
+5. Clears the destination and reports the result reason when no route exists.
+6. Finds a nearest enemy target as well; order/target separation is a later P1 step.
 
 The `moving` attribute does not control later movement; no code reads it. The unit uses `path`, `destination`, and `target` instead.
 
 ### Smooth movement between cells
 
-For the next path node:
+For the next path cell:
 
 ```text
-target_x = node.x * 16
-target_y = node.y * 16
+target_x = cell_x * 16
+target_y = cell_y * 16
 dx = target_x - unit.x
 dy = target_y - unit.y
 distance = hypot(dx, dy)
@@ -1046,7 +1003,7 @@ Floating-point `x` and `y` let small steps add up. Rounding each 0.66-pixel step
 
 For a living target, movement stops within attack range. Outside range, the unit requests a route if it has no path, no destination, or the target has moved **more than 32 pixels** from its last recorded position. This threshold limits searches for small target movements while following a route.
 
-The method clamps chase start and goal cells to the grid. It currently contains two calls to `a_star()` in the same repath branch, so a valid repath performs the same search twice. It also retries unreachable targets on later frames rather than applying a retry delay.
+The method now makes one validated A* request and clears the route when the result is unreachable, so it no longer falls back to straight-line travel through obstacles. It still retries unreachable targets on later frames rather than applying a retry delay, and target/order separation remains a later P1 step.
 
 The code tracks target movement, but it does not invalidate routes when someone places a building across them.
 
@@ -1113,7 +1070,7 @@ Keep fixes smaller than feature additions. The table groups the current findings
 |---:|---|---|
 | 1 | Imports and startup | Complete in P0: one module identity, no circular import, guarded `main()`, runtime menu/display setup |
 | 2 | Timing | P0 complete: cap the menu, use a fresh gameplay clock, fixed 30 Hz updates, and bound long-frame catch-up |
-| 3 | Navigation correctness | P1 world groundwork is complete: stable terrain kinds, shared geometry, and navigation revision; still match heuristic/costs, prevent corner cutting, handle stale heap entries, and return explicit outcomes |
+| 3 | Navigation correctness | P1 world and A* groundwork is complete: stable terrain kinds, shared geometry, navigation revision, octile costs, input validation, stale-entry handling, and no-corner-cutting; movement invalidation and attack goals remain |
 | 4 | Movement safety | Remove straight-line failure fallback; separate move/chase intent; invalidate stale paths; avoid duplicate searches |
 | 5 | Placement and spawning | Validate entire footprints, bounds, occupancy, and terrain; choose valid unit/enemy spawns |
 | 6 | Combat | Honor configured priorities; choose reachable attack positions; use consistent distance geometry |

@@ -1,147 +1,202 @@
-import math
+from dataclasses import dataclass
+from enum import Enum
 import heapq
-
-class Node:
-    def __init__(self, x, y, is_obstacle):
-        self.x = x
-        self.y = y
-        self.type = 'wall' if is_obstacle else 'road'
-        self.g_score = float('inf')
-        self.f_score = float('inf')
-
-    def __eq__(self, other):
-        return (self.x, self.y) == (other.x, other.y)
-
-    def __hash__(self):
-        return hash((self.x, self.y))
-
-    def __lt__(self, other):
-        return self.f_score < other.f_score
-
-    def get_neighbors(self, nodes):
-        rows = len(nodes)
-        cols = len(nodes[0])
-        directions = [[1, 0], [1, 1], [0, 1], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]
-        neighbors = []
-        for dx, dy in directions:
-            nx = self.x + dx
-            ny = self.y + dy
-            if 0 <= nx < cols and 0 <= ny < rows:
-                neighbors.append(nodes[ny][nx])
-        return neighbors
+import itertools
+import math
+from collections.abc import Sequence
 
 
-def create_nodes_from_grid(grid):
-    rows = len(grid)
-    cols = len(grid[0])
-    nodes = []
-    for y in range(rows):
-        row = []
-        for x in range(cols):
-            is_obstacle = grid[y][x][1]
-            node = Node(x, y, is_obstacle)
-            row.append(node)
-        nodes.append(row)
-    return nodes
+Cell = tuple[int, int]
+SQRT_TWO = math.sqrt(2.0)
 
-def distance(node1, node2):
-    dx = abs(node1.x - node2.x)
-    dy = abs(node1.y - node2.y)
-    return 1.414 * min(dx, dy) + abs(dx - dy)
+
+class PathStatus(str, Enum):
+    FOUND = "found"
+    ALREADY_THERE = "already_there"
+    UNREACHABLE = "unreachable"
+    INVALID_INPUT = "invalid_input"
+
+
+@dataclass(frozen=True)
+class PathResult:
+    """Explicit result for a grid route request."""
+
+    status: PathStatus
+    path: tuple[Cell, ...] = ()
+    reason: str | None = None
+
+    @property
+    def succeeded(self):
+        return self.status in {
+            PathStatus.FOUND,
+            PathStatus.ALREADY_THERE,
+        }
+
+    def __bool__(self):
+        return self.succeeded
+
+
+def _coordinate(value):
+    if (
+        not isinstance(value, Sequence)
+        or isinstance(value, (str, bytes))
+        or len(value) != 2
+        or any(isinstance(part, bool) or not isinstance(part, int) for part in value)
+    ):
+        return None
+    return int(value[0]), int(value[1])
+
+
+def _validate_grid(grid):
+    if (
+        not isinstance(grid, Sequence)
+        or isinstance(grid, (str, bytes))
+        or not grid
+    ):
+        return None, "grid_empty"
+
+    if any(
+        not isinstance(row, Sequence)
+        or isinstance(row, (str, bytes))
+        or not row
+        for row in grid
+    ):
+        return None, "grid_not_rectangular"
+
+    width = len(grid[0])
+    if any(len(row) != width for row in grid):
+        return None, "grid_not_rectangular"
+
+    for row in grid:
+        for cell in row:
+            if (
+                not isinstance(cell, Sequence)
+                or len(cell) < 2
+                or cell[1] not in (0, 1, False, True)
+            ):
+                return None, "grid_cell_invalid"
+
+    return (width, len(grid)), None
+
+
+def _walkable(grid, cell):
+    x, y = cell
+    return grid[y][x][1] == 0
+
+
+def _neighbors(grid, cell, width, height):
+    x, y = cell
+    directions = (
+        (1, 0),
+        (0, 1),
+        (-1, 0),
+        (0, -1),
+        (1, 1),
+        (1, -1),
+        (-1, -1),
+        (-1, 1),
+    )
+    for dx, dy in directions:
+        nx, ny = x + dx, y + dy
+        if not (0 <= nx < width and 0 <= ny < height):
+            continue
+        if not _walkable(grid, (nx, ny)):
+            continue
+        if dx and dy:
+            # Do not squeeze through a blocked diagonal corner.
+            if not _walkable(grid, (x + dx, y)):
+                continue
+            if not _walkable(grid, (x, y + dy)):
+                continue
+        yield nx, ny
+
+
+def distance(first, second):
+    """Return the cost of an optimal eight-direction grid displacement."""
+    first_cell = _coordinate(first)
+    second_cell = _coordinate(second)
+    if first_cell is None or second_cell is None:
+        raise ValueError("distance() expects two (x, y) cells")
+    dx = abs(second_cell[0] - first_cell[0])
+    dy = abs(second_cell[1] - first_cell[1])
+    return max(dx, dy) + (SQRT_TWO - 1) * min(dx, dy)
+
 
 def h_score(start, end):
-    return abs(end.x - start.x) + abs(end.y - start.y)
+    """Use the admissible octile heuristic for eight-direction movement."""
+    return distance(start, end)
 
-def reconstruct_path(came_from, current):
+
+def _reconstruct_path(came_from, current):
     path = [current]
-    current_key = (current.x, current.y)
-    while current_key in came_from:
-        current = came_from[current_key]
-        current_key = (current.x, current.y)
-        path.insert(0, current)
-    return path
+    while current in came_from:
+        current = came_from[current]
+        path.append(current)
+    path.reverse()
+    return tuple(path)
 
-def find_nearest_walkable(nodes, target_x, target_y):
-    """
-    If the target cell is a wall (e.g. a building), find the nearest
-    adjacent walkable cell to path towards instead.
-    """
-    rows = len(nodes)
-    cols = len(nodes[0])
-    target_node = nodes[target_y][target_x]
-
-    if target_node.type != 'wall':
-        return target_node  # Target is already walkable
-
-    # BFS outward from target to find nearest walkable neighbour
-    visited = set()
-    queue = [(target_x, target_y)]
-    visited.add((target_x, target_y))
-    directions = [[1, 0], [1, 1], [0, 1], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]]
-
-    while queue:
-        cx, cy = queue.pop(0)
-        for dx, dy in directions:
-            nx, ny = cx + dx, cy + dy
-            if (nx, ny) not in visited and 0 <= nx < cols and 0 <= ny < rows:
-                visited.add((nx, ny))
-                candidate = nodes[ny][nx]
-                if candidate.type != 'wall':
-                    return candidate  # Found nearest walkable cell
-                queue.append((nx, ny))
-
-    return None  # No walkable cell found at all
 
 def a_star(grid, start_coords, end_coords):
-    nodes = create_nodes_from_grid(grid)
-    start_node = nodes[start_coords[1]][start_coords[0]]
+    """Find a route through a validated, eight-direction grid.
 
-    # if end cell is a wall, reroute to nearest walkable neighbour
-    end_node = find_nearest_walkable(nodes, end_coords[0], end_coords[1])
-    if end_node is None:
-        return []
+    The returned path contains immutable ``(x, y)`` cells. A blocked goal is
+    reported as unreachable; callers that need an attack position should
+    choose and validate a reachable candidate goal explicitly.
+    """
+    dimensions, grid_error = _validate_grid(grid)
+    if grid_error:
+        return PathResult(PathStatus.INVALID_INPUT, reason=grid_error)
 
-    if start_node == end_node:
-        return []
+    start = _coordinate(start_coords)
+    end = _coordinate(end_coords)
+    if start is None or end is None:
+        return PathResult(PathStatus.INVALID_INPUT, reason="coordinate_invalid")
 
+    width, height = dimensions
+    if not (0 <= start[0] < width and 0 <= start[1] < height):
+        return PathResult(PathStatus.INVALID_INPUT, reason="start_out_of_bounds")
+    if not (0 <= end[0] < width and 0 <= end[1] < height):
+        return PathResult(PathStatus.INVALID_INPUT, reason="goal_out_of_bounds")
+    if not _walkable(grid, start):
+        return PathResult(PathStatus.INVALID_INPUT, reason="start_blocked")
+    if not _walkable(grid, end):
+        return PathResult(PathStatus.UNREACHABLE, reason="goal_blocked")
+    if start == end:
+        return PathResult(PathStatus.ALREADY_THERE, (start,))
+
+    counter = itertools.count()
     open_set = []
-    in_open_set = set()  # O(1) membership check
-    counter = 0
     came_from = {}
-
-    start_node.g_score = 0
-    start_node.f_score = h_score(start_node, end_node)
-    heapq.heappush(open_set, (start_node.f_score, counter, start_node))
-    in_open_set.add((start_node.x, start_node.y))
-    closed_set = set()
+    g_score = {start: 0.0}
+    heapq.heappush(
+        open_set,
+        (h_score(start, end), 0.0, next(counter), start),
+    )
 
     while open_set:
-        _, _, current = heapq.heappop(open_set)
-        in_open_set.discard((current.x, current.y))
+        _, current_g, _, current = heapq.heappop(open_set)
+        # A better route may have pushed a newer entry for this cell.
+        if current_g > g_score.get(current, math.inf):
+            continue
 
-        if current == end_node:
-            return reconstruct_path(came_from, current)
+        if current == end:
+            return PathResult(
+                PathStatus.FOUND,
+                _reconstruct_path(came_from, current),
+            )
 
-        closed_set.add(current)
-
-        for neighbor in current.get_neighbors(nodes):
-            if neighbor in closed_set or neighbor.type == 'wall':
+        for neighbor in _neighbors(grid, current, width, height):
+            step_cost = SQRT_TWO if neighbor[0] != current[0] and neighbor[1] != current[1] else 1.0
+            tentative_g = current_g + step_cost
+            if tentative_g >= g_score.get(neighbor, math.inf):
                 continue
 
-            tentative_g_score = current.g_score + distance(current, neighbor)
+            came_from[neighbor] = current
+            g_score[neighbor] = tentative_g
+            f_score = tentative_g + h_score(neighbor, end)
+            heapq.heappush(
+                open_set,
+                (f_score, tentative_g, next(counter), neighbor),
+            )
 
-            if tentative_g_score < neighbor.g_score:
-                came_from[(neighbor.x, neighbor.y)] = current
-                neighbor.g_score = tentative_g_score
-                neighbor.f_score = neighbor.g_score + h_score(neighbor, end_node)
-
-                if (neighbor.x, neighbor.y) not in in_open_set:
-                    counter += 1
-                    heapq.heappush(open_set, (neighbor.f_score, counter, neighbor))
-                    in_open_set.add((neighbor.x, neighbor.y))
-                # ✅ Fix Bug 2: if already in open set, re-push with updated score
-                else:
-                    counter += 1
-                    heapq.heappush(open_set, (neighbor.f_score, counter, neighbor))
-
-    return []  # No path found
+    return PathResult(PathStatus.UNREACHABLE, reason="no_route")

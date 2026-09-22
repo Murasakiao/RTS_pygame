@@ -277,26 +277,32 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         )
 
         state.selected_unit.path = []
-        path = a_star(
+        path_result = a_star(
             state.world.navigation_grid,
             start_cell,
             destination_cell,
         )
 
-        if path:
-            state.selected_unit.path = path
+        if path_result.succeeded:
+            state.selected_unit.path = list(path_result.path)
+            state.selected_unit.destination = (
+                cell_to_pixel(path_result.path[0], GRID_SIZE)
+                if path_result.path
+                else None
+            )
             add_game_message(
                 f"Moving {state.selected_unit.type}",
                 state.game_messages,
             )
         else:
+            state.selected_unit.destination = None
+            state.selected_unit.moving = False
             add_game_message(
-                f"No path found for {state.selected_unit.type}",
+                f"No path for {state.selected_unit.type}: {path_result.reason}",
                 state.game_messages,
             )
 
         state.selected_unit.target = state.selected_unit.find_nearest_target()
-        print(path)
 
     return True
 

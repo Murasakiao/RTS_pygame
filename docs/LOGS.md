@@ -193,3 +193,29 @@ Use this format:
 ### Scope
 - A* correctness, obstacle-bypassing movement, order/target separation, placement/spawn validation, combat geometry, and dead-actor cleanup remain later P1 steps.
 - This branch is stacked on the P0 state/assets update; review it after PRs #21 and #22.
+
+## 2026-09-21 · Correct P1 A* routing
+
+### Changed
+- Replaced node-object A* results with coordinate-based `PathResult`/`PathStatus` values in `src/astar.py`.
+- Added rectangular-grid and coordinate validation, explicit blocked-start/blocked-goal outcomes, octile movement costs and heuristic, stale heap-entry skipping, and diagonal corner-cutting prevention.
+- Updated entity movement and right-click commands to consume coordinate paths, clear failed destinations, and remove the old direct movement fallback.
+- Added `tests/test_p1_astar.py` for diagonal routes, already-there results, invalid/blocked inputs, corner cutting, and blocked-goal behavior.
+- Updated the A* and movement sections of the developer guide and marked the P1 A* step complete in the plan/status files.
+
+### Why
+- The old search mixed an inadmissible Manhattan heuristic with diagonal movement, allowed units through blocked corners, and returned the same empty list for success and failure.
+- Direct fallback movement could carry a unit through an obstacle after a failed route.
+- Coordinate paths keep the pathfinder independent of rendering objects and make result handling testable.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `12 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless scripted movement after Barracks/Swordsman training produced a coordinate path and advanced the unit without runtime errors.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Navigation-revision route invalidation, residual waypoint movement, bounded retries, order/target separation, attack-position search, placement/spawn validation, and combat geometry remain later P1 steps.
+- This branch is stacked on the P1 world-model update; review it after PR #23.
