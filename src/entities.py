@@ -15,6 +15,7 @@ from .constants import (
     ENEMY_ATTACK_RANGE,
     ENEMY_DATA,
     GRID_SIZE,
+    PATH_RETRY_DELAY,
     RED,
     UNIT_ATTACK_COOLDOWN,
     UNIT_ATTACK_RANGE,
@@ -79,6 +80,9 @@ class Unit(GameObject):
         self.hp = unit_data.get("hp", 100)
         self.attack = unit_data.get("atk", 10)  # Renamed to 'attack'
         self.path = [] # Initialize path as an empty list
+        self.destination_cell = None
+        self.route_revision = None
+        self.path_retry_timer = 0
 
         # Ensure targets is a list
         if targets is None:
@@ -93,16 +97,20 @@ class Unit(GameObject):
         self.attack_cooldown = 0
         self.previous_target_position = None # Store previous target position
 
-    def update(self, dt, grid, game_messages=None):
-        """
-        Update method to be implemented by subclasses
-        Handles target selection, movement, and attacking
-        """
+    def update(
+        self,
+        dt,
+        grid,
+        game_messages=None,
+        navigation_revision=None,
+    ):
+        """Update target selection, route following, and combat."""
         if game_messages is None:
-            game_messages = []  # Create an empty list if None
+            game_messages = []
 
+        self.path_retry_timer = max(0, self.path_retry_timer - dt)
         self.handle_target_selection()
-        self.move_towards_target(dt, grid)
+        self.move_towards_target(dt, grid, navigation_revision)
         self.handle_attack(dt, game_messages)
         return game_messages
 
@@ -113,8 +121,66 @@ class Unit(GameObject):
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
 
-    def move_towards_target(self, dt, grid):
-        """Follow a valid route toward a target without a direct fallback."""
+    def apply_path_result(self, result, goal_cell, navigation_revision):
+        """Store a player-issued route and its world revision."""
+        self.route_revision = navigation_revision
+        self.destination_cell = goal_cell if result.succeeded else None
+        if result.succeeded:
+            self.path = list(result.path)
+            self.path_retry_timer = 0
+            self.destination = (
+                cell_to_pixel(self.path[0], GRID_SIZE)
+                if self.path
+                else None
+            )
+        else:
+            self.path = []
+            self.destination = None
+            self.path_retry_timer = PATH_RETRY_DELAY
+
+    def _store_target_route(self, result, navigation_revision):
+        self.route_revision = navigation_revision
+        self.destination_cell = None
+        if result.succeeded:
+            self.path = list(result.path)
+            self.path_retry_timer = 0
+            self.destination = (
+                cell_to_pixel(self.path[0], GRID_SIZE)
+                if self.path
+                else None
+            )
+        else:
+            self.path = []
+            self.destination = None
+            self.path_retry_timer = PATH_RETRY_DELAY
+
+    def _store_destination_route(self, result, navigation_revision):
+        self.route_revision = navigation_revision
+        if result.succeeded:
+            self.path = list(result.path)
+            self.path_retry_timer = 0
+            self.destination = (
+                cell_to_pixel(self.path[0], GRID_SIZE)
+                if self.path
+                else None
+            )
+        else:
+            self.path = []
+            self.destination = None
+            self.path_retry_timer = PATH_RETRY_DELAY
+
+    def move_towards_target(self, dt, grid, navigation_revision=None):
+        """Follow a route, invalidating it when world walkability changes."""
+        if (
+            navigation_revision is not None
+            and self.route_revision is not None
+            and navigation_revision != self.route_revision
+        ):
+            self.path = []
+            self.destination = None
+            self.route_revision = None
+            self.path_retry_timer = 0
+
         path_needs_update = False
         movement_threshold = 2 * GRID_SIZE
 
@@ -127,6 +193,7 @@ class Unit(GameObject):
             if distance_to_target <= unit_range:
                 self.path = []
                 self.destination = None
+                self.destination_cell = None
             elif not self.path or self.destination is None:
                 path_needs_update = True
             elif self.previous_target_position:
@@ -137,7 +204,7 @@ class Unit(GameObject):
                 if target_movement > movement_threshold:
                     path_needs_update = True
 
-            if path_needs_update:
+            if path_needs_update and self.path_retry_timer <= 0:
                 start_cell = pixel_to_cell((self.x, self.y), GRID_SIZE)
                 target_cell = pixel_to_cell(
                     (self.target.x, self.target.y),
@@ -145,44 +212,53 @@ class Unit(GameObject):
                 )
                 self.previous_target_position = (self.target.x, self.target.y)
                 result = a_star(grid, start_cell, target_cell)
-                self.path = list(result.path) if result.succeeded else []
-                self.destination = (
-                    cell_to_pixel(self.path[0], GRID_SIZE)
-                    if self.path
-                    else None
+                self._store_target_route(result, navigation_revision)
+        elif self.destination_cell is not None and (
+            not self.path or self.destination is None
+        ):
+            if self.path_retry_timer <= 0:
+                start_cell = pixel_to_cell((self.x, self.y), GRID_SIZE)
+                result = a_star(
+                    grid,
+                    start_cell,
+                    self.destination_cell,
+                )
+                self._store_destination_route(
+                    result,
+                    navigation_revision,
                 )
 
-        if not self.path:
-            return
+        remaining_distance = self.speed * (dt / 1000)
+        while self.path and remaining_distance > 0:
+            next_cell = self.path[0]
+            target_x, target_y = cell_to_pixel(next_cell, GRID_SIZE)
+            dx = target_x - self.x
+            dy = target_y - self.y
+            distance_to_next_node = math.hypot(dx, dy)
 
-        next_cell = self.path[0]
-        target_x, target_y = cell_to_pixel(next_cell, GRID_SIZE)
-        dx = target_x - self.x
-        dy = target_y - self.y
-        distance_to_next_node = math.hypot(dx, dy)
-        travel_distance = self.speed * (dt / 1000)
+            if distance_to_next_node == 0:
+                self.path.pop(0)
+                continue
 
-        if distance_to_next_node == 0:
-            self.path.pop(0)
-            self.destination = (
-                cell_to_pixel(self.path[0], GRID_SIZE)
-                if self.path
-                else None
-            )
-        elif distance_to_next_node <= travel_distance:
-            self.x = target_x
-            self.y = target_y
-            self.rect.topleft = (self.x, self.y)
-            self.path.pop(0)
-            self.destination = (
-                cell_to_pixel(self.path[0], GRID_SIZE)
-                if self.path
-                else None
-            )
-        else:
-            self.x += (dx / distance_to_next_node) * travel_distance
-            self.y += (dy / distance_to_next_node) * travel_distance
-            self.rect.topleft = (self.x, self.y)
+            if distance_to_next_node <= remaining_distance:
+                self.x = target_x
+                self.y = target_y
+                self.rect.topleft = (self.x, self.y)
+                remaining_distance -= distance_to_next_node
+                self.path.pop(0)
+            else:
+                self.x += (dx / distance_to_next_node) * remaining_distance
+                self.y += (dy / distance_to_next_node) * remaining_distance
+                self.rect.topleft = (self.x, self.y)
+                remaining_distance = 0
+
+        self.destination = (
+            cell_to_pixel(self.path[0], GRID_SIZE)
+            if self.path
+            else None
+        )
+        if not self.path and not self.target and self.path_retry_timer <= 0:
+            self.destination_cell = None
 
     def handle_attack(self, dt, game_messages=None):
         """
