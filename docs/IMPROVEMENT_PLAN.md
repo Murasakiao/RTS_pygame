@@ -324,7 +324,7 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 **Depends on:** P0. Use small hand-authored fixtures before random maps. Fixes B03–B10 at the rule level.
 
 - [x] Introduce `src.world.World`, stable `TerrainKind`/`TerrainTile` values, shared geometry helpers, and a navigation revision that changes only when walkability changes.
-- [ ] Correct A*, skip stale heap entries, validate inputs, and return explicit results. For attack goals, support reachable candidate cells with an admissible goal-set heuristic or a zero-heuristic reference search first.
+- [x] Correct A*: use octile costs/heuristic, reject diagonal corner cutting, skip stale heap entries, validate inputs, and return explicit `PathResult` statuses. Attack-position candidate search remains part of the later combat step.
 - [ ] Remove obstacle-bypassing motion, reuse routes, consume waypoint travel correctly, and limit retries. Invalidate routes after world changes.
 - [ ] Separate orders from targets/waypoints. Implement single-unit Move, Stop/Hold, and explicit attack behavior before group controls.
 - [ ] Add the shared footprint validator and valid exit/spawn-cell selection. Commit costs and walkability changes together.
@@ -417,7 +417,7 @@ Grow these boundaries only as the phases need them:
 | `world.py` | Terrain, bounds, occupancy, revision, placement and spawn validation | Stable terrain kinds, geometry helpers, and navigation revision introduced in P1 |
 | `entities.py` | Buildings/units and their runtime state/behavior | Existing classes, without import-time initialization |
 | `spawning.py` | Enemy spawn-point selection and enemy construction | Moved out of `utils.py` during P0 |
-| `astar.py` | Pure route search and explicit path results | Existing search, with correctness fixes |
+| `astar.py` | Pure route search and explicit path results | Octile A*, validated inputs, stale-entry handling, and no-corner-cutting search implemented in P1 |
 | `procedural.py` | Seeded terrain generation, independent of image loading | Existing noise sampling |
 | `economy.py` | Balances, production, population, queue transactions | Resource and training blocks |
 | `waves.py` | Wave definitions, pending spawn schedule, lane selection | Timer and spawn helpers |
