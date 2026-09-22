@@ -33,17 +33,17 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and eighteen committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-one committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
 | Startup | Title screen, Start New Game, Exit | No restart flow; imports depend on the script launch method |
 | World | One 768 × 576 pixel map, 16-pixel tiles | No camera, scrolling, zoom, or larger off-screen world |
 | Terrain | Perlin-noise grass and water | No separate river algorithm; `T` does not produce a new visible map |
-| Construction | Eight building types, resource costs, placement preview | Incomplete footprint, water, and boundary validation |
+| Construction | Eight building types, shared full-footprint validation, resource costs, placement preview | No lane-sealing or route-connectivity validation yet |
 | Economy | Passive income with building multipliers | No workers, resource deposits, storage limits, or population cap |
 | Units | Swordsman and Archer, single-unit selection and movement | No group selection, formations, or training queue |
-| Enemies | Goblin and Orc, border spawns, increasing waves | Spawns can land in water; target-priority bugs |
+| Enemies | Goblin and Orc, validated free-land border spawns, increasing waves | No pending-spawn queue or reachable-lane validation; wave pacing remains prototype behavior |
 | Combat | Range checks, HP reduction, attack cooldowns | No projectiles, line of sight, armor, or reliable building assaults |
 | Navigation | Stable-world eight-direction A*, explicit path results, and waypoint following | Route invalidation is revision-aware; order/target separation and attack-position search remain |
 | Interface | Resource text, messages, HP labels, debug paths/grid | Overlapping text and clipped building-cost labels |
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Eighteen committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, and single-unit order behavior. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Twenty-one committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, and footprint/spawn validation. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -139,7 +139,7 @@ python -m pip install -r requirements-dev.txt
 python -m pytest --version
 ```
 
-`requirements-dev.txt` includes `requirements.txt`, so this command also installs the runtime packages. The repository contains committed P0 runtime tests in `tests/test_p0_runtime.py`; broader A*, movement, placement, combat, and match tests remain to be added.
+`requirements-dev.txt` includes `requirements.txt`, so this command also installs the runtime packages. The repository contains committed P0/P1 tests under `tests/`; broader combat, map-connectivity, and match tests remain to be added.
 
 The manifests pin the direct package versions verified on **macOS 26.6.2 arm64 with Python 3.12.13**. Other operating systems and Python versions are not verified by this project. The files do not claim cross-platform compatibility.
 
@@ -263,7 +263,8 @@ rts-pygame/
 │   ├── test_p1_world.py      World, terrain-kind, revision, and geometry tests
 │   ├── test_p1_astar.py      A* statuses, costs, validation, and corner tests
 │   ├── test_p1_movement.py   Route invalidation, retry, and waypoint tests
-│   └── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
+│   ├── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
+│   └── test_p1_validation.py Footprint, exit, and spawn-cell tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -677,23 +678,17 @@ A building's `unit` field connects it to a unit type. `size_multiplier` changes 
 
 ### Placement and payment
 
-The left-click handler checks for a friendly unit first. Otherwise, it snaps the click to a grid cell and checks that cell for water. A clicked training building gets the training action. Other clicks can attempt construction.
+The left-click handler checks for a friendly unit first, then resolves the clicked cell with the shared geometry helpers. A clicked training building gets the training action. Other clicks can attempt construction.
 
-Construction checks the selected type, cached overlap flag, placement cooldown, Castle limit, and available resources. On success, it creates a `Building`, subtracts its resource costs, and starts a 1,000-millisecond shared placement cooldown.
+`World.validate_footprint()` checks every cell of the selected building footprint against map bounds, stable terrain kind, buildings, allied units, and enemies. The same validator drives the final click and the preview color. Costs, the placement cooldown, and the one-Castle rule are checked before the building is committed; the navigation revision is rebuilt immediately after a successful placement.
 
 Construction is instant. The cooldown limits successive placement; it is not construction progress. There is no builder unit, build animation, repair, demolition command, or refund.
 
-The affordability code uses `resources.get(resource, gold)` to handle the separate gold variable. This works for the existing keys, but a misspelled resource key would also fall back to the gold balance. A unified resource dictionary would make validation clearer.
+The affordability code still uses `resources.get(resource, gold)` to handle the separate gold variable. This works for the existing keys, but a misspelled resource key would also fall back to the gold balance. A unified resource dictionary would make validation clearer.
 
-### Incomplete placement validation
+### Remaining placement validation
 
-- Water rejection checks the clicked top-left cell, not all four Castle cells.
-- The overlap preview checks buildings and allied units, but not enemies.
-- The preview color checks overlap and affordability, not water, bounds, Castle count, or cooldown.
-- Large buildings can extend past the right or bottom screen edge.
-- The code computes preview and collision state before processing input events.
-
-**Suggested change:** implement one `can_place_building(type, cell)` function. Check the full footprint against bounds, terrain, occupancy, costs, cooldown, and unique-building rules. Use it for both preview and final placement so the green outline and the click follow the same rules.
+The shared footprint validator now covers bounds, all terrain cells, and current actor/building occupancy. Remaining rules include preventing construction from sealing a spawn lane or isolating a trainer, validating costs/cooldown in a single reusable transaction result, and handling map connectivity after future terrain changes.
 
 ## 10. Define units, combat, and enemy waves
 
@@ -726,9 +721,7 @@ Speeds and ranges use pixels; cooldowns use milliseconds.
 | Swordsman | Barracks | 90 | 30 | 1 | 10 | 20 | 1 | 15 | 1500 |
 | Archer | Stable | 60 | 80 | 1 | 8 | 30 | 2 | 70 | 2000 |
 
-Training creates a unit at `(building.x, building.y + GRID_SIZE)`, one tile below the building, and deducts its costs. There is no queue or training timer. Repeated affordable clicks can produce overlapping units.
-
-The code does not validate that spawn cell. It can contain water, another object, or lie below the screen for a building on the bottom row. The local `speed = 50` assignment in the click handler has no effect; the unit reads speed from its data table.
+Training still has no queue or training timer, but it now asks `World.find_free_exit()` for a free walkable cell adjacent to the trainer footprint. If every adjacent cell is blocked, the click reports `exit blocked` and does not spend resources. Repeated affordable clicks can still produce multiple units because queueing is a later P3 feature.
 
 ### Target selection
 
@@ -799,7 +792,7 @@ wave_timer >= WAVE_INTERVAL * current_wave
 
 Ignoring frame-level delays and the menu-time issue, those waves occur near cumulative times 30, 90, and 180 seconds. The wait increases; this is not a fixed 30-second wave schedule. The debug counter shows the next wave number after a spawn.
 
-`spawn_enemies()` creates `current_wave * ENEMY_SPAWN_RATE` enemies. `ENEMY_SPAWN_RATE` is 1. Each enemy gets a random type and a random grid-aligned position on one of the four map edges. Coordinates stay within the grid, but the code does not check water, occupancy, or reachable land.
+`spawn_enemies()` attempts `current_wave * ENEMY_SPAWN_RATE` enemies. `ENEMY_SPAWN_RATE` is 1. Each enemy gets a random type and a random free, walkable cell on one of the four map edges. `World.is_cell_free()` rejects water, buildings, units, and already selected spawn cells. If no edge cell is available, that attempt currently produces no enemy; retaining pending entries belongs to the finite-wave work in P2. Reachability and protected spawn lanes are not validated yet.
 
 ### Death and cleanup
 
@@ -1051,7 +1044,7 @@ Later drawing can cover earlier drawing. Buildings can cover resource text becau
 | `draw_resources()` | Display integer resource balances at the upper left |
 | `update_preview_rect()` | Snap a candidate building rectangle to the grid |
 | `draw_building_preview()` | Draw green for affordable/non-overlapping, otherwise red |
-| `check_collision()` | Check a placement rectangle against buildings and allies |
+| `World.validate_footprint()` | Check a full building footprint against bounds, terrain, and actors |
 | `add_game_message()` | Remove expired entries, suppress active duplicate text, append a timed message |
 | `draw_messages()` | Draw unexpired messages |
 | `draw_key_bindings()` | Draw building keys and resource requirements |
@@ -1077,14 +1070,14 @@ Keep fixes smaller than feature additions. The table groups the current findings
 | 2 | Timing | P0 complete: cap the menu, use a fresh gameplay clock, fixed 30 Hz updates, and bound long-frame catch-up |
 | 3 | Navigation correctness | P1 world and A* groundwork is complete: stable terrain kinds, shared geometry, navigation revision, octile costs, input validation, stale-entry handling, and no-corner-cutting; movement invalidation and attack goals remain |
 | 4 | Movement safety | P1 route safety is implemented: no straight-line failure fallback, residual waypoint travel, bounded retries, and navigation-revision invalidation; move/chase intent remains |
-| 5 | Placement and spawning | Validate entire footprints, bounds, occupancy, and terrain; choose valid unit/enemy spawns |
+| 5 | Placement and spawning | P1 shared footprint and free-exit/edge-spawn validation is complete; lane sealing, reachability, and pending spawns remain |
 | 6 | Combat | Honor configured priorities; choose reachable attack positions; use consistent distance geometry |
 | 7 | Terrain ownership | P0 partially complete: keep generator and `GameState` references aligned; P1/P2 must validate maps and handle affected objects/routes |
 | 8 | Entity lifecycle | Skip dead actors, clean lists outside drawing, clear dead selections |
 | 9 | UI and diagnostics | Fix clipping/overlap, align preview with placement rules, gate prints, cache debug grid |
 | 10 | Project hygiene | Dependency metadata and P0 runtime tests are complete; resolve code/art licensing and remove tracked caches/scratch artifacts in a separate cleanup |
 
-The separate [improvement plan](IMPROVEMENT_PLAN.md) puts these repairs into a proposed short base-defense release, with gameplay rules and phase-by-phase acceptance tests. P0 implementation is underway; `STATUS.md` retains the dormant lifecycle until the game work resumes as a sustained effort.
+The separate [improvement plan](IMPROVEMENT_PLAN.md) puts these repairs into a proposed short base-defense release, with gameplay rules and phase-by-phase acceptance tests. P0 and the first P1 rule repairs are implemented; `STATUS.md` retains the dormant lifecycle until the game work resumes as a sustained effort.
 
 ## 15. Validate changes
 

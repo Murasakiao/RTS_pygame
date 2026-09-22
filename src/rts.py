@@ -24,7 +24,6 @@ from .procedural import TerrainGenerator
 from .spawning import spawn_enemies
 from .utils import (
     add_game_message,
-    check_collision,
     draw_building_preview,
     draw_debug_info,
     draw_grid,
@@ -164,10 +163,6 @@ def handle_game_event(state, event, assets, entity_font, building_map):
             add_game_message("Click inside the map.", state.game_messages)
             return True
 
-        if state.world.is_water(cell):
-            add_game_message("Cannot build in water!", state.game_messages)
-            return True
-
         clicked_building = next(
             (
                 building
@@ -180,46 +175,76 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         if clicked_building and "unit" in BUILDING_DATA[clicked_building.type]:
             unit_type = BUILDING_DATA[clicked_building.type]["unit"]
             unit_cost = ALLY_DATA[unit_type]["cost"]
-            if all(
+            if not all(
                 state.resources.get(resource, state.gold) >= amount
                 for resource, amount in unit_cost.items()
             ):
-                new_unit = AlliedUnit(
-                    unit_type,
-                    clicked_building.x,
-                    clicked_building.y + GRID_SIZE,
-                    state.enemies,
-                    unit_image(assets, unit_type),
-                    entity_font,
-                )
-                state.units.append(new_unit)
-                for resource, amount in unit_cost.items():
-                    if resource == "gold":
-                        state.gold -= amount
-                    else:
-                        state.resources[resource] -= amount
-                add_game_message(
-                    f"Trained {unit_type}",
-                    state.game_messages,
-                )
-            else:
                 add_game_message(
                     f"Not enough resources to train {unit_type}",
                     state.game_messages,
                 )
+                return True
+
+            trainer_origin = pixel_to_cell(
+                (clicked_building.rect.left, clicked_building.rect.top),
+                GRID_SIZE,
+            )
+            trainer_size = (
+                BUILDING_DATA[clicked_building.type].get("size_multiplier", 1),
+                BUILDING_DATA[clicked_building.type].get("size_multiplier", 1),
+            )
+            exit_cell = state.world.find_free_exit(
+                trainer_origin,
+                trainer_size,
+                state.buildings,
+                state.units,
+                state.enemies,
+            )
+            if exit_cell is None:
+                add_game_message(
+                    f"Cannot train {unit_type}: exit blocked.",
+                    state.game_messages,
+                )
+                return True
+
+            spawn_x, spawn_y = cell_to_pixel(exit_cell, GRID_SIZE)
+            new_unit = AlliedUnit(
+                unit_type,
+                spawn_x,
+                spawn_y,
+                state.enemies,
+                unit_image(assets, unit_type),
+                entity_font,
+            )
+            state.units.append(new_unit)
+            for resource, amount in unit_cost.items():
+                if resource == "gold":
+                    state.gold -= amount
+                else:
+                    state.resources[resource] -= amount
+            add_game_message(
+                f"Trained {unit_type}",
+                state.game_messages,
+            )
             return True
 
         if state.current_building_type and state.building_cooldown <= 0:
-            preview_rect = update_preview_rect(
-                mouse_pos,
-                state.current_building_type,
+            size_multiplier = BUILDING_DATA[state.current_building_type].get(
+                "size_multiplier",
+                1,
             )
-            collision = check_collision(
-                preview_rect,
+            validation = state.world.validate_footprint(
+                cell,
+                (size_multiplier, size_multiplier),
                 state.buildings,
                 state.units,
+                state.enemies,
             )
-            if collision:
+            if not validation.valid:
+                add_game_message(
+                    f"Cannot build: {validation.reason.replace('_', ' ')}.",
+                    state.game_messages,
+                )
                 return True
 
             castle_exists = any(
@@ -255,6 +280,7 @@ def handle_game_event(state, event, assets, entity_font, building_map):
                     else:
                         state.resources[resource] -= amount
                 state.building_cooldown = BUILDING_COOLDOWN_TIME
+                update_grid(state)
                 add_game_message(
                     f"Built {state.current_building_type}",
                     state.game_messages,
@@ -364,8 +390,10 @@ def update_match(state, dt_ms, assets, entity_font):
     if state.wave_timer >= WAVE_INTERVAL * state.current_wave:
         state.enemies.extend(
             spawn_enemies(
+                state.world,
                 state.buildings,
                 state.units,
+                state.enemies,
                 state.current_wave,
                 ENEMY_SPAWN_RATE,
                 assets,
@@ -576,16 +604,24 @@ def main():
             )
 
             mouse_pos = pygame.mouse.get_pos()
-            if not state.selected_unit:
+            if not state.selected_unit and state.current_building_type:
                 preview_rect = update_preview_rect(
                     mouse_pos,
                     state.current_building_type,
                 )
-                collision = check_collision(
-                    preview_rect,
+                preview_cell = pixel_to_cell(mouse_pos, GRID_SIZE)
+                size_multiplier = BUILDING_DATA[state.current_building_type].get(
+                    "size_multiplier",
+                    1,
+                )
+                preview_validation = state.world.validate_footprint(
+                    preview_cell,
+                    (size_multiplier, size_multiplier),
                     state.buildings,
                     state.units,
+                    state.enemies,
                 )
+                collision = not preview_validation.valid
             else:
                 preview_rect = None
                 collision = False
