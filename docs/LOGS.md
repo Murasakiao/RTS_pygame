@@ -166,3 +166,30 @@ Use this format:
 
 ### Scope
 - Documentation only; broader A*, movement, placement, combat, and match tests remain future work.
+
+## 2026-09-21 · Add the P1 authoritative world model
+
+### Changed
+- Added `src/world.py` with stable `TerrainKind`/`TerrainTile` values, shared pixel/cell geometry helpers, occupancy-derived navigation, and `navigation_revision` tracking.
+- Changed `TerrainGenerator` to produce stable terrain tiles and create a `World`; visual grass variants no longer define the water identity.
+- Changed `GameState` and the controller to use one `World` for terrain rendering, placement checks, and navigation input.
+- Reused the geometry helpers in placement previews and movement/building click conversion.
+- Added `tests/test_p1_world.py` for terrain semantics, revision behavior, and coordinate conversion.
+- Updated the developer guide, improvement plan, and status to mark the first P1 step complete.
+
+### Why
+- Rendering and pathfinding need one authoritative map. Missing or changed art must not alter which cells are water.
+- Repeated pixel/cell arithmetic made boundary behavior easy to diverge between placement and movement.
+- Units need a navigation revision before later P1 work can invalidate stale routes safely.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `7 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless menu start/quit and scripted Barracks/Swordsman smoke checks passed after the world migration.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- A* correctness, obstacle-bypassing movement, order/target separation, placement/spawn validation, combat geometry, and dead-actor cleanup remain later P1 steps.
+- This branch is stacked on the P0 state/assets update; review it after PRs #21 and #22.

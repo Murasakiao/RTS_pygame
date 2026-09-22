@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from .constants import FPS
+from .world import World
 
 
 def _starting_resources():
@@ -22,10 +23,7 @@ class GameState:
     """All mutable state that belongs to one match."""
 
     terrain_generator: object
-    terrain: list
-    grid: list
-    grid_width: int
-    grid_height: int
+    world: World
     gold: float = 150.0
     resources: dict = field(default_factory=_starting_resources)
     resource_increase_rates: dict = field(default_factory=_resource_increase_rates)
@@ -43,15 +41,10 @@ class GameState:
     @classmethod
     def new_match(cls, terrain_generator):
         """Create isolated mutable state for a new match."""
-        grid_width = terrain_generator.screen_width // terrain_generator.grid_size
-        grid_height = terrain_generator.screen_height // terrain_generator.grid_size
-        blank_grid = [[(0, 0) for _ in range(grid_width)] for _ in range(grid_height)]
+        world = terrain_generator.generate_world()
         return cls(
             terrain_generator=terrain_generator,
-            terrain=terrain_generator.terrain,
-            grid=blank_grid,
-            grid_width=grid_width,
-            grid_height=grid_height,
+            world=world,
         )
 
 

@@ -34,35 +34,12 @@ from .utils import (
     draw_resources,
     update_preview_rect,
 )
+from .world import cell_to_pixel, pixel_to_cell
 
 
 def update_grid(state):
-    """Build a navigation grid from the current match terrain and buildings."""
-    grid = [
-        [(0, 0) for _ in range(state.grid_width)]
-        for _ in range(state.grid_height)
-    ]
-
-    for y in range(state.grid_height):
-        for x in range(state.grid_width):
-            is_water = state.terrain[y][x] == len(
-                state.terrain_generator.grass_tiles
-            )
-            grid[y][x] = (state.terrain[y][x], 1 if is_water else 0)
-
-    for building in state.buildings:
-        for x in range(
-            building.rect.left // GRID_SIZE,
-            building.rect.right // GRID_SIZE,
-        ):
-            for y in range(
-                building.rect.top // GRID_SIZE,
-                building.rect.bottom // GRID_SIZE,
-            ):
-                if 0 <= x < state.grid_width and 0 <= y < state.grid_height:
-                    grid[y][x] = (grid[y][x][0], 1)
-
-    return grid
+    """Rebuild the world's derived navigation data when occupancy changes."""
+    return state.world.rebuild_navigation(state.buildings)
 
 
 def create_terrain_generator(assets, noise_seed):
@@ -92,9 +69,7 @@ def create_match(assets):
         assets,
         random.randint(0, 1000),
     )
-    state = GameState.new_match(terrain_generator)
-    state.grid = update_grid(state)
-    return state
+    return GameState.new_match(terrain_generator)
 
 
 def draw_button(
@@ -148,10 +123,11 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         elif event.key == pygame.K_ESCAPE:
             state.current_building_type = None
         elif event.key == pygame.K_t:
-            state.terrain = state.terrain_generator.generate_terrain()
+            state.world = state.terrain_generator.generate_world()
+            state.world.rebuild_navigation(state.buildings)
         elif event.key == pygame.K_d:
             state.show_debug = not state.show_debug
-            print(state.grid)
+            print(state.world.navigation_grid)
         return True
 
     if event.type != pygame.MOUSEBUTTONDOWN:
@@ -177,14 +153,13 @@ def handle_game_event(state, event, assets, entity_font, building_map):
             state.current_building_type = None
             return True
 
-        grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
-        grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
-        terrain_index = state.terrain[
-            grid_y // GRID_SIZE
-        ][grid_x // GRID_SIZE]
-        is_water = terrain_index == len(state.terrain_generator.grass_tiles)
+        cell = pixel_to_cell(mouse_pos, GRID_SIZE)
+        grid_x, grid_y = cell_to_pixel(cell, GRID_SIZE)
+        if not state.world.in_bounds(cell):
+            add_game_message("Click inside the map.", state.game_messages)
+            return True
 
-        if is_water:
+        if state.world.is_water(cell):
             add_game_message("Cannot build in water!", state.game_messages)
             return True
 
@@ -287,21 +262,25 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         return True
 
     if event.button == 3 and state.selected_unit:
-        grid_x = (mouse_pos[0] // GRID_SIZE) * GRID_SIZE
-        grid_y = (mouse_pos[1] // GRID_SIZE) * GRID_SIZE
+        destination_cell = pixel_to_cell(mouse_pos, GRID_SIZE)
+        if not state.world.in_bounds(destination_cell):
+            add_game_message("Click inside the map.", state.game_messages)
+            return True
+
+        grid_x, grid_y = cell_to_pixel(destination_cell, GRID_SIZE)
         state.selected_unit.destination = (grid_x, grid_y)
         state.selected_unit.moving = True
 
-        start_grid_x = int(state.selected_unit.x // GRID_SIZE)
-        start_grid_y = int(state.selected_unit.y // GRID_SIZE)
-        end_grid_x = grid_x // GRID_SIZE
-        end_grid_y = grid_y // GRID_SIZE
+        start_cell = pixel_to_cell(
+            (state.selected_unit.x, state.selected_unit.y),
+            GRID_SIZE,
+        )
 
         state.selected_unit.path = []
         path = a_star(
-            state.grid,
-            (start_grid_x, start_grid_y),
-            (end_grid_x, end_grid_y),
+            state.world.navigation_grid,
+            start_cell,
+            destination_cell,
         )
 
         if path:
@@ -324,7 +303,7 @@ def handle_game_event(state, event, assets, entity_font, building_map):
 
 def update_match(state, dt_ms, assets, entity_font):
     """Advance one fixed simulation step."""
-    state.grid = update_grid(state)
+    update_grid(state)
 
     building_counts = {}
     for building in state.buildings:
@@ -360,13 +339,17 @@ def update_match(state, dt_ms, assets, entity_font):
 
     for unit in list(state.units):
         unit.targets = state.enemies
-        unit.update(dt_ms, state.grid, state.game_messages)
+        unit.update(
+            dt_ms,
+            state.world.navigation_grid,
+            state.game_messages,
+        )
 
     for enemy in list(state.enemies):
         enemy.targets = state.units + state.buildings
         state.game_messages = enemy.update(
             dt_ms,
-            state.grid,
+            state.world.navigation_grid,
             state.game_messages,
         )
 
@@ -415,7 +398,7 @@ def draw_match(
     ]
 
     screen.fill(WHITE)
-    state.terrain_generator.draw_terrain(screen)
+    state.world.draw_terrain(screen)
     draw_resources(screen, hud_font, state.resources, state.gold)
 
     for building in state.buildings:
@@ -483,7 +466,7 @@ def main():
             random.randint(0, 1000),
         )
         terrain_background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        menu_terrain.draw_terrain(terrain_background)
+        menu_terrain.generate_world().draw_terrain(terrain_background)
 
         logo = assets.image("building.castle", (150, 150))
         title_text = title_font.render("KINGDOM CONQUER", True, BLACK)

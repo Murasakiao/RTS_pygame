@@ -249,6 +249,7 @@ rts-pygame/
 │   ├── constants.py           Settings, building data, unit data
 │   ├── rts.py                 Startup, menu, commands, rendering, main loop
 │   ├── game.py                Match state and fixed-step simulation runner
+│   ├── world.py                Terrain kinds, geometry, occupancy, navigation revision
 │   ├── assets.py              Repository-relative asset cache and diagnostics
 │   ├── entities.py            Game objects, targeting, movement, combat
 │   ├── utils.py               UI helpers and placement checks
@@ -257,7 +258,8 @@ rts-pygame/
 │   └── astar.py               Grid nodes and route search
 ├── tests/
 │   ├── conftest.py           Headless SDL test configuration
-│   └── test_p0_runtime.py    Import, asset, state, timing, and startup tests
+│   ├── test_p0_runtime.py    Import, asset, state, timing, and startup tests
+│   └── test_p1_world.py      World, terrain-kind, revision, and geometry tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -274,7 +276,8 @@ Game state is what the game remembers between frames. Drawing "Gold: 150" does n
 
 - `buildings`, `units`, and `enemies`: lists of object instances.
 - `gold`, `resources`, and `resource_increase_rates`: current balances and income rules.
-- `terrain`, `grid`, and `terrain_generator`: the map and derived navigation data.
+- `world`: the authoritative terrain, geometry, occupancy-derived navigation grid, and navigation revision.
+- `terrain_generator`: map-generation settings used to create a `World`.
 - `selected_unit`, `current_building_type`, and `building_cooldown`: player interaction state.
 - `game_messages`: text and expiration timestamps.
 - `wave_timer` and `current_wave`: enemy-spawn progress.
@@ -291,12 +294,13 @@ The game uses ordinary Python lists and objects. It does not use Pygame sprite g
 `src` is the package boundary. Modules now import one another explicitly:
 
 ```text
-src.rts       -> src.assets, src.astar, src.entities, src.game, src.procedural, src.spawning, src.utils
-src.game      -> src.constants
+src.rts       -> src.assets, src.astar, src.entities, src.game, src.procedural, src.spawning, src.utils, src.world
+src.game      -> src.constants, src.world
 src.assets    -> pygame and repository asset paths
+src.world     -> no Pygame initialization or gameplay imports
 src.entities  -> src.astar, src.constants, src.utils
 src.spawning  -> asset-loader argument, src.constants, src.entities
-src.utils     -> src.constants
+src.utils     -> src.constants, src.world
 ```
 
 `utils.py` no longer edits `sys.path` or imports entity classes. Enemy creation lives in `src/spawning.py`, which the controller imports separately. That removes the old `entities -> utils -> src.entities` cycle and ensures Python loads one `src.entities` module.
@@ -320,7 +324,7 @@ This arrangement favors predictable imports and testable startup. It also means 
 
 ## 5. Define the game environment
 
-**Source:** [`src/constants.py`](../src/constants.py), `update_grid()` in [`src/rts.py`](../src/rts.py).
+**Source:** [`src/constants.py`](../src/constants.py), [`src/world.py`](../src/world.py), and the `update_grid()` wrapper in [`src/rts.py`](../src/rts.py).
 
 ### Screen coordinates and grid coordinates
 
@@ -357,33 +361,30 @@ The `//` operator performs floor division. A click at pixel `(53, 38)` selects c
 
 Store and access cells as `grid[y][x]`: row first, column second. Mixing that order is a common source of map bugs.
 
-### Two map representations
+### One authoritative world representation
 
-Placing a Barracks leaves the ground's tile ID unchanged but makes the cell blocked. Keeping appearance and walkability separate lets you change an image without rewriting movement rules.
-
-With all grass tiles loaded:
+`GameState.world` is the single owner of terrain meaning and derived walkability. A `World` stores stable terrain cells:
 
 ```text
-terrain[y][x] = 0 through 5   # grass appearance
-terrain[y][x] = 6            # water appearance
-
-grid[y][x] = (tile_index, obstacle_flag)
+world.terrain[y][x] = TerrainTile(TerrainKind.GRASS, variant=2)
+world.terrain[y][x] = TerrainTile(TerrainKind.WATER)
+world.navigation_grid[y][x] = (terrain_kind, obstacle_flag)
 obstacle_flag = 0            # walkable
 obstacle_flag = 1            # blocked
 ```
 
-Water uses `len(terrain_generator.grass_tiles)` as its ID, rather than a fixed constant. Six loaded grass images give water ID 6. Missing grass files can change that ID.
+Water is `TerrainKind.WATER`, not “the first index after however many grass images loaded.” Missing or replaced art therefore cannot change pathfinding semantics. Grass `variant` only chooses which visual surface to draw.
 
-`update_grid(buildings)` rebuilds the navigation map at the start of each gameplay frame:
+`world.rebuild_navigation(buildings)` derives occupancy from the same terrain and building rectangles:
 
-1. Copy each terrain ID and mark water as blocked.
-2. Mark the cells beneath building rectangles as blocked.
+1. Mark water cells blocked from their stable terrain kind.
+2. Mark every cell touched by each building footprint blocked.
+3. Compare the result with the previous navigation grid.
+4. Increment `world.navigation_revision` only when walkability changes.
 
-Most buildings occupy one 16 × 16 cell. The Castle uses a size multiplier of 2, so its 32 × 32 rectangle occupies four cells.
+Most buildings occupy one 16 × 16 cell. The Castle uses a size multiplier of 2, so its 32 × 32 rectangle occupies four cells. Units and enemies do **not** block this map yet; P1 movement work will add route invalidation and safer actor behavior.
 
-Units and enemies do **not** block this map. They can overlap because the movement code also lacks physical collision resolution. A red `COLLIDING` debug label reports overlap; it does not stop movement.
-
-For a future larger world, keep world size separate from display size and introduce a camera offset. The current project has neither distinction.
+Use `pixel_to_cell()`, `cell_to_pixel()`, and `rect_cells()` from `src.world` instead of repeating coordinate arithmetic. For a future larger world, keep world size separate from display size and introduce a camera offset.
 
 ## 6. Load and use art assets
 
@@ -478,7 +479,7 @@ That blending lets small changes in position give small changes in value. This m
 
 ### 7.2 Sample the field
 
-`rts.create_terrain_generator()` loads and scales the tile surfaces once through `AssetLoader`, then passes those surfaces into `TerrainGenerator`. The generator only samples noise and draws the supplied surfaces. It calls `generate_terrain()` in its constructor and visits screen positions in 16-pixel steps:
+`rts.create_terrain_generator()` loads and scales the tile surfaces once through `AssetLoader`, then passes those surfaces into `TerrainGenerator`. The generator samples noise into stable `TerrainTile` values; `generate_world()` packages them with the visual surfaces in one `World`. The `World` draws the supplied surfaces. The generator visits screen positions in 16-pixel steps:
 
 ```python
 noise_value = noise.pnoise2(
@@ -513,61 +514,40 @@ A fixed seed helps you return to a troublesome map while debugging. Here `noise_
 
 The repeat periods do not make opposite screen edges match: the code samples divided pixel coordinates rather than traversing a full 768 × 576 noise-coordinate period. There is no wrapping-world mechanic.
 
-### 7.3 Convert values to tile IDs
+### 7.3 Convert values to stable terrain kinds
 
-Perlin values vary around zero. The code uses this threshold and mapping:
-
-```python
-water_threshold = -0.1
-
-if noise_value < water_threshold:
-    tile_index = len(self.grass_tiles)
-else:
-    tile_index = int(
-        (noise_value - water_threshold)
-        / (1 - water_threshold)
-        * len(self.grass_tiles)
-    )
-    tile_index = max(0, min(tile_index, len(self.grass_tiles) - 1))
-```
+Perlin values vary around zero. The code uses `-0.1` as the water threshold. Samples below it become `TerrainTile(TerrainKind.WATER)`. Other samples become `TerrainTile(TerrainKind.GRASS, variant)`, where the variant is clamped to the available grass-surface range.
 
 For six grass images:
 
 | Example noise value | Result |
 |---|---|
-| `-0.2` | Water, ID 6 |
-| `-0.1` | Grass, ID 0 |
-| `0.3` | Grass, ID 2 |
-| `1.0` | Grass, ID 5 after clamping |
+| `-0.2` | `TerrainKind.WATER` |
+| `-0.1` | `TerrainKind.GRASS`, variant 0 |
+| `0.3` | `TerrainKind.GRASS`, an interior variant |
+| `1.0` | `TerrainKind.GRASS`, variant 5 after clamping |
 
-Clamping keeps the grass index inside `0..5`. You should not expect equal use of the six grass variants; noise values do not have a uniform distribution.
+The variant affects appearance only. Water remains water even if the number of grass images changes. You should not expect equal use of the six grass variants; noise values do not have a uniform distribution.
 
 Treat the threshold as the waterline on that imaginary ground. Raising it floods more samples; lowering it exposes more grass. Scale changes the size of the landforms, while the threshold decides which parts count as water.
 
 ### 7.4 Render the tile grid
 
-`draw_terrain(screen)` visits `self.terrain` and draws each tile at:
+`World.draw_terrain(screen)` visits `world.terrain` and draws each tile at:
 
 ```text
 screen position = (column * grid_size, row * grid_size)
 ```
 
-The grass IDs select images from `grass_tiles`. The water ID selects `water_tiles[0]`.
+A grass tile's variant selects from `grass_tiles`; a water tile selects from `water_tiles`. The visual choice does not participate in navigation.
 
 The terrain contains grass patches and water shapes. It has no dedicated river carving, erosion, coastline autotiling, biome system, or connectivity guarantee. A water shape might resemble a river, but the code does not enforce a source, mouth, or continuous river path.
 
 ### 7.5 Terrain regeneration limits
 
-The match has two cooperating references:
+`GameState.world` is the authoritative map. Pressing `T` creates a replacement `World` from the same generator seed and re-applies current building occupancy. The map therefore looks the same rather than pretending to be a new map, but existing units and paths are not yet reconciled with the replacement.
 
-- `terrain_generator.terrain`, which `draw_terrain()` reads.
-- `GameState.terrain`, which placement and `update_grid()` read.
-
-`create_match()` creates the generator, then `GameState.new_match()` stores its terrain reference. Both references initially point to the same generated map.
-
-Pressing `T` asks the match's generator to regenerate using the same seed. `generate_terrain()` now updates `TerrainGenerator.terrain`, and `rts.py` assigns the returned list to `GameState.terrain`, so the renderer and collision grid share the same reference. The map therefore looks the same rather than pretending to be a new map.
-
-A complete regeneration feature still needs a new seed, navigation rebuild, path invalidation, and a policy for buildings and units now standing in water. Normal base-defense matches should eventually disable live regeneration and make a new map start a fresh `GameState`.
+A complete regeneration feature still needs a new seed, path invalidation, and a policy for buildings and units now standing in water. Normal base-defense matches should eventually disable live regeneration and make a new map start a fresh `GameState`.
 
 For a playable procedural map, add validation after generation: reserve starting land, check connected walkable regions, and choose spawn points with routes into the play area.
 
@@ -1133,7 +1113,7 @@ Keep fixes smaller than feature additions. The table groups the current findings
 |---:|---|---|
 | 1 | Imports and startup | Complete in P0: one module identity, no circular import, guarded `main()`, runtime menu/display setup |
 | 2 | Timing | P0 complete: cap the menu, use a fresh gameplay clock, fixed 30 Hz updates, and bound long-frame catch-up |
-| 3 | Navigation correctness | Match heuristic and movement costs; prevent corner cutting; handle stale heap entries and explicit outcomes |
+| 3 | Navigation correctness | P1 world groundwork is complete: stable terrain kinds, shared geometry, and navigation revision; still match heuristic/costs, prevent corner cutting, handle stale heap entries, and return explicit outcomes |
 | 4 | Movement safety | Remove straight-line failure fallback; separate move/chase intent; invalidate stale paths; avoid duplicate searches |
 | 5 | Placement and spawning | Validate entire footprints, bounds, occupancy, and terrain; choose valid unit/enemy spawns |
 | 6 | Combat | Honor configured priorities; choose reachable attack positions; use consistent distance geometry |
@@ -1173,22 +1153,26 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 import pygame
 from src.assets import AssetLoader
 from src.rts import create_terrain_generator
+from src.world import TerrainKind
 
 pygame.init()
 pygame.display.set_mode((768, 576))
 
 assets = AssetLoader()
 generator = create_terrain_generator(assets, noise_seed=123)
-terrain = generator.terrain
-assert len(terrain) == 36
-assert all(len(row) == 48 for row in terrain)
-assert all(0 <= tile <= len(generator.grass_tiles)
-           for row in terrain for tile in row)
-assert terrain == generator.generate_terrain()
-generator.draw_terrain(pygame.display.get_surface())
+world = generator.generate_world()
+assert len(world.terrain) == 36
+assert all(len(row) == 48 for row in world.terrain)
+assert all(
+    tile.kind in (TerrainKind.GRASS, TerrainKind.WATER)
+    for row in world.terrain
+    for tile in row
+)
+assert world.terrain == generator.generate_world().terrain
+world.draw_terrain(pygame.display.get_surface())
 
 pygame.quit()
-print("Terrain dimensions, tile IDs, repeatability, and drawing passed.")
+print("Terrain dimensions, stable kinds, repeatability, and drawing passed.")
 ```
 
 A dummy display cannot establish that the real window, input devices, or visual layout feel correct. `import src.rts` is safe because the menu is behind the `main()` guard.
@@ -1199,7 +1183,7 @@ For **A***, test an open diagonal route, an unreachable goal, a blocked goal, an
 
 For **movement**, test that a failed route leaves the soldier in place, a new building invalidates its route, equivalent elapsed time gives comparable travel at different frame rates, and a move order follows your chosen policy around enemies.
 
-For **terrain**, check fixed-seed repeatability, tile ID bounds, rendered/navigation map agreement, connected starting areas, and valid spawn positions.
+For **terrain**, check fixed-seed repeatability, stable terrain kinds and variant bounds, rendered/navigation map agreement, connected starting areas, and valid spawn positions.
 
 For **economy and combat**, test exact deductions, insufficient funds, one-Castle enforcement, full-footprint water rejection, training at the bottom edge, target priorities, building attack range, and dead-unit cleanup.
 
