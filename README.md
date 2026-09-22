@@ -52,7 +52,9 @@ Launch with `python -m src.rts` from the repository root. The asset loader resol
 | Left-click land | Attempt building placement |
 | Left-click Barracks / Stable | Train Swordsman / Archer if affordable |
 | Left-click allied unit | Select one unit |
-| Right-click | Request movement for the selected unit |
+| Right-click ground | Move the selected unit |
+| Right-click enemy | Attack the selected enemy |
+| `S` | Hold the selected unit in place |
 | `Esc` | Clear the building choice |
 | `D` | Toggle on-screen debug information; also print the grid |
 | `T` | Request terrain regeneration; currently returns the same map |

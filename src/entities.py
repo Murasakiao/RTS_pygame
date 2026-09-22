@@ -5,6 +5,7 @@ import math
 import pygame
 
 from .astar import a_star
+from .orders import OrderKind, UnitOrder
 from .world import cell_to_pixel, pixel_to_cell
 from .constants import (
     ALLY_DATA,
@@ -80,6 +81,7 @@ class Unit(GameObject):
         self.hp = unit_data.get("hp", 100)
         self.attack = unit_data.get("atk", 10)  # Renamed to 'attack'
         self.path = [] # Initialize path as an empty list
+        self.order = UnitOrder()
         self.destination_cell = None
         self.route_revision = None
         self.path_retry_timer = 0
@@ -115,11 +117,76 @@ class Unit(GameObject):
         return game_messages
 
     def handle_target_selection(self):
-        """
-        Select the nearest target if current target is invalid
-        """
+        """Keep explicit orders separate from the current combat target."""
+        if self.order.kind is OrderKind.MOVE:
+            self.target = None
+            return
+
+        if self.order.kind is OrderKind.ATTACK:
+            if self.order.target and self.order.target.hp > 0:
+                self.target = self.order.target
+            else:
+                self.target = None
+                self.order = UnitOrder(OrderKind.IDLE)
+            return
+
+        if self.order.kind is OrderKind.HOLD:
+            if self.target and self.target.hp > 0:
+                distance = math.hypot(
+                    self.target.x - self.x,
+                    self.target.y - self.y,
+                )
+                if distance <= self.get_attack_range():
+                    return
+            self.target = self.find_nearest_target(
+                max_distance=self.get_attack_range(),
+            )
+            return
+
         if not self.target or self.target.hp <= 0:
             self.target = self.find_nearest_target()
+
+    def issue_move(self, destination_cell, grid, navigation_revision):
+        """Issue a single-unit move order and validate its initial route."""
+        start_cell = pixel_to_cell((self.x, self.y), GRID_SIZE)
+        result = a_star(grid, start_cell, destination_cell)
+        if result.succeeded:
+            self.order = UnitOrder(
+                OrderKind.MOVE,
+                destination=destination_cell,
+            )
+            self.target = None
+            self.apply_path_result(
+                result,
+                destination_cell,
+                navigation_revision,
+            )
+        else:
+            self.stop()
+        return result
+
+    def issue_attack(self, target):
+        """Issue an explicit attack order against one living target."""
+        if target is None or target.hp <= 0:
+            return False
+        self.order = UnitOrder(OrderKind.ATTACK, target=target)
+        self.target = target
+        self.path = []
+        self.destination = None
+        self.destination_cell = None
+        self.route_revision = None
+        self.path_retry_timer = 0
+        return True
+
+    def stop(self):
+        """Hold position and clear movement and attack intent."""
+        self.order = UnitOrder(OrderKind.HOLD)
+        self.target = None
+        self.path = []
+        self.destination = None
+        self.destination_cell = None
+        self.route_revision = None
+        self.path_retry_timer = 0
 
     def apply_path_result(self, result, goal_cell, navigation_revision):
         """Store a player-issued route and its world revision."""
@@ -213,9 +280,11 @@ class Unit(GameObject):
                 self.previous_target_position = (self.target.x, self.target.y)
                 result = a_star(grid, start_cell, target_cell)
                 self._store_target_route(result, navigation_revision)
-        elif self.destination_cell is not None and (
+        elif self.order.kind is OrderKind.MOVE and self.order.destination is not None and (
             not self.path or self.destination is None
         ):
+            if self.destination_cell is None:
+                self.destination_cell = self.order.destination
             if self.path_retry_timer <= 0:
                 start_cell = pixel_to_cell((self.x, self.y), GRID_SIZE)
                 result = a_star(
@@ -259,6 +328,8 @@ class Unit(GameObject):
         )
         if not self.path and not self.target and self.path_retry_timer <= 0:
             self.destination_cell = None
+            if self.order.kind is OrderKind.MOVE:
+                self.order = UnitOrder(OrderKind.IDLE)
 
     def handle_attack(self, dt, game_messages=None):
         """
@@ -296,30 +367,51 @@ class Unit(GameObject):
                 if game_messages is not None:
                     add_game_message(message, game_messages)
 
-    def find_nearest_target(self):
-        """
-        Find the nearest valid target, prioritizing based on enemy type.
-        """
+    def find_nearest_target(self, max_distance=None):
+        """Find the nearest living target, optionally within a local radius."""
         priority_targets = []
         other_targets = []
 
         for target in self.targets:
-            if (hasattr(target, 'hp') and hasattr(target, 'x') and hasattr(target, 'y') and target.hp > 0):
-                if isinstance(self, EnemyUnit) and hasattr(self, 'target_priority'):  # Check if it's an enemy unit
-                    if (self.target_priority == "building" and isinstance(target, Building)) or \
-                       (self.target_priority == "unit" and isinstance(target, Unit)):
-                        priority_targets.append(target)
-                    else:
-                        other_targets.append(target)
-                else:  # If not an enemy unit or no priority, treat all as other targets
-                    other_targets.append(target)
+            if not (
+                hasattr(target, "hp")
+                and hasattr(target, "x")
+                and hasattr(target, "y")
+                and target.hp > 0
+            ):
+                continue
 
-        if priority_targets:
-            return min(priority_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-        elif other_targets:
-            return min(other_targets, key=lambda target: math.hypot(target.x - self.x, target.y - self.y))
-        else:
+            target_distance = math.hypot(
+                target.x - self.x,
+                target.y - self.y,
+            )
+            if max_distance is not None and target_distance > max_distance:
+                continue
+
+            if isinstance(self, EnemyUnit) and hasattr(self, "target_priority"):
+                if (
+                    self.target_priority == "building"
+                    and isinstance(target, Building)
+                ) or (
+                    self.target_priority == "unit"
+                    and isinstance(target, Unit)
+                ):
+                    priority_targets.append(target)
+                else:
+                    other_targets.append(target)
+            else:
+                other_targets.append(target)
+
+        candidates = priority_targets or other_targets
+        if not candidates:
             return None
+        return min(
+            candidates,
+            key=lambda target: math.hypot(
+                target.x - self.x,
+                target.y - self.y,
+            ),
+        )
 
     def draw(self, screen, units, buildings, enemies, show_debug):  # Add show_debug parameter
         """
@@ -383,7 +475,10 @@ class EnemyUnit(Unit):
     def __init__(self, unit_type, x, y, buildings, units, image, font):
         targets = buildings + units
         super().__init__(unit_type, x, y, targets, image, font)
-        self.target_priority = "building"
+        self.target_priority = ENEMY_DATA[unit_type].get(
+            "target_priority",
+            "building",
+        )
 
     def should_attack(self):
         """

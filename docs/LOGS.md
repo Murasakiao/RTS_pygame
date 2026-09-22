@@ -246,3 +246,30 @@ Use this format:
 ### Scope
 - Explicit Move/Chase/Attack intent, Stop/Hold behavior, attack-position search, placement/spawn validation, and combat geometry remain later P1 steps.
 - This branch is stacked on the A* correctness update; review it after PR #24.
+
+## 2026-09-22 · Separate single-unit orders from targets
+
+### Changed
+- Added `src/orders.py` with immutable `UnitOrder` and `OrderKind` values for `IDLE`, `MOVE`, `ATTACK`, and `HOLD`.
+- Added `Unit.issue_move()`, `issue_attack()`, and `stop()`; movement routes and current combat targets are now separate from order intent.
+- Updated input handling so right-click ground issues Move, right-click enemies issues Attack, and `S` issues Hold.
+- Prevented Move orders from automatically acquiring enemies; Hold only acquires targets already within attack range.
+- Fixed `EnemyUnit` to read its declared target priority from `ENEMY_DATA`.
+- Added `tests/test_p1_orders.py` and updated controls, architecture, plan, status, and log documentation.
+
+### Why
+- A movement click should not silently turn into an attack or chase on the next simulation step.
+- Explicit single-unit intent is the foundation for reliable group controls and later Attack-move behavior.
+- Hold needs a bounded defensive behavior instead of either freezing combat entirely or chasing across the map.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `18 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Existing headless menu/startup and scripted movement smoke checks remain green; order-specific tests cover Move, Attack, and Hold behavior.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Group controls, attack-position search, shared footprint validation, valid training/enemy spawns, and full combat geometry remain later P1 steps.
+- This branch is stacked on the route-safety update; review it after PR #25.

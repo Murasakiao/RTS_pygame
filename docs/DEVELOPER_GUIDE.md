@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twelve committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and eighteen committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Twelve committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, and movement route behavior. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Eighteen committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, and single-unit order behavior. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -250,18 +250,20 @@ rts-pygame/
 │   ├── rts.py                 Startup, menu, commands, rendering, main loop
 │   ├── game.py                Match state and fixed-step simulation runner
 │   ├── world.py                Terrain kinds, geometry, occupancy, navigation revision
+│   ├── orders.py               Explicit Move, Attack, Hold, and Idle order values
 │   ├── assets.py              Repository-relative asset cache and diagnostics
 │   ├── entities.py            Game objects, targeting, movement, combat
 │   ├── utils.py               UI helpers and placement checks
 │   ├── spawning.py            Enemy spawn-point selection and construction
 │   ├── procedural.py          Seeded Perlin terrain from supplied tile surfaces
-│   └── astar.py               Grid nodes and route search
+│   └── astar.py               Validated coordinate route search
 ├── tests/
 │   ├── conftest.py           Headless SDL test configuration
 │   ├── test_p0_runtime.py    Import, asset, state, timing, and startup tests
 │   ├── test_p1_world.py      World, terrain-kind, revision, and geometry tests
 │   ├── test_p1_astar.py      A* statuses, costs, validation, and corner tests
-│   └── test_p1_movement.py   Route invalidation, retry, and waypoint tests
+│   ├── test_p1_movement.py   Route invalidation, retry, and waypoint tests
+│   └── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -285,6 +287,8 @@ Game state is what the game remembers between frames. Drawing "Gold: 150" does n
 - `wave_timer` and `current_wave`: enemy-spawn progress.
 - `show_debug`: match UI state rather than a module-level flag.
 
+Each unit also keeps a `UnitOrder` describing intent (`IDLE`, `MOVE`, `ATTACK`, or `HOLD`). Its current `target`, route, and next waypoint remain separate runtime values.
+
 `GameState.new_match()` creates fresh lists, dictionaries, timers, and a navigation grid. `rts.create_match()` also creates a new terrain generator, so retrying a match does not reuse old entities or balances.
 
 An **instance** is one object made from a class. Two Swordsmen share the same class and starting data, but each has its own position, HP, path, and target.
@@ -300,7 +304,8 @@ src.rts       -> src.assets, src.astar, src.entities, src.game, src.procedural, 
 src.game      -> src.constants, src.world
 src.assets    -> pygame and repository asset paths
 src.world     -> no Pygame initialization or gameplay imports
-src.entities  -> src.astar, src.constants, src.utils
+src.orders    -> no gameplay imports
+src.entities  -> src.astar, src.constants, src.orders, src.utils, src.world
 src.spawning  -> asset-loader argument, src.constants, src.entities
 src.utils     -> src.constants, src.world
 ```
@@ -597,22 +602,25 @@ Rendering may happen without a simulation step, or one render may contain severa
 | Left-click friendly unit | Select it and clear the building choice |
 | Left-click Barracks / Stable | Train its assigned unit if affordable |
 | Left-click other land | Attempt to place the chosen building |
-| Right-click with a unit selected | Request a route to the clicked cell |
+| Right-click ground with a unit selected | Issue a Move order to the clicked cell |
+| Right-click enemy with a unit selected | Issue an Attack order against that enemy |
+| `S` with a unit selected | Issue a Hold order and stop movement |
 | `Esc` | Clear the building choice; pause is not implemented yet |
 | `D` | Toggle on-screen debug information and print the navigation grid |
 | `T` | Regenerate the same seeded terrain and update the match terrain reference; full map replacement is not implemented |
 | Close window | Quit |
 
-Number keys also clear unit selection. There is no box selection, shift selection, attack-move command, or explicit hold-position mode.
+Number keys also clear unit selection. There is no box selection, shift selection, attack-move command, or pause. Move, Attack, and Hold are single-unit orders; group controls and richer attack positioning remain future work.
 
 ### A short first play session
 
 1. Click Start New Game.
 2. Press `4` and place a Barracks on grass, away from water and the bottom edge.
 3. Click the Barracks to train a Swordsman.
-4. Click the Swordsman, then right-click nearby grass.
-5. Watch the blue path outline with debug on. Press `D` to hide the overlay.
-6. Keep playing to see enemy waves and automatic targeting.
+4. Click the Swordsman, then right-click nearby grass to issue Move.
+5. Press `S` to Hold, or right-click an enemy to issue Attack.
+6. Watch the blue path outline with debug on. Press `D` to hide the overlay.
+7. Keep playing to see enemy waves and automatic targeting.
 
 You start with enough resources for a Barracks and a Swordsman. A Castle is optional; there is no rule requiring it before other buildings.
 
@@ -966,16 +974,15 @@ The result also carries a short `reason` string for feedback and diagnostics. Th
 
 A* plans a route; movement follows it. Keeping those jobs separate lets a unit reuse a route across many frames while `dt` controls how far it walks in each one.
 
-A right-click on a selected unit:
+A right-click on a selected unit is dispatched in this order:
 
-1. Snaps the click to a pixel-aligned cell position using the shared geometry helpers.
-2. Stores that position in `destination` and sets `moving = True`.
-3. Converts start and goal positions into cell coordinates.
-4. Calls `a_star()` and copies `PathResult.path` only when the result succeeds.
-5. Clears the destination and reports the result reason when no route exists.
-6. Finds a nearest enemy target as well; order/target separation is a later P1 step.
+1. If the click is on an enemy, issue an explicit `ATTACK` order against that enemy.
+2. Otherwise snap the click to a cell with the shared geometry helpers and issue a `MOVE` order.
+3. `Unit.issue_move()` calls `a_star()` and stores `PathResult.path` only when the result succeeds.
+4. A failed route stops the unit and reports the result reason.
+5. Pressing `S` issues `HOLD`, clearing movement and attack intent.
 
-The `moving` attribute does not control later movement; no code reads it. The unit uses `path`, `destination`, and `target` instead.
+`UnitOrder` stores the intent separately from `target`, `path`, and `destination`. A `MOVE` order does not acquire automatic targets; `HOLD` may attack a target already within its attack range.
 
 ### Smooth movement between cells
 
@@ -1003,11 +1010,11 @@ Floating-point `x` and `y` let small steps add up. Rounding each 0.66-pixel step
 
 ### Chasing and repathing
 
-For a living target, movement stops within attack range. Outside range, the unit requests a route if it has no path, no destination, or the target has moved **more than 32 pixels** from its last recorded position. This threshold limits searches for small target movements while following a route. Failed requests wait for `PATH_RETRY_DELAY` milliseconds before retrying.
+For an `ATTACK` order or an `IDLE` enemy, movement stops within attack range. Outside range, the unit requests a route if it has no path, no destination, or the target has moved **more than 32 pixels** from its last recorded position. This threshold limits searches for small target movements while following a route. Failed requests wait for `PATH_RETRY_DELAY` milliseconds before retrying.
 
 A stored route records the `World.navigation_revision` used to create it. If construction or destruction changes walkability, the next update clears the route before movement and requests a replacement. A failed request no longer falls back to straight-line travel.
 
-Target/order separation remains a later P1 step: automatic target selection can still compete with a player move order.
+A `MOVE` order does not chase an automatically acquired enemy. An `ATTACK` order follows its explicit target until that target dies or the order returns to idle. `HOLD` only acquires targets already within attack range.
 
 ### Movement bugs you can observe
 

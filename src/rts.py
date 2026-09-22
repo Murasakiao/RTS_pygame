@@ -3,7 +3,6 @@ import random
 import pygame
 
 from .assets import AssetLoader
-from .astar import a_star
 from .constants import (
     ALLY_DATA,
     BLACK,
@@ -120,6 +119,12 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         if event.key in building_map:
             state.current_building_type = building_map[event.key]
             state.selected_unit = None
+        elif event.key == pygame.K_s and state.selected_unit:
+            state.selected_unit.stop()
+            add_game_message(
+                f"Holding {state.selected_unit.type}",
+                state.game_messages,
+            )
         elif event.key == pygame.K_ESCAPE:
             state.current_building_type = None
         elif event.key == pygame.K_t:
@@ -262,30 +267,30 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         return True
 
     if event.button == 3 and state.selected_unit:
+        clicked_enemy = next(
+            (
+                enemy
+                for enemy in state.enemies
+                if enemy.rect.collidepoint(mouse_pos)
+            ),
+            None,
+        )
+        if clicked_enemy:
+            state.selected_unit.issue_attack(clicked_enemy)
+            add_game_message(
+                f"Attacking {clicked_enemy.type}",
+                state.game_messages,
+            )
+            return True
+
         destination_cell = pixel_to_cell(mouse_pos, GRID_SIZE)
         if not state.world.in_bounds(destination_cell):
             add_game_message("Click inside the map.", state.game_messages)
             return True
 
-        grid_x, grid_y = cell_to_pixel(destination_cell, GRID_SIZE)
-        state.selected_unit.destination = (grid_x, grid_y)
-        state.selected_unit.moving = True
-
-        start_cell = pixel_to_cell(
-            (state.selected_unit.x, state.selected_unit.y),
-            GRID_SIZE,
-        )
-
-        state.selected_unit.path = []
-        path_result = a_star(
+        path_result = state.selected_unit.issue_move(
+            destination_cell,
             state.world.navigation_grid,
-            start_cell,
-            destination_cell,
-        )
-
-        state.selected_unit.apply_path_result(
-            path_result,
-            destination_cell,
             state.world.navigation_revision,
         )
         if path_result.succeeded:
@@ -294,13 +299,10 @@ def handle_game_event(state, event, assets, entity_font, building_map):
                 state.game_messages,
             )
         else:
-            state.selected_unit.moving = False
             add_game_message(
                 f"No path for {state.selected_unit.type}: {path_result.reason}",
                 state.game_messages,
             )
-
-        state.selected_unit.target = state.selected_unit.find_nearest_target()
 
     return True
 
