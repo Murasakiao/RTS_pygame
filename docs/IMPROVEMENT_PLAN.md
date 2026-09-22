@@ -73,8 +73,8 @@ These findings come from the current source and the earlier review. Each needs a
 | B01 | Resolved in P0 | Mixed imports loaded two entity class identities; circular imports hid dependencies | `entities.py`, `utils.py`, `rts.py` imports | P0 |
 | B02 | Resolved in P0 | Startup ran on import; menu buttons could be read before creation; menu time entered the first game tick | `rts.py` initialization/menu; import-time `pygame.init()` in helpers | P0 |
 | B03 | Blocker | Rendered terrain and collision terrain have separate owners; `T` reuses the seed; water identity depends on loaded images | `TerrainGenerator`, `update_grid()` | P1, P2 |
-| B04 | Blocker | Manhattan heuristic conflicts with diagonal costs; corner cutting, stale heap entries, ambiguous empty results, unchecked inputs | `astar.py` | P1 |
-| B05 | Blocker | Failed paths allow straight-line travel through obstacles; paths go stale; duplicate searches and discarded waypoint travel | `Unit.move_towards_target()`, right-click handler | P1 |
+| B04 | Resolved in P1 | A* now uses matching octile costs, blocks corner cutting, skips stale entries, validates inputs, and returns explicit statuses | `astar.py` | P1 |
+| B05 | Partly resolved in P1 | Failed routes stop without direct fallback, consume residual waypoint travel, retry with a delay, and invalidate on navigation revisions; order/target intent is still coupled | `Unit.move_towards_target()`, right-click handler | P1 |
 | B06 | Blocker | Melee stops outside building attack range; goals ignore reachable attack positions; dead actors can still update | Unit movement/attack methods; main cleanup | P1 |
 | B07 | High | Building checks miss parts of the footprint, enemies, bounds, and same-frame changes; preview and purchase disagree | Placement handler and preview helpers | P1, P3 |
 | B08 | High | Training can spawn units outside the map; both training and enemy spawning can choose water or occupied cells | Training handler, `generate_spawn_point()` | P1, P2 |
@@ -325,7 +325,7 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 
 - [x] Introduce `src.world.World`, stable `TerrainKind`/`TerrainTile` values, shared geometry helpers, and a navigation revision that changes only when walkability changes.
 - [x] Correct A*: use octile costs/heuristic, reject diagonal corner cutting, skip stale heap entries, validate inputs, and return explicit `PathResult` statuses. Attack-position candidate search remains part of the later combat step.
-- [ ] Remove obstacle-bypassing motion, reuse routes, consume waypoint travel correctly, and limit retries. Invalidate routes after world changes.
+- [x] Remove obstacle-bypassing motion, reuse routes, consume residual waypoint travel, and limit failed-route retries. Store the world navigation revision with each route and invalidate it after walkability changes.
 - [ ] Separate orders from targets/waypoints. Implement single-unit Move, Stop/Hold, and explicit attack behavior before group controls.
 - [ ] Add the shared footprint validator and valid exit/spawn-cell selection. Commit costs and walkability changes together.
 - [ ] Share attack-range and sight rules between targeting and damage. Load enemy priorities from data, then add bounded unreachable-target handling.

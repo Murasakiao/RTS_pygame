@@ -219,3 +219,30 @@ Use this format:
 ### Scope
 - Navigation-revision route invalidation, residual waypoint movement, bounded retries, order/target separation, attack-position search, placement/spawn validation, and combat geometry remain later P1 steps.
 - This branch is stacked on the P1 world-model update; review it after PR #23.
+
+## 2026-09-21 · Make P1 route following safe
+
+### Changed
+- Added route revision tracking, bounded retry timing, and route storage helpers to `Unit`.
+- Passed `World.navigation_revision` into allied/enemy updates so construction or destruction invalidates stored routes before movement.
+- Removed the failed-route direct-movement fallback and consumed residual travel distance across multiple waypoints in one fixed update.
+- Updated player move commands to store coordinate routes with their navigation revision.
+- Added `tests/test_p1_movement.py` for residual waypoint travel, revision invalidation, and bounded failed-route retries.
+- Updated the developer guide, improvement plan, and status to mark the route-safety P1 step complete.
+
+### Why
+- A unit must not cross an obstacle after its path fails or becomes stale.
+- Consuming only one waypoint per update made movement speed depend on waypoint spacing and discarded available travel distance.
+- Replanning every failed frame wastes CPU and makes unreachable targets noisy; a short retry delay gives the world time to change.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `15 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless scripted movement after Barracks/Swordsman training passed with a coordinate path, route revision, and position advance.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Explicit Move/Chase/Attack intent, Stop/Hold behavior, attack-position search, placement/spawn validation, and combat geometry remain later P1 steps.
+- This branch is stacked on the A* correctness update; review it after PR #24.

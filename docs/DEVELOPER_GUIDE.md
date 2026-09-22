@@ -1,7 +1,7 @@
 # Kingdom Conquer: a developer's guide to the current prototype
 
 **Project:** `rts-pygame`<br>
-**Review date:** 2026-09-15<br>
+**Review date:** 2026-09-21<br>
 **Lifecycle:** dormant, with a working prototype and unresolved gameplay bugs<br>
 **Audience:** Python beginners through developers learning game architecture and algorithms
 
@@ -9,7 +9,7 @@ You can place buildings, spend resources, train soldiers, and send them across a
 
 To understand the code, follow one soldier: a click requests a destination, A* looks for a route, movement updates the position, and Pygame draws the next frame. Each system handles one part of that action.
 
-This guide describes the code in this checkout. Sections marked **Suggested change** or **Learning example** describe work you could do next; they do not describe implemented features. This documentation review did not change the game code.
+This guide describes the code in this checkout. Sections marked **Suggested change** or **Learning example** describe work you could do next; they do not describe implemented features. The P0 and first P1 updates are implemented and logged; later P1/P2 suggestions remain proposals.
 
 ## Contents
 
@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and five committed P0 runtime tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twelve committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -45,17 +45,17 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 | Units | Swordsman and Archer, single-unit selection and movement | No group selection, formations, or training queue |
 | Enemies | Goblin and Orc, border spawns, increasing waves | Spawns can land in water; target-priority bugs |
 | Combat | Range checks, HP reduction, attack cooldowns | No projectiles, line of sight, armor, or reliable building assaults |
-| Navigation | Eight-direction A* and waypoint following | Corner cutting, imperfect route quality, obstacle-bypassing fallback |
+| Navigation | Stable-world eight-direction A*, explicit path results, and waypoint following | Route invalidation is revision-aware; order/target separation and attack-position search remain |
 | Interface | Resource text, messages, HP labels, debug paths/grid | Overlapping text and clipped building-cost labels |
 | Game outcome | Play until you close the window | No victory, defeat, pause, sound, multiplayer, or persistence |
 
 ### Review evidence
 
-The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. All seven Python files parsed, and Pygame loaded all 23 PNG files.
+The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-A headless smoke test exercised the menu, building a Barracks, training and selecting a Swordsman, right-click movement, enemy-wave spawning, the `T` and `D` keys, and closing the game. The test used synthetic mouse/keyboard events and 1-second simulation ticks. A later P0 smoke test confirmed that importing `src.rts` does not initialize Pygame and that the module entry point can start and close a match. The terrain and pathfinding issues described below remain.
+Twelve committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, and movement route behavior. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
-These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army. No test suite was added to the repository during this review.
+These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
 ## 2. Set up Python and run the game
 
@@ -259,7 +259,9 @@ rts-pygame/
 ├── tests/
 │   ├── conftest.py           Headless SDL test configuration
 │   ├── test_p0_runtime.py    Import, asset, state, timing, and startup tests
-│   └── test_p1_world.py      World, terrain-kind, revision, and geometry tests
+│   ├── test_p1_world.py      World, terrain-kind, revision, and geometry tests
+│   ├── test_p1_astar.py      A* statuses, costs, validation, and corner tests
+│   └── test_p1_movement.py   Route invalidation, retry, and waypoint tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -382,7 +384,7 @@ Water is `TerrainKind.WATER`, not “the first index after however many grass im
 3. Compare the result with the previous navigation grid.
 4. Increment `world.navigation_revision` only when walkability changes.
 
-Most buildings occupy one 16 × 16 cell. The Castle uses a size multiplier of 2, so its 32 × 32 rectangle occupies four cells. Units and enemies do **not** block this map yet; P1 movement work will add route invalidation and safer actor behavior.
+Most buildings occupy one 16 × 16 cell. The Castle uses a size multiplier of 2, so its 32 × 32 rectangle occupies four cells. Units and enemies do **not** block this map yet; later P1 movement work will add safer actor behavior.
 
 Use `pixel_to_cell()`, `cell_to_pixel()`, and `rect_cells()` from `src.world` instead of repeating coordinate arithmetic. For a future larger world, keep world size separate from display size and introduce a camera offset.
 
@@ -578,7 +580,7 @@ Compute the current preview and draw terrain, HUD, objects, messages, debug
 Present the frame
 ```
 
-Rendering may happen without a simulation step, or one render may contain several fixed steps after a stall. Gameplay rules do not receive the variable wall-clock delta. Building placement still updates the navigation grid on the next simulation step; P1 will make placement and navigation revisions immediate.
+Rendering may happen without a simulation step, or one render may contain several fixed steps after a stall. Gameplay rules do not receive the variable wall-clock delta. Building placement updates walkability on the next simulation step; `World.navigation_revision` then invalidates routes before units move.
 
 ### Controls
 
@@ -765,9 +767,9 @@ A long frame permits at most one attack per update; the code does not replay mis
 
 ### Building-attack mismatch
 
-Pathfinding redirects a blocked building goal to a walkable cell near it. But a neighboring cell is at least 16 pixels from the building's top-left position, while Goblin and Orc ranges are 15 and 5.
+A blocked building goal is now rejected instead of redirected, so enemies cannot currently route to a building's legal attack position. A neighboring cell is at least 16 pixels from the building's top-left position, while Goblin and Orc ranges are 15 and 5.
 
-An enemy can therefore reach its redirected destination and remain out of attack range. Larger buildings add further error because the code measures distance to their top-left corner rather than their nearest edge.
+Enemies therefore still need a higher-level attack-position search. Larger buildings also require distance to the target footprint rather than only its top-left corner.
 
 **Suggested change:** choose a reachable attack position around the target footprint and measure range using a consistent geometric rule, such as distance from a unit center to the target rectangle. Keep that rule shared between navigation and combat.
 
@@ -1001,23 +1003,19 @@ Floating-point `x` and `y` let small steps add up. Rounding each 0.66-pixel step
 
 ### Chasing and repathing
 
-For a living target, movement stops within attack range. Outside range, the unit requests a route if it has no path, no destination, or the target has moved **more than 32 pixels** from its last recorded position. This threshold limits searches for small target movements while following a route.
+For a living target, movement stops within attack range. Outside range, the unit requests a route if it has no path, no destination, or the target has moved **more than 32 pixels** from its last recorded position. This threshold limits searches for small target movements while following a route. Failed requests wait for `PATH_RETRY_DELAY` milliseconds before retrying.
 
-The method now makes one validated A* request and clears the route when the result is unreachable, so it no longer falls back to straight-line travel through obstacles. It still retries unreachable targets on later frames rather than applying a retry delay, and target/order separation remains a later P1 step.
+A stored route records the `World.navigation_revision` used to create it. If construction or destruction changes walkability, the next update clears the route before movement and requests a replacement. A failed request no longer falls back to straight-line travel.
 
-The code tracks target movement, but it does not invalidate routes when someone places a building across them.
+Target/order separation remains a later P1 step: automatic target selection can still compete with a player move order.
 
 ### Movement bugs you can observe
 
-**Failed path still permits movement.** A right-click stores `destination` before searching. If A* returns no route, the empty-path fallback moves in a straight line toward that destination without checking obstacles. A review test placed a wall between a soldier and its destination; the soldier entered the wall cell.
-
 **Player order and combat intent overlap.** The code finds enemy targets even after movement orders. The next update can chase a target, stop within its range, or replace the player's route. There is no defined priority between move orders and automatic combat.
 
-**Waypoint timing loses travel distance.** The method consumes at most one path node per frame and discards unused travel distance after reaching it. Because paths include the start, the first node can also consume a frame without movement. Low frame rates and large `dt` values can reduce effective movement speed.
+**Route goals remain top-left goals.** A target's blocked footprint is rejected by A*, so enemies need candidate attack positions before building combat can work reliably.
 
-**Routes can become stale.** A unit follows stored waypoints without checking whether the next step remains walkable. New construction can block a route the unit already has.
-
-**Suggested change:** give each unit an explicit intent such as `IDLE`, `MOVE`, `CHASE`, or `ATTACK`. That lets you define whether a new enemy should interrupt a move order. Keep the final player goal separate from the next waypoint. On route failure, stop and report failure rather than bypassing the obstacle rules. Revalidate or replan after navigation-map changes.
+**Suggested change:** give each unit an explicit intent such as `IDLE`, `MOVE`, `CHASE`, or `ATTACK`. That lets you define whether a new enemy should interrupt a move order. Keep the final player goal separate from the next waypoint and reuse the navigation revision for bounded replanning.
 
 ## 13. Draw the interface and debug the simulation
 
@@ -1056,7 +1054,7 @@ Later drawing can cover earlier drawing. Buildings can cover resource text becau
 
 Messages last 3,000 milliseconds by default. `draw_messages()` hides expired entries, but only `add_game_message()` removes them from the stored list. Duplicate text does not refresh the existing message's expiration.
 
-Debug mode starts enabled. Units draw targets, path rectangles, and overlap labels. A blue route helps you distinguish a soldier with no path from one that has a path but is not moving, narrowing where to inspect. Turning the overlay off does not stop movement `print()` calls, so the terminal stays noisy after pressing `D`.
+Debug mode starts enabled. Units draw targets, path rectangles, and overlap labels. A blue route helps you distinguish a soldier with no path from one that has a path but is not moving, narrowing where to inspect. Pressing `D` still prints the navigation grid; per-unit movement tracing is no longer printed every update.
 
 Current UI issues include overlapping messages/debug text, building-cost text clipped past the right edge, and a preview rectangle that can remain after `Esc` because the preview helper still returns a default-sized rectangle for `None`.
 
@@ -1071,7 +1069,7 @@ Keep fixes smaller than feature additions. The table groups the current findings
 | 1 | Imports and startup | Complete in P0: one module identity, no circular import, guarded `main()`, runtime menu/display setup |
 | 2 | Timing | P0 complete: cap the menu, use a fresh gameplay clock, fixed 30 Hz updates, and bound long-frame catch-up |
 | 3 | Navigation correctness | P1 world and A* groundwork is complete: stable terrain kinds, shared geometry, navigation revision, octile costs, input validation, stale-entry handling, and no-corner-cutting; movement invalidation and attack goals remain |
-| 4 | Movement safety | Remove straight-line failure fallback; separate move/chase intent; invalidate stale paths; avoid duplicate searches |
+| 4 | Movement safety | P1 route safety is implemented: no straight-line failure fallback, residual waypoint travel, bounded retries, and navigation-revision invalidation; move/chase intent remains |
 | 5 | Placement and spawning | Validate entire footprints, bounds, occupancy, and terrain; choose valid unit/enemy spawns |
 | 6 | Combat | Honor configured priorities; choose reachable attack positions; use consistent distance geometry |
 | 7 | Terrain ownership | P0 partially complete: keep generator and `GameState` references aligned; P1/P2 must validate maps and handle affected objects/routes |

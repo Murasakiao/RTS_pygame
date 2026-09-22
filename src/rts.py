@@ -283,19 +283,17 @@ def handle_game_event(state, event, assets, entity_font, building_map):
             destination_cell,
         )
 
+        state.selected_unit.apply_path_result(
+            path_result,
+            destination_cell,
+            state.world.navigation_revision,
+        )
         if path_result.succeeded:
-            state.selected_unit.path = list(path_result.path)
-            state.selected_unit.destination = (
-                cell_to_pixel(path_result.path[0], GRID_SIZE)
-                if path_result.path
-                else None
-            )
             add_game_message(
                 f"Moving {state.selected_unit.type}",
                 state.game_messages,
             )
         else:
-            state.selected_unit.destination = None
             state.selected_unit.moving = False
             add_game_message(
                 f"No path for {state.selected_unit.type}: {path_result.reason}",
@@ -349,6 +347,7 @@ def update_match(state, dt_ms, assets, entity_font):
             dt_ms,
             state.world.navigation_grid,
             state.game_messages,
+            state.world.navigation_revision,
         )
 
     for enemy in list(state.enemies):
@@ -357,6 +356,7 @@ def update_match(state, dt_ms, assets, entity_font):
             dt_ms,
             state.world.navigation_grid,
             state.game_messages,
+            state.world.navigation_revision,
         )
 
     if state.wave_timer >= WAVE_INTERVAL * state.current_wave:
