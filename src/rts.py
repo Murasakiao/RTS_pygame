@@ -32,7 +32,7 @@ from .utils import (
     draw_resources,
     update_preview_rect,
 )
-from .world import cell_to_pixel, pixel_to_cell
+from .world import ConnectivityRoute, cell_to_pixel, pixel_to_cell
 
 
 def update_grid(state):
@@ -54,6 +54,33 @@ def cleanup_dead_entities(state):
 
     if state.selected_unit not in state.units:
         state.selected_unit = None
+
+
+def building_connectivity_result(state, proposed_buildings):
+    castles = [
+        building
+        for building in proposed_buildings
+        if building.type == "Castle" and building.hp > 0
+    ]
+    if not castles:
+        return None
+
+    castle = castles[0]
+    routes = [
+        ConnectivityRoute(
+            start_cell=pixel_to_cell(
+                (actor.x, actor.y),
+                state.world.grid_size,
+            ),
+            target_rect=castle.rect,
+            actor_size=actor.rect.size,
+            attack_range=actor.get_attack_range(),
+            actor=actor,
+        )
+        for actor in state.units + state.enemies
+        if actor.hp > 0
+    ]
+    return state.world.validate_connectivity(routes, proposed_buildings)
 
 
 def create_terrain_generator(assets, noise_seed):
@@ -276,31 +303,43 @@ def handle_game_event(state, event, assets, entity_font, building_map):
                 "resources",
                 {},
             )
-            if can_afford(cost, state.resources, state.gold):
-                new_building = Building(
-                    grid_x,
-                    grid_y,
-                    state.current_building_type,
-                    building_image(assets, state.current_building_type),
-                    entity_font,
-                )
-                state.buildings.append(new_building)
-                state.gold = deduct_cost(
-                    cost,
-                    state.resources,
-                    state.gold,
-                )
-                state.building_cooldown = BUILDING_COOLDOWN_TIME
-                update_grid(state)
-                add_game_message(
-                    f"Built {state.current_building_type}",
-                    state.game_messages,
-                )
-            else:
+            if not can_afford(cost, state.resources, state.gold):
                 add_game_message(
                     f"Not enough resources to build {state.current_building_type}",
                     state.game_messages,
                 )
+                return True
+
+            new_building = Building(
+                grid_x,
+                grid_y,
+                state.current_building_type,
+                building_image(assets, state.current_building_type),
+                entity_font,
+            )
+            connectivity = building_connectivity_result(
+                state,
+                state.buildings + [new_building],
+            )
+            if connectivity is not None and not connectivity.valid:
+                add_game_message(
+                    "Cannot build: blocked route.",
+                    state.game_messages,
+                )
+                return True
+
+            state.buildings.append(new_building)
+            state.gold = deduct_cost(
+                cost,
+                state.resources,
+                state.gold,
+            )
+            state.building_cooldown = BUILDING_COOLDOWN_TIME
+            update_grid(state)
+            add_game_message(
+                f"Built {state.current_building_type}",
+                state.game_messages,
+            )
         return True
 
     if event.button == 3 and state.selected_unit:

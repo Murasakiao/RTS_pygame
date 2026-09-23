@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and thirty-six committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and thirty-nine committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Thirty-six committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, fractional-coordinate replanning, single-unit orders, footprint/spawn validation, attack positions, line of sight, dead-actor cleanup, atomic resource costs, and stuck-enemy prevention. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Thirty-nine committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, fractional-coordinate replanning, single-unit orders, footprint/spawn validation, living-route connectivity, attack positions, line of sight, dead-actor cleanup, atomic resource costs, and stuck-enemy prevention. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -264,7 +264,7 @@ rts-pygame/
 │   ├── test_p1_astar.py      A* statuses, costs, validation, and corner tests
 │   ├── test_p1_movement.py   Route invalidation, retry, waypoints, and fractional replans
 │   ├── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
-│   ├── test_p1_validation.py Footprint, exit, and spawn-cell tests
+│   ├── test_p1_validation.py Footprint, exit, spawn-cell, and lane tests
 │   ├── test_p1_combat.py     Range, attack-position, and retry tests
 │   ├── test_p1_lifecycle.py  Dead-actor update and cleanup tests
 │   ├── test_p1_resources.py  Affordability and atomic cost tests
@@ -684,7 +684,7 @@ A building's `unit` field connects it to a unit type. `size_multiplier` changes 
 
 The left-click handler checks for a friendly unit first, then resolves the clicked cell with the shared geometry helpers. A clicked training building gets the training action. Other clicks can attempt construction.
 
-`World.validate_footprint()` checks every cell of the selected building footprint against map bounds, stable terrain kind, buildings, allied units, and enemies. The same validator drives the final click and the preview color. Costs, the placement cooldown, and the one-Castle rule are checked before the building is committed; the navigation revision is rebuilt immediately after a successful placement.
+`World.validate_footprint()` checks every cell of the selected building footprint against map bounds, stable terrain kind, buildings, allied units, and enemies. The same validator drives the final click and the preview color. When a Castle exists, `World.validate_connectivity()` also checks every living unit/enemy route to a legal Castle approach cell under the proposed building set. Costs, the placement cooldown, and the one-Castle rule are checked before the building is committed; the navigation revision is rebuilt immediately after a successful placement.
 
 Construction is instant. The cooldown limits successive placement; it is not construction progress. There is no builder unit, build animation, repair, demolition command, or refund.
 
@@ -692,7 +692,7 @@ Construction is instant. The cooldown limits successive placement; it is not con
 
 ### Remaining placement validation
 
-The shared footprint validator now covers bounds, all terrain cells, and current actor/building occupancy. Cost affordability and deduction now share tested helpers. Remaining rules include preventing construction from sealing a spawn lane or isolating a trainer, combining placement/cost/cooldown into one transaction result, and handling map connectivity after future terrain changes.
+The shared footprint validator now covers bounds, all terrain cells, and current actor/building occupancy. Cost affordability and deduction now share tested helpers. A proposed building that cuts a living actor off from the Castle's legal approach cells is rejected with `Cannot build: blocked route.` Remaining rules include reserved future spawn lanes, trainer exits connected to the main land, one unified placement transaction result, and generated-map connectivity.
 
 ## 10. Define units, combat, and enemy waves
 

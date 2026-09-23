@@ -459,3 +459,30 @@ Use this format:
 ### Scope
 - Building placement can still make a lane genuinely unreachable; lane-sealing validation and actor avoidance remain later work.
 - This branch is stacked on the enemy-stuck fix; review it after PR #32.
+
+## 2026-09-23 · Reject construction that seals living routes
+
+### Changed
+- Added `ConnectivityRoute`, `ConnectivityStatus`, `ConnectivityResult`, and `World.validate_connectivity()`.
+- Added proposed-navigation evaluation so placement can test the full building set without mutating the live world first.
+- Updated placement to reject a building that disconnects any living unit or enemy from a legal Castle approach cell, with `Cannot build: blocked route.` feedback.
+- Added alternate-route and sealed-route world tests plus an end-to-end placement rejection test.
+- Updated the developer guide, improvement plan, and status documentation.
+
+### Why
+- A building can be individually valid yet close the only route between a living actor and the Castle.
+- Replanning after placement is safer than walking through the new building, but a permanently sealed lane still leaves an enemy retrying forever.
+- Connectivity must use the proposed building footprints and legal attack cells, not the blocked Castle center.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `39 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless placement test rejected a route-sealing House without spending gold or adding the building.
+- Open-detour connectivity and sealed-lane connectivity fixtures passed.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Future spawn lanes, trainer exits connected to main land, generated-map validation, actor avoidance, Castle defeat handling, and pending spawns remain later work.
+- This branch is stacked on the fractional-replan update; review it after PR #33.
