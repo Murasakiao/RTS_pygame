@@ -35,6 +35,25 @@ def test_rectangle_gap_treats_touching_edges_as_in_range():
     assert rectangle_gap((0, 0, 16, 16), (32, 0, 16, 16)) == 16
 
 
+def test_world_line_of_sight_stops_at_water_and_buildings():
+    world = make_world(6, 3)
+    first = (0, 16, 16, 16)
+    target = (80, 16, 16, 16)
+
+    assert world.has_line_of_sight(first, target)
+
+    world.terrain[1][2] = TerrainTile(TerrainKind.WATER)
+    world.rebuild_navigation()
+    assert not world.has_line_of_sight(first, target)
+
+    world.terrain[1][2] = TerrainTile(TerrainKind.GRASS)
+    _, building_image, font = make_assets()
+    blocker = Building(32, 16, "House", building_image, font)
+    world.rebuild_navigation([blocker])
+    assert not world.has_line_of_sight(first, target)
+    pygame.quit()
+
+
 def test_world_provides_reachable_attack_cells_around_a_building():
     world = make_world()
     _, building_image, font = make_assets()
@@ -99,6 +118,7 @@ def test_unreachable_attack_position_uses_bounded_retry():
             font,
         )
 
+        enemy.issue_attack(building)
         enemy.update(33, world, [])
 
         assert enemy.path == []

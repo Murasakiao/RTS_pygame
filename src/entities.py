@@ -102,6 +102,7 @@ class Unit(GameObject):
         self.target = None
         self.attack_cooldown = 0
         self.previous_target_position = None # Store previous target position
+        self.world = None
 
     def update(
         self,
@@ -124,6 +125,7 @@ class Unit(GameObject):
             world = None
             grid = navigation
 
+        self.world = world
         self.path_retry_timer = max(0, self.path_retry_timer - dt)
         self.handle_target_selection()
         self.move_towards_target(
@@ -322,7 +324,7 @@ class Unit(GameObject):
             distance_to_target = self.distance_to_target(self.target)
             unit_range = self.get_attack_range()
 
-            if distance_to_target <= unit_range:
+            if distance_to_target <= unit_range and self.should_attack():
                 self.path = []
                 self.destination = None
                 self.destination_cell = None
@@ -451,6 +453,12 @@ class Unit(GameObject):
             target_distance = self.distance_to_target(target)
             if max_distance is not None and target_distance > max_distance:
                 continue
+            if (
+                self.world is not None
+                and hasattr(target, "rect")
+                and not self.world.has_line_of_sight(self.rect, target.rect)
+            ):
+                continue
 
             if isinstance(self, EnemyUnit) and hasattr(self, "target_priority"):
                 if (
@@ -516,7 +524,13 @@ class AlliedUnit(Unit):
         
         distance = self.distance_to_target(self.target)
         unit_range = ALLY_DATA[self.type].get("range", UNIT_ATTACK_RANGE)
-        return distance <= unit_range
+        if distance > unit_range:
+            return False
+        return (
+            self.world is None
+            or not hasattr(self.target, "rect")
+            or self.world.has_line_of_sight(self.rect, self.target.rect)
+        )
 
     def get_attack_range(self):
         """
@@ -548,7 +562,13 @@ class EnemyUnit(Unit):
         
         distance = self.distance_to_target(self.target)
         unit_range = ENEMY_DATA[self.type].get("range", ENEMY_ATTACK_RANGE)
-        return distance <= unit_range
+        if distance > unit_range:
+            return False
+        return (
+            self.world is None
+            or not hasattr(self.target, "rect")
+            or self.world.has_line_of_sight(self.rect, self.target.rect)
+        )
 
     def get_attack_range(self):
         """

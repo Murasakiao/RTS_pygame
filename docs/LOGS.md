@@ -353,3 +353,29 @@ Use this format:
 ### Scope
 - Castle defeat handling, population/reservation accounting, line of sight, lane/connectivity validation, and finite-wave pending spawns remain later work.
 - This branch is stacked on the combat-geometry update; review it after PR #28.
+
+## 2026-09-22 · Add shared cell-based line of sight
+
+### Changed
+- Added `World.has_line_of_sight()` using the authoritative navigation grid and a Bresenham cell ray.
+- Made water and building cells block world-backed target acquisition, attack checks, and attack-position candidates; target footprint cells remain valid endpoints.
+- Updated rectangle/footprint helpers to accept both Pygame rectangles and four-value geometry tuples.
+- Added a regression test for clear, water-blocked, and building-blocked sight lines.
+- Updated the combat guide, improvement plan, status, and log documentation.
+
+### Why
+- Range alone should not allow ranged attacks through terrain or buildings.
+- Target acquisition, candidate routing, and damage checks need one obstruction rule.
+- Pure geometry tests should not need to construct Pygame rectangles for every case.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `28 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless line-of-sight tests passed for open, water-blocked, and building-blocked rays.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Projectile/cover geometry, Castle defeat handling, population/reservation accounting, lane/connectivity validation, and finite-wave pending spawns remain later work.
+- This branch is stacked on the lifecycle update; review it after PR #29.
