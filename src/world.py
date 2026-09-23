@@ -46,10 +46,31 @@ def cell_to_pixel(cell, grid_size):
     return cell[0] * grid_size, cell[1] * grid_size
 
 
-def cell_rect(cell, grid_size):
+def cell_rect(cell, grid_size, size=None):
     """Return a cell rectangle as ``(left, top, width, height)``."""
     left, top = cell_to_pixel(cell, grid_size)
-    return left, top, grid_size, grid_size
+    if size is None:
+        width = height = grid_size
+    else:
+        width, height = size
+    return left, top, width, height
+
+
+def rectangle_bounds(rect):
+    """Read rectangle edges from a Pygame Rect or a four-value tuple."""
+    if hasattr(rect, "left"):
+        return rect.left, rect.top, rect.right, rect.bottom
+    left, top, width, height = rect
+    return left, top, left + width, top + height
+
+
+def rectangle_gap(first, second):
+    """Return the shortest edge-to-edge distance between two rectangles."""
+    first_left, first_top, first_right, first_bottom = rectangle_bounds(first)
+    second_left, second_top, second_right, second_bottom = rectangle_bounds(second)
+    horizontal = max(second_left - first_right, first_left - second_right, 0)
+    vertical = max(second_top - first_bottom, first_top - second_bottom, 0)
+    return (horizontal**2 + vertical**2) ** 0.5
 
 
 def rect_cells(rect, grid_size):
@@ -215,6 +236,32 @@ class World:
             if self.is_cell_free(cell, buildings, units, enemies):
                 return cell
         return None
+
+    def attack_cells(self, target_rect, attacker_size, attack_range):
+        """Return walkable cells from which an attacker can reach the target."""
+        target_left, target_top, target_right, target_bottom = rectangle_bounds(
+            target_rect,
+        )
+        target_cells = set(rect_cells(target_rect, self.grid_size))
+        margin = int(attack_range + max(attacker_size)) + self.grid_size
+        min_x = max(0, (target_left - margin) // self.grid_size)
+        max_x = min(self.width - 1, (target_right + margin) // self.grid_size)
+        min_y = max(0, (target_top - margin) // self.grid_size)
+        max_y = min(self.height - 1, (target_bottom + margin) // self.grid_size)
+
+        candidates = []
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                cell = (x, y)
+                if cell in target_cells or not self.is_walkable(cell):
+                    continue
+                attacker_rect = cell_rect(cell, self.grid_size, attacker_size)
+                gap = rectangle_gap(attacker_rect, target_rect)
+                if gap <= attack_range:
+                    candidates.append((gap, cell))
+
+        candidates.sort(key=lambda item: (item[0], item[1][1], item[1][0]))
+        return tuple(cell for _, cell in candidates)
 
     def is_walkable(self, cell):
         if not self.in_bounds(cell):

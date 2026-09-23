@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-one committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-five committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -44,7 +44,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 | Economy | Passive income with building multipliers | No workers, resource deposits, storage limits, or population cap |
 | Units | Swordsman and Archer, single-unit selection and movement | No group selection, formations, or training queue |
 | Enemies | Goblin and Orc, validated free-land border spawns, increasing waves | No pending-spawn queue or reachable-lane validation; wave pacing remains prototype behavior |
-| Combat | Range checks, HP reduction, attack cooldowns | No projectiles, line of sight, armor, or reliable building assaults |
+| Combat | Rectangle-gap range checks, HP reduction, attack cooldowns, reachable attack-position candidates | No line of sight, projectiles, armor, or full combat event system |
 | Navigation | Stable-world eight-direction A*, explicit path results, and waypoint following | Route invalidation is revision-aware; order/target separation and attack-position search remain |
 | Interface | Resource text, messages, HP labels, debug paths/grid | Overlapping text and clipped building-cost labels |
 | Game outcome | Play until you close the window | No victory, defeat, pause, sound, multiplayer, or persistence |
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Twenty-one committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, and footprint/spawn validation. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Twenty-five committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, and attack positions. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -264,7 +264,8 @@ rts-pygame/
 │   ├── test_p1_astar.py      A* statuses, costs, validation, and corner tests
 │   ├── test_p1_movement.py   Route invalidation, retry, and waypoint tests
 │   ├── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
-│   └── test_p1_validation.py Footprint, exit, and spawn-cell tests
+│   ├── test_p1_validation.py Footprint, exit, and spawn-cell tests
+│   └── test_p1_combat.py     Range, attack-position, and retry tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -743,7 +744,7 @@ distance = sqrt((target.x - unit.x)² + (target.y - unit.y)²)
 
 `math.hypot(dx, dy)` computes that distance. This is distance between **top-left positions**, not sprite centers or nearest rectangle edges.
 
-Units keep a living target until it dies; they do not switch to a closer target each frame. There is no detection radius, line-of-sight requirement, or route-reachability test in target selection. An allied soldier can start chasing a distant enemy without a player order.
+Units keep a living target until it dies; they do not switch to a closer target each frame. `HOLD` limits automatic acquisition to the current attack range, while `IDLE` enemies/allies can still acquire distant targets. There is no line-of-sight requirement yet; target routing now searches reachable attack-position candidates when a `World` is available.
 
 ### Enemy stats and priority bugs
 
@@ -754,7 +755,7 @@ Units keep a living target until it dies; they do not switch to a closer target 
 
 `EnemyUnit.__init__()` sets `self.target_priority = "building"` for both types. It does not read the declared Orc priority.
 
-The duplicate-module class problem is resolved by the package imports. The Orc priority bug remains: `EnemyUnit.__init__()` still sets `self.target_priority = "building"` for both types instead of reading `ENEMY_DATA`. Fix that behavior separately from the import cleanup.
+The duplicate-module class problem is resolved by the package imports. `EnemyUnit` now reads `target_priority` from `ENEMY_DATA`, so Orcs prefer allied units as declared. Reachability, chase limits, and order behavior still need further tuning.
 
 ### Attack cycle
 
@@ -766,13 +767,11 @@ An Archer damages a target through this same direct HP subtraction. There is no 
 
 A long frame permits at most one attack per update; the code does not replay missed attacks. Cooldowns can become negative before the next check.
 
-### Building-attack mismatch
+### Building-attack geometry
 
-A blocked building goal is now rejected instead of redirected, so enemies cannot currently route to a building's legal attack position. A neighboring cell is at least 16 pixels from the building's top-left position, while Goblin and Orc ranges are 15 and 5.
+A blocked building goal is rejected instead of redirected. `World.attack_cells()` now generates walkable candidate cells around the target footprint, and units try A* routes to those candidates. `rectangle_gap()` measures the shortest edge-to-edge distance, so a unit touching a building can be in range even when top-left points are 16 or more pixels apart.
 
-Enemies therefore still need a higher-level attack-position search. Larger buildings also require distance to the target footprint rather than only its top-left corner.
-
-**Suggested change:** choose a reachable attack position around the target footprint and measure range using a consistent geometric rule, such as distance from a unit center to the target rectangle. Keep that rule shared between navigation and combat.
+If all attack positions are blocked or unreachable, the unit clears its route and waits for the bounded retry timer. Line of sight is not implemented yet, so buildings do not obstruct ranged attacks.
 
 ### Waves
 
@@ -1071,7 +1070,7 @@ Keep fixes smaller than feature additions. The table groups the current findings
 | 3 | Navigation correctness | P1 world and A* groundwork is complete: stable terrain kinds, shared geometry, navigation revision, octile costs, input validation, stale-entry handling, and no-corner-cutting; movement invalidation and attack goals remain |
 | 4 | Movement safety | P1 route safety is implemented: no straight-line failure fallback, residual waypoint travel, bounded retries, and navigation-revision invalidation; move/chase intent remains |
 | 5 | Placement and spawning | P1 shared footprint and free-exit/edge-spawn validation is complete; lane sealing, reachability, and pending spawns remain |
-| 6 | Combat | Honor configured priorities; choose reachable attack positions; use consistent distance geometry |
+| 6 | Combat | P1 now honors priorities, chooses reachable attack positions, and uses rectangle-gap range; line of sight and full combat geometry remain |
 | 7 | Terrain ownership | P0 partially complete: keep generator and `GameState` references aligned; P1/P2 must validate maps and handle affected objects/routes |
 | 8 | Entity lifecycle | Skip dead actors, clean lists outside drawing, clear dead selections |
 | 9 | UI and diagnostics | Fix clipping/overlap, align preview with placement rules, gate prints, cache debug grid |

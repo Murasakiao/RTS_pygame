@@ -373,18 +373,16 @@ def update_match(state, dt_ms, assets, entity_font):
         unit.targets = state.enemies
         unit.update(
             dt_ms,
-            state.world.navigation_grid,
+            state.world,
             state.game_messages,
-            state.world.navigation_revision,
         )
 
     for enemy in list(state.enemies):
         enemy.targets = state.units + state.buildings
         state.game_messages = enemy.update(
             dt_ms,
-            state.world.navigation_grid,
+            state.world,
             state.game_messages,
-            state.world.navigation_revision,
         )
 
     if state.wave_timer >= WAVE_INTERVAL * state.current_wave:

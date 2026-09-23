@@ -4,9 +4,13 @@ import math
 
 import pygame
 
-from .astar import a_star
+from .astar import PathResult, PathStatus, a_star
 from .orders import OrderKind, UnitOrder
-from .world import cell_to_pixel, pixel_to_cell
+from .world import (
+    cell_to_pixel,
+    pixel_to_cell,
+    rectangle_gap,
+)
 from .constants import (
     ALLY_DATA,
     BLACK,
@@ -102,7 +106,7 @@ class Unit(GameObject):
     def update(
         self,
         dt,
-        grid,
+        navigation,
         game_messages=None,
         navigation_revision=None,
     ):
@@ -110,11 +114,29 @@ class Unit(GameObject):
         if game_messages is None:
             game_messages = []
 
+        if hasattr(navigation, "navigation_grid"):
+            world = navigation
+            grid = world.navigation_grid
+            navigation_revision = world.navigation_revision
+        else:
+            world = None
+            grid = navigation
+
         self.path_retry_timer = max(0, self.path_retry_timer - dt)
         self.handle_target_selection()
-        self.move_towards_target(dt, grid, navigation_revision)
+        self.move_towards_target(
+            dt,
+            grid,
+            navigation_revision,
+            world,
+        )
         self.handle_attack(dt, game_messages)
         return game_messages
+
+    def distance_to_target(self, target):
+        if hasattr(target, "rect"):
+            return rectangle_gap(self.rect, target.rect)
+        return math.hypot(target.x - self.x, target.y - self.y)
 
     def handle_target_selection(self):
         """Keep explicit orders separate from the current combat target."""
@@ -132,10 +154,7 @@ class Unit(GameObject):
 
         if self.order.kind is OrderKind.HOLD:
             if self.target and self.target.hp > 0:
-                distance = math.hypot(
-                    self.target.x - self.x,
-                    self.target.y - self.y,
-                )
+                distance = self.distance_to_target(self.target)
                 if distance <= self.get_attack_range():
                     return
             self.target = self.find_nearest_target(
@@ -236,7 +255,44 @@ class Unit(GameObject):
             self.destination = None
             self.path_retry_timer = PATH_RETRY_DELAY
 
-    def move_towards_target(self, dt, grid, navigation_revision=None):
+    def _route_to_target(self, grid, start_cell, world, navigation_revision):
+        if world is None:
+            target_cell = pixel_to_cell(
+                (self.target.x, self.target.y),
+                GRID_SIZE,
+            )
+            result = a_star(grid, start_cell, target_cell)
+            self._store_target_route(result, navigation_revision)
+            return result
+
+        candidates = world.attack_cells(
+            self.target.rect,
+            self.rect.size,
+            self.get_attack_range(),
+        )
+        if not candidates:
+            result = PathResult(
+                PathStatus.UNREACHABLE,
+                reason="no_attack_position",
+            )
+            self._store_target_route(result, navigation_revision)
+            return result
+
+        last_result = PathResult(
+            PathStatus.UNREACHABLE,
+            reason="no_attack_position",
+        )
+        for candidate in candidates[:64]:
+            result = a_star(grid, start_cell, candidate)
+            last_result = result
+            if result.succeeded:
+                self._store_target_route(result, navigation_revision)
+                return result
+
+        self._store_target_route(last_result, navigation_revision)
+        return last_result
+
+    def move_towards_target(self, dt, grid, navigation_revision=None, world=None):
         """Follow a route, invalidating it when world walkability changes."""
         if (
             navigation_revision is not None
@@ -252,9 +308,7 @@ class Unit(GameObject):
         movement_threshold = 2 * GRID_SIZE
 
         if self.target and self.target.hp > 0:
-            dx = self.target.x - self.x
-            dy = self.target.y - self.y
-            distance_to_target = math.hypot(dx, dy)
+            distance_to_target = self.distance_to_target(self.target)
             unit_range = self.get_attack_range()
 
             if distance_to_target <= unit_range:
@@ -273,13 +327,13 @@ class Unit(GameObject):
 
             if path_needs_update and self.path_retry_timer <= 0:
                 start_cell = pixel_to_cell((self.x, self.y), GRID_SIZE)
-                target_cell = pixel_to_cell(
-                    (self.target.x, self.target.y),
-                    GRID_SIZE,
-                )
                 self.previous_target_position = (self.target.x, self.target.y)
-                result = a_star(grid, start_cell, target_cell)
-                self._store_target_route(result, navigation_revision)
+                self._route_to_target(
+                    grid,
+                    start_cell,
+                    world,
+                    navigation_revision,
+                )
         elif self.order.kind is OrderKind.MOVE and self.order.destination is not None and (
             not self.path or self.destination is None
         ):
@@ -381,10 +435,7 @@ class Unit(GameObject):
             ):
                 continue
 
-            target_distance = math.hypot(
-                target.x - self.x,
-                target.y - self.y,
-            )
+            target_distance = self.distance_to_target(target)
             if max_distance is not None and target_distance > max_distance:
                 continue
 
@@ -407,10 +458,7 @@ class Unit(GameObject):
             return None
         return min(
             candidates,
-            key=lambda target: math.hypot(
-                target.x - self.x,
-                target.y - self.y,
-            ),
+            key=self.distance_to_target,
         )
 
     def draw(self, screen, units, buildings, enemies, show_debug):  # Add show_debug parameter
@@ -453,10 +501,8 @@ class AlliedUnit(Unit):
         if not self.target:
             return False
         
-        dx = self.target.x - self.x
-        dy = self.target.y - self.y
-        distance = math.hypot(dx, dy)
-        unit_range = ALLY_DATA[self.type].get("range", UNIT_ATTACK_RANGE)  # Get range, default to UNIT_ATTACK_RANGE
+        distance = self.distance_to_target(self.target)
+        unit_range = ALLY_DATA[self.type].get("range", UNIT_ATTACK_RANGE)
         return distance <= unit_range
 
     def get_attack_range(self):
@@ -487,10 +533,8 @@ class EnemyUnit(Unit):
         if not self.target:
             return False
         
-        dx = self.target.x - self.x
-        dy = self.target.y - self.y
-        distance = math.hypot(dx, dy)
-        unit_range = ENEMY_DATA[self.type].get("range", ENEMY_ATTACK_RANGE)  # Get range, default to UNIT_ATTACK_RANGE
+        distance = self.distance_to_target(self.target)
+        unit_range = ENEMY_DATA[self.type].get("range", ENEMY_ATTACK_RANGE)
         return distance <= unit_range
 
     def get_attack_range(self):
