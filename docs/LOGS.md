@@ -273,3 +273,31 @@ Use this format:
 ### Scope
 - Group controls, attack-position search, shared footprint validation, valid training/enemy spawns, and full combat geometry remain later P1 steps.
 - This branch is stacked on the route-safety update; review it after PR #25.
+
+## 2026-09-22 · Add shared footprint and spawn validation
+
+### Changed
+- Added `FootprintStatus`, `FootprintResult`, footprint validation, free-cell checks, and deterministic adjacent-exit selection to `src/world.py`.
+- Updated placement preview and commit handling to use the same full-footprint bounds/terrain/occupancy validator, including enemies.
+- Updated training to use a free walkable cell beside the trainer and refuse blocked exits without spending resources.
+- Updated enemy spawning to choose free walkable map-edge cells and avoid collisions with buildings, units, and earlier spawns in the same wave attempt.
+- Added `tests/test_p1_validation.py` for footprint reasons, trainer exits, and edge spawn cells.
+- Updated the developer guide, improvement plan, status, and log documentation.
+
+### Why
+- Preview and final placement must agree about every cell of a building footprint.
+- A training click should not create a unit in water, outside the map, or inside another actor.
+- A wave entry should not appear inside a blocked or occupied edge cell.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `21 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless scripted smoke: Barracks placement, validated Swordsman exit, Move order, and fixed-step movement passed.
+- Direct spawn smoke produced a Goblin on free walkable edge land.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Lane sealing/connectivity, pending blocked spawns, cost/validation transaction unification, attack-position search, and full combat geometry remain later P1/P2 steps.
+- This branch is stacked on the order update; review it after PR #26.

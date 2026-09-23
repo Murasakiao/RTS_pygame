@@ -7,6 +7,27 @@ class TerrainKind(str, Enum):
     WATER = "water"
 
 
+class FootprintStatus(str, Enum):
+    VALID = "valid"
+    OUT_OF_BOUNDS = "out_of_bounds"
+    WATER = "water"
+    OCCUPIED = "occupied"
+
+
+@dataclass(frozen=True)
+class FootprintResult:
+    status: FootprintStatus
+    cells: tuple[tuple[int, int], ...] = ()
+
+    @property
+    def valid(self):
+        return self.status is FootprintStatus.VALID
+
+    @property
+    def reason(self):
+        return self.status.value
+
+
 @dataclass(frozen=True)
 class TerrainTile:
     """Stable terrain meaning plus a visual variant."""
@@ -113,6 +134,87 @@ class World:
             self._navigation_signature = signature
             self.navigation_revision += 1
         return self.navigation_grid
+
+    def footprint_cells(self, origin, size):
+        width, height = size
+        if width <= 0 or height <= 0:
+            return ()
+        return tuple(
+            (origin[0] + x, origin[1] + y)
+            for y in range(height)
+            for x in range(width)
+        )
+
+    def _occupied_cells(self, objects):
+        occupied = set()
+        for obj in objects:
+            occupied.update(rect_cells(obj.rect, self.grid_size))
+        return occupied
+
+    def is_cell_free(self, cell, buildings=(), units=(), enemies=()):
+        if not self.in_bounds(cell) or not self.is_walkable(cell):
+            return False
+        occupied = self._occupied_cells(
+            (*buildings, *units, *enemies),
+        )
+        return cell not in occupied
+
+    def validate_footprint(
+        self,
+        origin,
+        size,
+        buildings=(),
+        units=(),
+        enemies=(),
+    ):
+        """Validate every cell of a building or spawn footprint."""
+        cells = self.footprint_cells(origin, size)
+        if not cells or any(not self.in_bounds(cell) for cell in cells):
+            return FootprintResult(FootprintStatus.OUT_OF_BOUNDS, cells)
+        if any(self.is_water(cell) for cell in cells):
+            return FootprintResult(FootprintStatus.WATER, cells)
+
+        occupied = self._occupied_cells(
+            (*buildings, *units, *enemies),
+        )
+        if any(cell in occupied for cell in cells):
+            return FootprintResult(FootprintStatus.OCCUPIED, cells)
+        return FootprintResult(FootprintStatus.VALID, cells)
+
+    def find_free_exit(
+        self,
+        origin,
+        size,
+        buildings=(),
+        units=(),
+        enemies=(),
+    ):
+        """Return the nearest deterministic free cell around a footprint."""
+        width, height = size
+        candidates = []
+        for x in range(width):
+            candidates.extend(
+                (
+                    (origin[0] + x, origin[1] - 1),
+                    (origin[0] + x, origin[1] + height),
+                )
+            )
+        for y in range(height):
+            candidates.extend(
+                (
+                    (origin[0] - 1, origin[1] + y),
+                    (origin[0] + width, origin[1] + y),
+                )
+            )
+
+        seen = set()
+        for cell in candidates:
+            if cell in seen:
+                continue
+            seen.add(cell)
+            if self.is_cell_free(cell, buildings, units, enemies):
+                return cell
+        return None
 
     def is_walkable(self, cell):
         if not self.in_bounds(cell):
