@@ -301,3 +301,30 @@ Use this format:
 ### Scope
 - Lane sealing/connectivity, pending blocked spawns, cost/validation transaction unification, attack-position search, and full combat geometry remain later P1/P2 steps.
 - This branch is stacked on the order update; review it after PR #26.
+
+## 2026-09-22 · Add reachable attack-position geometry
+
+### Changed
+- Added rectangle helpers and `World.attack_cells()` for walkable positions that satisfy a target footprint and attack range.
+- Changed unit targeting and damage checks to use shared rectangle-gap distance instead of top-left point distance.
+- Changed target routing to try reachable attack-position candidates, report bounded `no_attack_position` failures, and reuse route retry timing.
+- Updated the controller to pass the authoritative `World` into entity updates.
+- Added `tests/test_p1_combat.py` for touching-edge range, building attack candidates, reachable enemy approaches, and unreachable-target retries.
+- Updated combat documentation, the P1 plan, status, and this log.
+
+### Why
+- A 1 × 1 or 2 × 2 building's top-left point is not its attack boundary; melee units should be able to attack from legal adjacent cells.
+- Targeting and damage must agree about when a target is in range.
+- A nearby empty cell is not enough if the route to it is blocked.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `25 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless enemy-to-Castle route smoke passed; unreachable attack positions set a bounded retry timer without direct movement.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Line of sight, ranged obstruction rules, full combat event ordering, dead-actor cleanup, lane/connectivity validation, and finite-wave pending spawns remain later work.
+- This branch is stacked on the validation update; review it after PR #27.
