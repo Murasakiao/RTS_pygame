@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and thirty-two committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and thirty-five committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -43,9 +43,9 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 | Construction | Eight building types, shared full-footprint validation, resource costs, placement preview | No lane-sealing or route-connectivity validation yet |
 | Economy | Passive income with building multipliers | No workers, resource deposits, storage limits, or population cap |
 | Units | Swordsman and Archer, single-unit selection and movement | No group selection, formations, or training queue |
-| Enemies | Goblin and Orc, validated free-land border spawns, increasing waves | No pending-spawn queue or reachable-lane validation; wave pacing remains prototype behavior |
-| Combat | Rectangle-gap range checks, HP reduction, attack cooldowns, reachable attack-position candidates | No line of sight, projectiles, armor, or full combat event system |
-| Navigation | Stable-world eight-direction A*, explicit path results, and waypoint following | Route invalidation is revision-aware; order/target separation and attack-position search remain |
+| Enemies | Goblin and Orc, free-land border spawns filtered for a reachable attack position, increasing waves | No pending-spawn queue, protected spawn lanes, or map-wide connectivity validation; wave pacing remains prototype behavior |
+| Combat | Rectangle-gap range checks, cell-based building line of sight, HP reduction, attack cooldowns, reachable attack-position candidates | No projectile/cover model, armor, or full combat event system |
+| Navigation | Stable-world eight-direction A*, explicit path results, revision-aware waypoint following, and reachable attack positions | Map connectivity, lane sealing, and multi-unit avoidance remain |
 | Interface | Resource text, messages, HP labels, debug paths/grid | Overlapping text and clipped building-cost labels |
 | Game outcome | Play until you close the window | No victory, defeat, pause, sound, multiplayer, or persistence |
 
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Thirty-two committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, line of sight, dead-actor cleanup, and atomic resource costs. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Thirty-five committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, line of sight, dead-actor cleanup, atomic resource costs, and stuck-enemy prevention. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -267,7 +267,8 @@ rts-pygame/
 │   ├── test_p1_validation.py Footprint, exit, and spawn-cell tests
 │   ├── test_p1_combat.py     Range, attack-position, and retry tests
 │   ├── test_p1_lifecycle.py  Dead-actor update and cleanup tests
-│   └── test_p1_resources.py  Affordability and atomic cost tests
+│   ├── test_p1_resources.py  Affordability and atomic cost tests
+│   └── test_p1_runtime_safety.py Disabled live-regeneration test
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -556,9 +557,9 @@ The terrain contains grass patches and water shapes. It has no dedicated river c
 
 ### 7.5 Terrain regeneration limits
 
-`GameState.world` is the authoritative map. Pressing `T` creates a replacement `World` from the same generator seed and re-applies current building occupancy. The map therefore looks the same rather than pretending to be a new map, but existing units and paths are not yet reconciled with the replacement.
+`GameState.world` is the authoritative map. Live `T` regeneration is disabled during a match because replacing the world can leave buildings, units, and paths standing in water or using stale navigation data. The key now reports that policy through the normal message list.
 
-A complete regeneration feature still needs a new seed, path invalidation, and a policy for buildings and units now standing in water. Normal base-defense matches should eventually disable live regeneration and make a new map start a fresh `GameState`.
+A future Retry/New Map flow should create a fresh `GameState` with a new or selected seed rather than mutating the active battlefield.
 
 For a playable procedural map, add validation after generation: reserve starting land, check connected walkable regions, and choose spawn points with routes into the play area.
 
@@ -611,7 +612,7 @@ Rendering may happen without a simulation step, or one render may contain severa
 | `S` with a unit selected | Issue a Hold order and stop movement |
 | `Esc` | Clear the building choice; pause is not implemented yet |
 | `D` | Toggle on-screen debug information and print the navigation grid |
-| `T` | Regenerate the same seeded terrain and update the match terrain reference; full map replacement is not implemented |
+| `T` | Report that live terrain regeneration is disabled during a match |
 | Close window | Quit |
 
 Number keys also clear unit selection. There is no box selection, shift selection, attack-move command, or pause. Move, Attack, and Hold are single-unit orders; group controls and richer attack positioning remain future work.
@@ -740,7 +741,7 @@ Allies receive the `enemies` list as candidate targets. Enemies receive `units +
 
 `find_nearest_target()` filters out dead or invalid targets, ignores targets hidden behind water/buildings when an authoritative `World` is available, groups candidates by priority where applicable, and selects the shortest distance in the chosen group. Objects with rectangles use the shared nearest-edge `rectangle_gap()` geometry; lightweight test doubles fall back to top-left `math.hypot(dx, dy)`.
 
-Units keep a living target until it dies; they do not switch to a closer target each frame. `HOLD` limits automatic acquisition to the current attack range, while `IDLE` enemies/allies can still acquire distant visible targets. Explicit `ATTACK` orders retain their target and route toward visible attack positions when possible.
+Units keep a living target until it dies; they do not switch to a closer target each frame. `HOLD` limits automatic acquisition to the current attack range, while `IDLE` enemies/allies can acquire distant targets even when a wall or water lies between them. The route search then looks for a reachable visible attack position instead of leaving a unit idle at the obstruction. Explicit `ATTACK` orders retain their target and use the same attack-position search.
 
 ### Enemy stats and priority bugs
 
@@ -757,7 +758,7 @@ Without a cooldown, an in-range unit could attack once per frame, making damage 
 
 A unit with a target and an expired cooldown checks its range. If the target is within range, it subtracts damage from target HP, adds a message, and resets its cooldown. The method then subtracts this frame's `dt` from a positive cooldown, including one it just reset.
 
-An Archer damages a target through this same direct HP subtraction. There is no flying arrow or delayed impact. World-backed attacks require line of sight through walkable terrain; water and buildings block the ray, while lightweight grid-only tests retain the fallback range behavior.
+An Archer damages a target through this same direct HP subtraction. There is no flying arrow or delayed impact. World-backed attacks require a clear cell ray past buildings; water blocks walking but does not block sight, while lightweight grid-only tests retain the fallback range behavior.
 
 A long frame permits at most one attack per update; the code does not replay missed attacks. Cooldowns can become negative before the next check.
 
@@ -765,7 +766,7 @@ A long frame permits at most one attack per update; the code does not replay mis
 
 A blocked building goal is rejected instead of redirected. `World.attack_cells()` now generates walkable candidate cells around the target footprint, and units try A* routes to those candidates. `rectangle_gap()` measures the shortest edge-to-edge distance, so a unit touching a building can be in range even when top-left points are 16 or more pixels apart.
 
-Candidate cells also require line of sight. If all attack positions are blocked, hidden, or unreachable, the unit clears its route and waits for the bounded retry timer. The ray is cell-based and does not yet model projectile height, cover, or team-specific obstruction.
+Candidate cells also require line of sight past buildings. If all attack positions are blocked, hidden, or unreachable, the unit clears its route and waits for the bounded retry timer. The ray is cell-based and does not yet model projectile height, cover, or team-specific obstruction.
 
 ### Waves
 
@@ -785,7 +786,7 @@ wave_timer >= WAVE_INTERVAL * current_wave
 
 Ignoring frame-level delays and the menu-time issue, those waves occur near cumulative times 30, 90, and 180 seconds. The wait increases; this is not a fixed 30-second wave schedule. The debug counter shows the next wave number after a spawn.
 
-`spawn_enemies()` attempts `current_wave * ENEMY_SPAWN_RATE` enemies. `ENEMY_SPAWN_RATE` is 1. Each enemy gets a random type and a random free, walkable cell on one of the four map edges. `World.is_cell_free()` rejects water, buildings, units, and already selected spawn cells. If no edge cell is available, that attempt currently produces no enemy; retaining pending entries belongs to the finite-wave work in P2. Reachability and protected spawn lanes are not validated yet.
+`spawn_enemies()` attempts `current_wave * ENEMY_SPAWN_RATE` enemies. `ENEMY_SPAWN_RATE` is 1. Each enemy gets a random type and a random free, walkable cell on one of the four map edges. When a target exists, the candidate must also have an A* route to at least one legal attack position around that target. `World.is_cell_free()` rejects water, buildings, units, and already selected spawn cells. If no edge cell is available or reachable, that attempt currently produces no enemy; retaining pending entries and protected lanes belongs to the finite-wave work in P2.
 
 ### Death and cleanup
 
@@ -929,7 +930,7 @@ S #
 
 A building blocks its own cell, so an ordinary move request cannot end there. `a_star()` now returns `UNREACHABLE` with reason `goal_blocked` instead of silently selecting a nearby cell.
 
-Combat still needs a higher-level attack-position search. It should generate candidate walkable cells around the target footprint, call A* for each candidate, and choose a reachable position that satisfies the shared attack-range rule. A single nearby empty cell is not enough to guarantee an attack.
+Combat now generates candidate walkable cells around the target footprint, filters them with the shared range/line-of-sight rules, calls A* for each candidate, and chooses a reachable position. It no longer stops at a single nearby empty cell that might be unreachable.
 
 ### 11.8 Return values and input validation
 
@@ -1055,8 +1056,8 @@ Keep fixes smaller than feature additions. The table groups the current findings
 | 2 | Timing | P0 complete: cap the menu, use a fresh gameplay clock, fixed 30 Hz updates, and bound long-frame catch-up |
 | 3 | Navigation correctness | P1 world and A* groundwork is complete: stable terrain kinds, shared geometry, navigation revision, octile costs, input validation, stale-entry handling, and no-corner-cutting; movement invalidation and attack goals remain |
 | 4 | Movement safety | P1 route safety is implemented: no straight-line failure fallback, residual waypoint travel, bounded retries, and navigation-revision invalidation; move/chase intent remains |
-| 5 | Placement and spawning | P1 shared footprint and free-exit/edge-spawn validation is complete; lane sealing, reachability, and pending spawns remain |
-| 6 | Combat | P1 now honors priorities, chooses reachable attack positions, and uses rectangle-gap range; line of sight and full combat geometry remain |
+| 5 | Placement and spawning | P1 shared footprint, free-exit, and target-reachable edge-spawn validation is complete; lane sealing, protected lanes, and pending spawns remain |
+| 6 | Combat | P1 now honors priorities, chooses reachable attack positions, uses rectangle-gap range, and blocks building LOS; projectile/cover geometry remains |
 | 7 | Terrain ownership | P0 partially complete: keep generator and `GameState` references aligned; P1/P2 must validate maps and handle affected objects/routes |
 | 8 | Entity lifecycle | Skip dead actors, clean lists outside drawing, clear dead selections |
 | 9 | UI and diagnostics | Fix clipping/overlap, align preview with placement rules, gate prints, cache debug grid |

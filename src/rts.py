@@ -143,8 +143,10 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         elif event.key == pygame.K_ESCAPE:
             state.current_building_type = None
         elif event.key == pygame.K_t:
-            state.world = state.terrain_generator.generate_world()
-            state.world.rebuild_navigation(state.buildings)
+            add_game_message(
+                "Map regeneration is disabled during a match.",
+                state.game_messages,
+            )
         elif event.key == pygame.K_d:
             state.show_debug = not state.show_debug
             print(state.world.navigation_grid)
@@ -399,6 +401,7 @@ def update_match(state, dt_ms, assets, entity_font):
         )
 
     cleanup_dead_entities(state)
+    update_grid(state)
 
     if state.wave_timer >= WAVE_INTERVAL * state.current_wave:
         state.enemies.extend(
