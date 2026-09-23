@@ -1,13 +1,28 @@
 import pygame
 
 from src.astar import a_star
+from src.entities import Building, EnemyUnit
+from src.game import GameState
+from src.rts import handle_game_event
 from src.spawning import generate_spawn_point
-from src.world import FootprintStatus, TerrainKind, TerrainTile, World
+from src.world import (
+    ConnectivityRoute,
+    ConnectivityStatus,
+    FootprintStatus,
+    TerrainKind,
+    TerrainTile,
+    World,
+)
 
 
 class ObjectWithRect:
     def __init__(self, rect):
         self.rect = rect
+
+
+class SurfaceAssets:
+    def image(self, asset_key, size):
+        return pygame.Surface(size)
 
 
 def grass_world(width=4, height=4):
@@ -43,6 +58,44 @@ def test_training_exit_is_free_and_adjacent_to_the_footprint():
     assert world.is_cell_free(exit_cell, [building])
 
 
+def test_connectivity_rejects_a_building_that_seals_the_castle_route():
+    world = grass_world(10, 3)
+    castle = ObjectWithRect(pygame.Rect(8 * 16, 16, 32, 32))
+    upper_wall = ObjectWithRect(pygame.Rect(3 * 16, 0, 16, 16))
+    lower_wall = ObjectWithRect(pygame.Rect(3 * 16, 2 * 16, 16, 16))
+    sealing_building = ObjectWithRect(pygame.Rect(3 * 16, 16, 16, 16))
+    route = ConnectivityRoute(
+        (0, 1),
+        castle.rect,
+        (16, 16),
+        15,
+    )
+
+    world.rebuild_navigation([castle, upper_wall, lower_wall])
+
+    result = world.validate_connectivity(
+        [route],
+        [castle, upper_wall, lower_wall, sealing_building],
+    )
+
+    assert result.status is ConnectivityStatus.BLOCKED_ROUTE
+    assert result.reason == "blocked_route"
+
+
+def test_connectivity_accepts_a_route_with_an_open_detour():
+    world = grass_world(10, 4)
+    castle = ObjectWithRect(pygame.Rect(8 * 16, 16, 32, 32))
+    wall = ObjectWithRect(pygame.Rect(3 * 16, 16, 16, 16))
+    route = ConnectivityRoute((0, 1), castle.rect, (16, 16), 15)
+
+    result = world.validate_connectivity(
+        [route],
+        [castle, wall],
+    )
+
+    assert result.status is ConnectivityStatus.VALID
+
+
 def test_spawn_point_uses_free_edge_land():
     world = grass_world()
     edge_buildings = [
@@ -57,6 +110,52 @@ def test_spawn_point_uses_free_edge_land():
     cell = (point[0] // 16, point[1] // 16)
     assert cell[0] in {0, 3} or cell[1] in {0, 3}
     assert world.is_cell_free(cell, edge_buildings)
+
+
+def test_placement_rejects_a_building_that_seals_a_living_enemy_route():
+    pygame.init()
+    try:
+        assets = SurfaceAssets()
+        font = pygame.font.Font(None, 12)
+        world = grass_world(10, 3)
+        castle = Building(8 * 16, 16, "Castle", assets.image("castle", (32, 32)), font)
+        upper_wall = Building(3 * 16, 0, "House", assets.image("house", (16, 16)), font)
+        lower_wall = Building(3 * 16, 2 * 16, "House", assets.image("house", (16, 16)), font)
+        world.rebuild_navigation([castle, upper_wall, lower_wall])
+        enemy = EnemyUnit(
+            "Goblin",
+            0,
+            16,
+            [castle],
+            [],
+            assets.image("goblin", (16, 16)),
+            font,
+        )
+        state = GameState(object(), world)
+        state.buildings = [castle, upper_wall, lower_wall]
+        state.enemies = [enemy]
+        state.current_building_type = "House"
+        state.gold = 100
+        state.resources = {"wood": 100}
+
+        handled = handle_game_event(
+            state,
+            pygame.event.Event(
+                pygame.MOUSEBUTTONDOWN,
+                button=1,
+                pos=(3 * 16, 1 * 16),
+            ),
+            assets,
+            font,
+            {},
+        )
+
+        assert handled is True
+        assert len(state.buildings) == 3
+        assert state.gold == 100
+        assert state.game_messages[-1]["text"] == "Cannot build: blocked route."
+    finally:
+        pygame.quit()
 
 
 def test_spawn_point_prefers_an_edge_that_can_reach_the_target():

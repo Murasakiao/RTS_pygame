@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .astar import a_star
+
 
 class TerrainKind(str, Enum):
     GRASS = "grass"
@@ -14,6 +16,11 @@ class FootprintStatus(str, Enum):
     OCCUPIED = "occupied"
 
 
+class ConnectivityStatus(str, Enum):
+    VALID = "valid"
+    BLOCKED_ROUTE = "blocked_route"
+
+
 @dataclass(frozen=True)
 class FootprintResult:
     status: FootprintStatus
@@ -22,6 +29,31 @@ class FootprintResult:
     @property
     def valid(self):
         return self.status is FootprintStatus.VALID
+
+    @property
+    def reason(self):
+        return self.status.value
+
+
+@dataclass(frozen=True)
+class ConnectivityRoute:
+    """A living actor's required route to a target footprint."""
+
+    start_cell: tuple[int, int]
+    target_rect: object
+    actor_size: tuple[int, int]
+    attack_range: float
+    actor: object | None = None
+
+
+@dataclass(frozen=True)
+class ConnectivityResult:
+    status: ConnectivityStatus
+    actor: object | None = None
+
+    @property
+    def valid(self):
+        return self.status is ConnectivityStatus.VALID
 
     @property
     def reason(self):
@@ -138,8 +170,7 @@ class World:
         tile = self.terrain_at(cell)
         return tile is None or tile.kind is TerrainKind.WATER
 
-    def rebuild_navigation(self, buildings=()):
-        """Rebuild walkability and increment the revision only when it changes."""
+    def _navigation_data(self, buildings=()):
         new_grid = [
             [
                 (tile.kind, 1 if tile.kind is TerrainKind.WATER else 0)
@@ -155,8 +186,12 @@ class World:
                     building_cells.add((x, y))
                     terrain_kind = new_grid[y][x][0]
                     new_grid[y][x] = (terrain_kind, 1)
+        return new_grid, frozenset(building_cells)
 
-        self._building_cells = frozenset(building_cells)
+    def rebuild_navigation(self, buildings=()):
+        """Rebuild walkability and increment the revision only when it changes."""
+        new_grid, building_cells = self._navigation_data(buildings)
+        self._building_cells = building_cells
         signature = tuple(tuple(row) for row in new_grid)
         if signature != self._navigation_signature:
             self.navigation_grid = new_grid
@@ -180,8 +215,18 @@ class World:
             occupied.update(rect_cells(obj.rect, self.grid_size))
         return occupied
 
-    def is_cell_free(self, cell, buildings=(), units=(), enemies=()):
-        if not self.in_bounds(cell) or not self.is_walkable(cell):
+    def is_cell_free(
+        self,
+        cell,
+        buildings=(),
+        units=(),
+        enemies=(),
+        navigation_grid=None,
+    ):
+        if not self.in_bounds(cell) or not self.is_walkable(
+            cell,
+            navigation_grid,
+        ):
             return False
         occupied = self._occupied_cells(
             (*buildings, *units, *enemies),
@@ -217,6 +262,7 @@ class World:
         buildings=(),
         units=(),
         enemies=(),
+        navigation_grid=None,
     ):
         """Return the nearest deterministic free cell around a footprint."""
         width, height = size
@@ -241,12 +287,28 @@ class World:
             if cell in seen:
                 continue
             seen.add(cell)
-            if self.is_cell_free(cell, buildings, units, enemies):
+            if self.is_cell_free(
+                cell,
+                buildings,
+                units,
+                enemies,
+                navigation_grid,
+            ):
                 return cell
         return None
 
-    def has_line_of_sight(self, first_rect, target_rect):
-        """Return whether terrain/buildings leave a clear cell ray to target."""
+    def has_line_of_sight(
+        self,
+        first_rect,
+        target_rect,
+        building_cells=None,
+    ):
+        """Return whether buildings leave a clear cell ray to target."""
+        building_cells = (
+            self._building_cells
+            if building_cells is None
+            else building_cells
+        )
         first_left, first_top, first_right, first_bottom = rectangle_bounds(
             first_rect,
         )
@@ -273,7 +335,7 @@ class World:
 
         while True:
             cell = (x0, y0)
-            if cell not in target_cells and cell in self._building_cells:
+            if cell not in target_cells and cell in building_cells:
                 return False
             if cell == goal:
                 return True
@@ -285,7 +347,14 @@ class World:
                 error += dx
                 y0 += step_y
 
-    def attack_cells(self, target_rect, attacker_size, attack_range):
+    def attack_cells(
+        self,
+        target_rect,
+        attacker_size,
+        attack_range,
+        navigation_grid=None,
+        building_cells=None,
+    ):
         """Return visible walkable cells from which an attacker can reach target."""
         target_left, target_top, target_right, target_bottom = rectangle_bounds(
             target_rect,
@@ -301,23 +370,54 @@ class World:
         for y in range(min_y, max_y + 1):
             for x in range(min_x, max_x + 1):
                 cell = (x, y)
-                if cell in target_cells or not self.is_walkable(cell):
+                if cell in target_cells or not self.is_walkable(
+                    cell,
+                    navigation_grid,
+                ):
                     continue
                 attacker_rect = cell_rect(cell, self.grid_size, attacker_size)
                 gap = rectangle_gap(attacker_rect, target_rect)
                 if gap <= attack_range and self.has_line_of_sight(
                     attacker_rect,
                     target_rect,
+                    building_cells,
                 ):
                     candidates.append((gap, cell))
 
         candidates.sort(key=lambda item: (item[0], item[1][1], item[1][0]))
         return tuple(cell for _, cell in candidates)
 
-    def is_walkable(self, cell):
+    def validate_connectivity(self, routes, buildings=()):
+        """Reject a building set that strands a required living-actor route."""
+        navigation_grid, building_cells = self._navigation_data(buildings)
+        for route in routes:
+            candidates = self.attack_cells(
+                route.target_rect,
+                route.actor_size,
+                route.attack_range,
+                navigation_grid,
+                building_cells,
+            )
+            if any(
+                a_star(
+                    navigation_grid,
+                    route.start_cell,
+                    candidate,
+                ).succeeded
+                for candidate in candidates
+            ):
+                continue
+            return ConnectivityResult(
+                ConnectivityStatus.BLOCKED_ROUTE,
+                actor=route.actor,
+            )
+        return ConnectivityResult(ConnectivityStatus.VALID)
+
+    def is_walkable(self, cell, navigation_grid=None):
         if not self.in_bounds(cell):
             return False
-        return self.navigation_grid[cell[1]][cell[0]][1] == 0
+        grid = self.navigation_grid if navigation_grid is None else navigation_grid
+        return grid[cell[1]][cell[0]][1] == 0
 
     def draw_terrain(self, screen):
         if not self.grass_tiles or not self.water_tiles:
