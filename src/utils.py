@@ -10,6 +10,7 @@ from .constants import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from .game import can_afford
 from .world import cell_to_pixel, pixel_to_cell
 
 
@@ -77,10 +78,7 @@ def draw_building_preview(
         building_resources = BUILDING_DATA.get(current_building_type, {}).get(
             "resources", {}
         )
-        affordable = all(
-            resources.get(resource, gold) >= amount
-            for resource, amount in building_resources.items()
-        )
+        affordable = can_afford(building_resources, resources, gold)
         color = GREEN if not collision and affordable else RED
         pygame.draw.rect(screen, color, preview_rect, 2)
 

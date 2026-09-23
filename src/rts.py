@@ -19,7 +19,7 @@ from .constants import (
     WHITE,
 )
 from .entities import AlliedUnit, Building
-from .game import FixedStepRunner, GameState
+from .game import FixedStepRunner, GameState, can_afford, deduct_cost
 from .procedural import TerrainGenerator
 from .spawning import spawn_enemies
 from .utils import (
@@ -191,10 +191,7 @@ def handle_game_event(state, event, assets, entity_font, building_map):
         if clicked_building and "unit" in BUILDING_DATA[clicked_building.type]:
             unit_type = BUILDING_DATA[clicked_building.type]["unit"]
             unit_cost = ALLY_DATA[unit_type]["cost"]
-            if not all(
-                state.resources.get(resource, state.gold) >= amount
-                for resource, amount in unit_cost.items()
-            ):
+            if not can_afford(unit_cost, state.resources, state.gold):
                 add_game_message(
                     f"Not enough resources to train {unit_type}",
                     state.game_messages,
@@ -233,11 +230,11 @@ def handle_game_event(state, event, assets, entity_font, building_map):
                 entity_font,
             )
             state.units.append(new_unit)
-            for resource, amount in unit_cost.items():
-                if resource == "gold":
-                    state.gold -= amount
-                else:
-                    state.resources[resource] -= amount
+            state.gold = deduct_cost(
+                unit_cost,
+                state.resources,
+                state.gold,
+            )
             add_game_message(
                 f"Trained {unit_type}",
                 state.game_messages,
@@ -277,11 +274,7 @@ def handle_game_event(state, event, assets, entity_font, building_map):
                 "resources",
                 {},
             )
-            affordable = all(
-                state.resources.get(resource, state.gold) >= amount
-                for resource, amount in cost.items()
-            )
-            if affordable:
+            if can_afford(cost, state.resources, state.gold):
                 new_building = Building(
                     grid_x,
                     grid_y,
@@ -290,11 +283,11 @@ def handle_game_event(state, event, assets, entity_font, building_map):
                     entity_font,
                 )
                 state.buildings.append(new_building)
-                for resource, amount in cost.items():
-                    if resource == "gold":
-                        state.gold -= amount
-                    else:
-                        state.resources[resource] -= amount
+                state.gold = deduct_cost(
+                    cost,
+                    state.resources,
+                    state.gold,
+                )
                 state.building_cooldown = BUILDING_COOLDOWN_TIME
                 update_grid(state)
                 add_game_message(

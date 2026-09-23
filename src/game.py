@@ -18,6 +18,27 @@ def _resource_increase_rates():
     }
 
 
+def can_afford(cost, resources, gold):
+    """Return whether every cost entry has enough available balance."""
+    return all(
+        (gold if resource == "gold" else resources.get(resource, 0)) >= amount
+        for resource, amount in cost.items()
+    )
+
+
+def deduct_cost(cost, resources, gold):
+    """Deduct a cost atomically and return the updated gold balance."""
+    if not can_afford(cost, resources, gold):
+        raise ValueError("insufficient resources")
+
+    for resource, amount in cost.items():
+        if resource == "gold":
+            gold -= amount
+        else:
+            resources[resource] = resources.get(resource, 0) - amount
+    return gold
+
+
 @dataclass
 class GameState:
     """All mutable state that belongs to one match."""
