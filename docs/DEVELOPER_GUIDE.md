@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-seven committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-eight committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Twenty-seven committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, and dead-actor cleanup. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Twenty-eight committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, line of sight, and dead-actor cleanup. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -737,9 +737,9 @@ handle_attack(dt, game_messages)
 
 Allies receive the `enemies` list as candidate targets. Enemies receive `units + buildings`.
 
-`find_nearest_target()` filters out dead or invalid targets, groups candidates by priority where applicable, and selects the shortest distance in the chosen group. Objects with rectangles use the shared nearest-edge `rectangle_gap()` geometry; lightweight test doubles fall back to top-left `math.hypot(dx, dy)`.
+`find_nearest_target()` filters out dead or invalid targets, ignores targets hidden behind water/buildings when an authoritative `World` is available, groups candidates by priority where applicable, and selects the shortest distance in the chosen group. Objects with rectangles use the shared nearest-edge `rectangle_gap()` geometry; lightweight test doubles fall back to top-left `math.hypot(dx, dy)`.
 
-Units keep a living target until it dies; they do not switch to a closer target each frame. `HOLD` limits automatic acquisition to the current attack range, while `IDLE` enemies/allies can still acquire distant targets. There is no line-of-sight requirement yet; target routing now searches reachable attack-position candidates when a `World` is available.
+Units keep a living target until it dies; they do not switch to a closer target each frame. `HOLD` limits automatic acquisition to the current attack range, while `IDLE` enemies/allies can still acquire distant visible targets. Explicit `ATTACK` orders retain their target and route toward visible attack positions when possible.
 
 ### Enemy stats and priority bugs
 
@@ -756,7 +756,7 @@ Without a cooldown, an in-range unit could attack once per frame, making damage 
 
 A unit with a target and an expired cooldown checks its range. If the target is within range, it subtracts damage from target HP, adds a message, and resets its cooldown. The method then subtracts this frame's `dt` from a positive cooldown, including one it just reset.
 
-An Archer damages a target through this same direct HP subtraction. There is no flying arrow or delayed impact. Terrain does not block attacks, so an Archer can shoot across water within range.
+An Archer damages a target through this same direct HP subtraction. There is no flying arrow or delayed impact. World-backed attacks require line of sight through walkable terrain; water and buildings block the ray, while lightweight grid-only tests retain the fallback range behavior.
 
 A long frame permits at most one attack per update; the code does not replay missed attacks. Cooldowns can become negative before the next check.
 
@@ -764,7 +764,7 @@ A long frame permits at most one attack per update; the code does not replay mis
 
 A blocked building goal is rejected instead of redirected. `World.attack_cells()` now generates walkable candidate cells around the target footprint, and units try A* routes to those candidates. `rectangle_gap()` measures the shortest edge-to-edge distance, so a unit touching a building can be in range even when top-left points are 16 or more pixels apart.
 
-If all attack positions are blocked or unreachable, the unit clears its route and waits for the bounded retry timer. Line of sight is not implemented yet, so buildings do not obstruct ranged attacks.
+Candidate cells also require line of sight. If all attack positions are blocked, hidden, or unreachable, the unit clears its route and waits for the bounded retry timer. The ray is cell-based and does not yet model projectile height, cover, or team-specific obstruction.
 
 ### Waves
 

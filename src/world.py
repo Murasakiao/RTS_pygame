@@ -75,13 +75,14 @@ def rectangle_gap(first, second):
 
 def rect_cells(rect, grid_size):
     """Yield every cell touched by a rectangle footprint."""
-    if rect.width <= 0 or rect.height <= 0:
+    left_edge, top_edge, right_edge, bottom_edge = rectangle_bounds(rect)
+    if right_edge <= left_edge or bottom_edge <= top_edge:
         return
 
-    left = rect.left // grid_size
-    top = rect.top // grid_size
-    right = (rect.right - 1) // grid_size
-    bottom = (rect.bottom - 1) // grid_size
+    left = left_edge // grid_size
+    top = top_edge // grid_size
+    right = (right_edge - 1) // grid_size
+    bottom = (bottom_edge - 1) // grid_size
     for y in range(top, bottom + 1):
         for x in range(left, right + 1):
             yield x, y
@@ -237,8 +238,48 @@ class World:
                 return cell
         return None
 
+    def has_line_of_sight(self, first_rect, target_rect):
+        """Return whether terrain/buildings leave a clear cell ray to target."""
+        first_left, first_top, first_right, first_bottom = rectangle_bounds(
+            first_rect,
+        )
+        target_left, target_top, target_right, target_bottom = rectangle_bounds(
+            target_rect,
+        )
+        start = pixel_to_cell(
+            ((first_left + first_right - 1) // 2, (first_top + first_bottom - 1) // 2),
+            self.grid_size,
+        )
+        goal = pixel_to_cell(
+            ((target_left + target_right - 1) // 2, (target_top + target_bottom - 1) // 2),
+            self.grid_size,
+        )
+        target_cells = set(rect_cells(target_rect, self.grid_size))
+
+        x0, y0 = start
+        x1, y1 = goal
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        step_x = 1 if x0 < x1 else -1
+        step_y = 1 if y0 < y1 else -1
+        error = dx - dy
+
+        while True:
+            cell = (x0, y0)
+            if cell not in target_cells and not self.is_walkable(cell):
+                return False
+            if cell == goal:
+                return True
+            double_error = 2 * error
+            if double_error > -dy:
+                error -= dy
+                x0 += step_x
+            if double_error < dx:
+                error += dx
+                y0 += step_y
+
     def attack_cells(self, target_rect, attacker_size, attack_range):
-        """Return walkable cells from which an attacker can reach the target."""
+        """Return visible walkable cells from which an attacker can reach target."""
         target_left, target_top, target_right, target_bottom = rectangle_bounds(
             target_rect,
         )
@@ -257,7 +298,10 @@ class World:
                     continue
                 attacker_rect = cell_rect(cell, self.grid_size, attacker_size)
                 gap = rectangle_gap(attacker_rect, target_rect)
-                if gap <= attack_range:
+                if gap <= attack_range and self.has_line_of_sight(
+                    attacker_rect,
+                    target_rect,
+                ):
                     candidates.append((gap, cell))
 
         candidates.sort(key=lambda item: (item[0], item[1][1], item[1][0]))
