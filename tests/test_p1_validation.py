@@ -1,5 +1,6 @@
 import pygame
 
+from src.astar import a_star
 from src.spawning import generate_spawn_point
 from src.world import FootprintStatus, TerrainKind, TerrainTile, World
 
@@ -56,3 +57,32 @@ def test_spawn_point_uses_free_edge_land():
     cell = (point[0] // 16, point[1] // 16)
     assert cell[0] in {0, 3} or cell[1] in {0, 3}
     assert world.is_cell_free(cell, edge_buildings)
+
+
+def test_spawn_point_prefers_an_edge_that_can_reach_the_target():
+    world = World(
+        16,
+        [
+            [TerrainTile(TerrainKind.GRASS) for _ in range(10)]
+            for _ in range(6)
+        ],
+    )
+    for y in range(world.height):
+        if y != 5:
+            world.terrain[y][5] = TerrainTile(TerrainKind.WATER)
+    target = ObjectWithRect(pygame.Rect(32, 32, 32, 32))
+    world.rebuild_navigation([target])
+
+    point = generate_spawn_point(
+        world,
+        [target],
+        target=target,
+        attack_range=15,
+    )
+
+    assert point is not None
+    cell = (point[0] // 16, point[1] // 16)
+    assert any(
+        a_star(world.navigation_grid, cell, candidate).succeeded
+        for candidate in world.attack_cells(target.rect, (16, 16), 15)
+    )

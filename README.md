@@ -2,7 +2,7 @@
 
 A small real-time strategy prototype: place buildings, train soldiers, earn resources, and fight enemy waves on a Perlin-noise tile map.
 
-**Status:** dormant prototype. The core loop runs in the reviewed environment, but navigation, placement, targeting, and terrain regeneration need fixes. See [STATUS.md](STATUS.md) for the project summary.
+**Status:** dormant prototype. The reviewed core loop now has shared world/path rules, validated placement/spawns, and safer enemy routing, but map connectivity and match-ending rules remain. See [STATUS.md](STATUS.md) for the project summary.
 
 ## Developer documentation
 
@@ -57,7 +57,7 @@ Launch with `python -m src.rts` from the repository root. The asset loader resol
 | `S` | Hold the selected unit in place |
 | `Esc` | Clear the building choice |
 | `D` | Toggle on-screen debug information; also print the grid |
-| `T` | Request terrain regeneration; currently returns the same map |
+| `T` | Show a message; live terrain regeneration is disabled during a match |
 | Close window | Quit |
 
 For a first session, build a Barracks, click it to train a Swordsman, then select the soldier and right-click nearby grass.
@@ -66,7 +66,7 @@ For a first session, build a Barracks, click it to train a Swordsman, then selec
 
 The prototype includes eight building types, two allied unit types, two enemy types, passive resource income, HP/cooldown combat, and eight-direction A* routing.
 
-It has no worker gathering, animation, sound, save/load, multiplayer, or victory/defeat system. Building footprints and spawns lack complete validation. Failed movement can bypass obstacles, and melee units can get stuck outside building attack range. The guide documents these issues rather than presenting the prototype as a finished game.
+It has no worker gathering, animation, sound, save/load, multiplayer, or victory/defeat system. Map connectivity, protected lanes, pending blocked spawns, and full combat events remain. The guide documents these limits rather than presenting the prototype as a finished game.
 
 ## Licensing
 

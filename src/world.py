@@ -99,6 +99,7 @@ class World:
     navigation_grid: list = field(init=False)
     navigation_revision: int = field(init=False, default=0)
     _navigation_signature: tuple | None = field(init=False, default=None, repr=False)
+    _building_cells: frozenset = field(init=False, default_factory=frozenset, repr=False)
 
     def __post_init__(self):
         if not self.terrain or not self.terrain[0]:
@@ -144,12 +145,15 @@ class World:
             for row in self.terrain
         ]
 
+        building_cells = set()
         for building in buildings:
             for x, y in rect_cells(building.rect, self.grid_size):
                 if self.in_bounds((x, y)):
+                    building_cells.add((x, y))
                     terrain_kind = new_grid[y][x][0]
                     new_grid[y][x] = (terrain_kind, 1)
 
+        self._building_cells = frozenset(building_cells)
         signature = tuple(tuple(row) for row in new_grid)
         if signature != self._navigation_signature:
             self.navigation_grid = new_grid
@@ -266,7 +270,7 @@ class World:
 
         while True:
             cell = (x0, y0)
-            if cell not in target_cells and not self.is_walkable(cell):
+            if cell not in target_cells and cell in self._building_cells:
                 return False
             if cell == goal:
                 return True

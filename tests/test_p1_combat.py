@@ -35,7 +35,7 @@ def test_rectangle_gap_treats_touching_edges_as_in_range():
     assert rectangle_gap((0, 0, 16, 16), (32, 0, 16, 16)) == 16
 
 
-def test_world_line_of_sight_stops_at_water_and_buildings():
+def test_world_line_of_sight_passes_water_but_stops_at_buildings():
     world = make_world(6, 3)
     first = (0, 16, 16, 16)
     target = (80, 16, 16, 16)
@@ -44,7 +44,7 @@ def test_world_line_of_sight_stops_at_water_and_buildings():
 
     world.terrain[1][2] = TerrainTile(TerrainKind.WATER)
     world.rebuild_navigation()
-    assert not world.has_line_of_sight(first, target)
+    assert world.has_line_of_sight(first, target)
 
     world.terrain[1][2] = TerrainTile(TerrainKind.GRASS)
     _, building_image, font = make_assets()
@@ -69,6 +69,33 @@ def test_world_provides_reachable_attack_cells_around_a_building():
         for cell in candidates
     )
     pygame.quit()
+
+
+def test_enemy_routes_around_hidden_target_instead_of_staying_idle():
+    unit_image, building_image, font = make_assets()
+    try:
+        world = make_world(12, 8)
+        for y in range(world.height):
+            if y != 6:
+                world.terrain[y][5] = TerrainTile(TerrainKind.WATER)
+        building = Building(144, 48, "Castle", building_image, font)
+        world.rebuild_navigation([building])
+        enemy = EnemyUnit(
+            "Goblin",
+            0,
+            48,
+            [building],
+            [],
+            unit_image,
+            font,
+        )
+
+        enemy.update(33, world, [])
+
+        assert enemy.target is building
+        assert enemy.path
+    finally:
+        pygame.quit()
 
 
 def test_enemy_routes_to_a_reachable_building_attack_position():

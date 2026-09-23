@@ -405,3 +405,34 @@ Use this format:
 ### Scope
 - Placement/cost/cooldown transaction results, lane/connectivity validation, Castle defeat handling, population/reservation accounting, and finite-wave pending spawns remain later work.
 - This branch is stacked on the line-of-sight update; review it after PR #30.
+
+## 2026-09-23 · Prevent enemies from idling on unreachable spawn lanes
+
+### Changed
+- Removed the world-backed line-of-sight filter from automatic target acquisition. Enemies now acquire a target behind a wall or water and route toward a visible attack position instead of remaining idle at the obstruction.
+- Removed the fixed 64-candidate attack-position cap so a reachable farther candidate cannot be discarded after nearer candidates fail.
+- Made enemy edge-spawn selection optionally require an A* route to a legal attack position around the intended target.
+- Made Goblin/Orc spawn validation use their configured target priority and attack range.
+- Disabled live `T` terrain regeneration during a match; replacement worlds previously left actors and routes stale.
+- Rebuilt navigation immediately after dead-building cleanup so same-step spawning and the next route revision see the current building set.
+- Tracked building cells separately from terrain cells so water blocks walking but not line of sight, matching the combat rule.
+- Added regression tests for hidden-target routing, reachable edge spawning, and disabled live regeneration; updated the guide, plan, README, and status.
+
+### Why
+- A target hidden behind an obstacle can still be reachable by walking around it; requiring current line of sight before target selection made enemies appear frozen.
+- A fixed attack-candidate slice could omit the only reachable position for a ranged unit.
+- Edge land is not sufficient spawn validation when it is on a disconnected island.
+- Regenerating terrain in place invalidates building/unit positions and route assumptions.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `35 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless water-wall simulation confirmed a Goblin acquires the Castle and starts routing around the wall instead of staying at spawn.
+- Randomized terrain smoke covered 30 seeded maps and 150 target-reachable enemy spawns; surviving enemies progressed toward their targets or attacked them.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Map-wide connectivity/start-area validation, protected spawn lanes, pending blocked-spawn accounting, actor avoidance, Castle defeat handling, and full combat events remain later work.
+- This branch is stacked on the cost-validation update; review it after PR #31.

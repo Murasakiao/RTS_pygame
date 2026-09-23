@@ -295,7 +295,7 @@ class Unit(GameObject):
             PathStatus.UNREACHABLE,
             reason="no_attack_position",
         )
-        for candidate in candidates[:64]:
+        for candidate in candidates:
             result = a_star(grid, start_cell, candidate)
             last_result = result
             if result.succeeded:
@@ -453,13 +453,6 @@ class Unit(GameObject):
             target_distance = self.distance_to_target(target)
             if max_distance is not None and target_distance > max_distance:
                 continue
-            if (
-                self.world is not None
-                and hasattr(target, "rect")
-                and not self.world.has_line_of_sight(self.rect, target.rect)
-            ):
-                continue
-
             if isinstance(self, EnemyUnit) and hasattr(self, "target_priority"):
                 if (
                     self.target_priority == "building"

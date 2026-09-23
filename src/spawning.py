@@ -1,5 +1,6 @@
 import random
 
+from .astar import a_star
 from .constants import ENEMY_DATA, GRID_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH
 from .entities import EnemyUnit
 from .world import cell_to_pixel
@@ -19,8 +20,36 @@ def _legacy_spawn_point():
     return (grid_width - 1) * GRID_SIZE, random.randint(0, grid_height - 1) * GRID_SIZE
 
 
-def generate_spawn_point(world=None, buildings=(), units=(), enemies=()):
-    """Return a random valid, free map-edge point when a World is available."""
+def _can_reach_attack_position(
+    world,
+    spawn_cell,
+    target,
+    attacker_size,
+    attack_range,
+):
+    if target is None:
+        return True
+
+    for candidate in world.attack_cells(
+        target.rect,
+        attacker_size,
+        attack_range,
+    ):
+        if a_star(world.navigation_grid, spawn_cell, candidate).succeeded:
+            return True
+    return False
+
+
+def generate_spawn_point(
+    world=None,
+    buildings=(),
+    units=(),
+    enemies=(),
+    target=None,
+    attacker_size=(GRID_SIZE, GRID_SIZE),
+    attack_range=None,
+):
+    """Return a free map-edge point with an optional reachable target."""
     if world is None:
         return _legacy_spawn_point()
 
@@ -32,8 +61,21 @@ def generate_spawn_point(world=None, buildings=(), units=(), enemies=()):
     random.shuffle(candidates)
 
     for cell in candidates:
-        if world.is_cell_free(cell, buildings, units, enemies):
-            return cell_to_pixel(cell, world.grid_size)
+        if not world.is_cell_free(cell, buildings, units, enemies):
+            continue
+        if (
+            target is not None
+            and attack_range is not None
+            and not _can_reach_attack_position(
+                world,
+                cell,
+                target,
+                attacker_size,
+                attack_range,
+            )
+        ):
+            continue
+        return cell_to_pixel(cell, world.grid_size)
     return None
 
 
@@ -51,17 +93,33 @@ def spawn_enemies(
     spawned_enemies = []
     occupied_enemies = list(enemies)
     for _ in range(current_wave * enemy_spawn_rate):
+        enemy_type = random.choice(list(ENEMY_DATA))
+        priority = ENEMY_DATA[enemy_type].get("target_priority", "building")
+        preferred_targets = (
+            buildings
+            if priority == "building"
+            else units
+        )
+        target = (
+            preferred_targets[0]
+            if preferred_targets
+            else (units + buildings)[0]
+            if units or buildings
+            else None
+        )
         spawn_point = generate_spawn_point(
             world,
             buildings,
             units,
             occupied_enemies,
+            target=target,
+            attacker_size=(GRID_SIZE, GRID_SIZE),
+            attack_range=ENEMY_DATA[enemy_type].get("range", GRID_SIZE),
         )
         if spawn_point is None:
             break
 
         spawn_x, spawn_y = spawn_point
-        enemy_type = random.choice(list(ENEMY_DATA))
         image = asset_loader.image(
             ENEMY_DATA[enemy_type]["asset_key"],
             (GRID_SIZE, GRID_SIZE),
