@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and thirty-five committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and thirty-six committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Thirty-five committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, line of sight, dead-actor cleanup, atomic resource costs, and stuck-enemy prevention. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Thirty-six committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, fractional-coordinate replanning, single-unit orders, footprint/spawn validation, attack positions, line of sight, dead-actor cleanup, atomic resource costs, and stuck-enemy prevention. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -262,7 +262,7 @@ rts-pygame/
 │   ├── test_p0_runtime.py    Import, asset, state, timing, and startup tests
 │   ├── test_p1_world.py      World, terrain-kind, revision, and geometry tests
 │   ├── test_p1_astar.py      A* statuses, costs, validation, and corner tests
-│   ├── test_p1_movement.py   Route invalidation, retry, and waypoint tests
+│   ├── test_p1_movement.py   Route invalidation, retry, waypoints, and fractional replans
 │   ├── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
 │   ├── test_p1_validation.py Footprint, exit, and spawn-cell tests
 │   ├── test_p1_combat.py     Range, attack-position, and retry tests
@@ -985,7 +985,7 @@ unit.y += (dy / distance) * travel
 
 Dividing by distance gives a direction vector of length 1. This keeps diagonal travel speed equal to straight-line travel speed. At 20 pixels per second with a 33-millisecond frame, a Swordsman travels about 0.66 pixels.
 
-Floating-point `x` and `y` let small steps add up. Rounding each 0.66-pixel step down to zero would leave a soldier stuck. The unit copies its accumulated position to an integer-based `Rect` for drawing and collision checks.
+Floating-point `x` and `y` let small steps add up. Rounding each 0.66-pixel step down to zero would leave a soldier stuck. The unit copies its accumulated position to an integer-based `Rect` for drawing and collision checks. `pixel_to_cell()` explicitly converts the resulting float coordinates to integer cell indices before A*; otherwise a building placement during fractional movement would produce `coordinate_invalid` and leave the enemy retrying forever.
 
 ### Chasing and repathing
 

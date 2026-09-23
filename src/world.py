@@ -37,8 +37,11 @@ class TerrainTile:
 
 
 def pixel_to_cell(position, grid_size):
-    """Convert a pixel position to a zero-based grid cell."""
-    return position[0] // grid_size, position[1] // grid_size
+    """Convert integer or floating pixel coordinates to integer cell indices."""
+    return (
+        int(position[0] // grid_size),
+        int(position[1] // grid_size),
+    )
 
 
 def cell_to_pixel(cell, grid_size):
