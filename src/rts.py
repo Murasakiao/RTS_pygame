@@ -40,6 +40,22 @@ def update_grid(state):
     return state.world.rebuild_navigation(state.buildings)
 
 
+def cleanup_dead_entities(state):
+    """Remove dead actors after updates and clear stale references."""
+    state.units[:] = [unit for unit in state.units if unit.hp > 0]
+    state.enemies[:] = [enemy for enemy in state.enemies if enemy.hp > 0]
+    state.buildings[:] = [
+        building for building in state.buildings if building.hp > 0
+    ]
+
+    living_targets = state.units + state.enemies + state.buildings
+    for actor in state.units + state.enemies:
+        actor.clear_dead_target(living_targets)
+
+    if state.selected_unit not in state.units:
+        state.selected_unit = None
+
+
 def create_terrain_generator(assets, noise_seed):
     grass_tiles = [
         assets.image(
@@ -370,6 +386,8 @@ def update_match(state, dt_ms, assets, entity_font):
     state.building_cooldown = max(0, state.building_cooldown - dt_ms)
 
     for unit in list(state.units):
+        if unit.hp <= 0:
+            continue
         unit.targets = state.enemies
         unit.update(
             dt_ms,
@@ -378,12 +396,16 @@ def update_match(state, dt_ms, assets, entity_font):
         )
 
     for enemy in list(state.enemies):
+        if enemy.hp <= 0:
+            continue
         enemy.targets = state.units + state.buildings
         state.game_messages = enemy.update(
             dt_ms,
             state.world,
             state.game_messages,
         )
+
+    cleanup_dead_entities(state)
 
     if state.wave_timer >= WAVE_INTERVAL * state.current_wave:
         state.enemies.extend(
@@ -403,13 +425,6 @@ def update_match(state, dt_ms, assets, entity_font):
     else:
         state.wave_timer += dt_ms
 
-    state.enemies[:] = [enemy for enemy in state.enemies if enemy.hp > 0]
-    state.units[:] = [unit for unit in state.units if unit.hp > 0]
-    state.buildings[:] = [
-        building for building in state.buildings if building.hp > 0
-    ]
-    if state.selected_unit and state.selected_unit.hp <= 0:
-        state.selected_unit = None
 
 
 def draw_match(
