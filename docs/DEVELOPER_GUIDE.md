@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-eight committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and thirty-two committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Twenty-eight committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, line of sight, and dead-actor cleanup. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Thirty-two committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, line of sight, dead-actor cleanup, and atomic resource costs. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -266,7 +266,8 @@ rts-pygame/
 │   ├── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
 │   ├── test_p1_validation.py Footprint, exit, and spawn-cell tests
 │   ├── test_p1_combat.py     Range, attack-position, and retry tests
-│   └── test_p1_lifecycle.py  Dead-actor update and cleanup tests
+│   ├── test_p1_lifecycle.py  Dead-actor update and cleanup tests
+│   └── test_p1_resources.py  Affordability and atomic cost tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -686,11 +687,11 @@ The left-click handler checks for a friendly unit first, then resolves the click
 
 Construction is instant. The cooldown limits successive placement; it is not construction progress. There is no builder unit, build animation, repair, demolition command, or refund.
 
-The affordability code still uses `resources.get(resource, gold)` to handle the separate gold variable. This works for the existing keys, but a misspelled resource key would also fall back to the gold balance. A unified resource dictionary would make validation clearer.
+`src.game.can_afford()` treats `gold` as the separate balance and missing non-gold keys as zero; it never silently substitutes gold for wood, stone, food, or people. `deduct_cost()` checks the complete cost before mutating either balance, then applies the deduction atomically. The resource model still keeps gold separate from the other balances.
 
 ### Remaining placement validation
 
-The shared footprint validator now covers bounds, all terrain cells, and current actor/building occupancy. Remaining rules include preventing construction from sealing a spawn lane or isolating a trainer, validating costs/cooldown in a single reusable transaction result, and handling map connectivity after future terrain changes.
+The shared footprint validator now covers bounds, all terrain cells, and current actor/building occupancy. Cost affordability and deduction now share tested helpers. Remaining rules include preventing construction from sealing a spawn lane or isolating a trainer, combining placement/cost/cooldown into one transaction result, and handling map connectivity after future terrain changes.
 
 ## 10. Define units, combat, and enemy waves
 

@@ -379,3 +379,29 @@ Use this format:
 ### Scope
 - Projectile/cover geometry, Castle defeat handling, population/reservation accounting, lane/connectivity validation, and finite-wave pending spawns remain later work.
 - This branch is stacked on the lifecycle update; review it after PR #29.
+
+## 2026-09-22 · Centralize atomic resource costs
+
+### Changed
+- Added `can_afford()` and `deduct_cost()` to `src/game.py` for shared build/train affordability and deduction rules.
+- Changed placement, training, and the building preview to treat missing non-gold resources as zero instead of falling back to the gold balance.
+- Ensured a failed deduction raises before mutating either gold or resource balances.
+- Added `tests/test_p1_resources.py` for missing-resource handling, separate gold semantics, successful deductions, and atomic failure.
+- Updated the developer guide, improvement plan, status, and log documentation.
+
+### Why
+- Preview and commit should use the same cost semantics.
+- A typo or missing resource key must not accidentally pass by comparing against gold.
+- Cost validation should not partially charge a purchase that cannot be completed.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `32 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless build/train cost paths and atomic deduction tests passed.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Placement/cost/cooldown transaction results, lane/connectivity validation, Castle defeat handling, population/reservation accounting, and finite-wave pending spawns remain later work.
+- This branch is stacked on the line-of-sight update; review it after PR #30.
