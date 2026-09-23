@@ -328,3 +328,28 @@ Use this format:
 ### Scope
 - Line of sight, ranged obstruction rules, full combat event ordering, dead-actor cleanup, lane/connectivity validation, and finite-wave pending spawns remain later work.
 - This branch is stacked on the validation update; review it after PR #27.
+
+## 2026-09-22 · Separate dead-actor cleanup from drawing
+
+### Changed
+- Added an HP guard to `Unit.update()` and the match update loops so actors killed earlier in a frame do not take another turn.
+- Added `cleanup_dead_entities()` to remove dead units, enemies, and buildings after simulation updates, before drawing and wave spawning.
+- Cleared stale current targets, explicit attack orders, and selected-unit references during cleanup.
+- Added lifecycle regression tests and updated the developer guide, improvement plan, and status.
+
+### Why
+- Gameplay mutation should happen in the simulation phase, not while rendering a collection.
+- A dead selection or target reference can cause confusing UI and stale orders.
+- Slice-based cleanup preserves the shared list objects held by units.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `27 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless dead-unit update and selected/target cleanup tests passed.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Castle defeat handling, population/reservation accounting, line of sight, lane/connectivity validation, and finite-wave pending spawns remain later work.
+- This branch is stacked on the combat-geometry update; review it after PR #28.

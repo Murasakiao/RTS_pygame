@@ -113,6 +113,8 @@ class Unit(GameObject):
         """Update target selection, route following, and combat."""
         if game_messages is None:
             game_messages = []
+        if self.hp <= 0:
+            return game_messages
 
         if hasattr(navigation, "navigation_grid"):
             world = navigation
@@ -137,6 +139,15 @@ class Unit(GameObject):
         if hasattr(target, "rect"):
             return rectangle_gap(self.rect, target.rect)
         return math.hypot(target.x - self.x, target.y - self.y)
+
+    def clear_dead_target(self, living_targets):
+        if self.target is not None and self.target not in living_targets:
+            self.target = None
+        if (
+            self.order.kind is OrderKind.ATTACK
+            and self.order.target not in living_targets
+        ):
+            self.order = UnitOrder(OrderKind.IDLE)
 
     def handle_target_selection(self):
         """Keep explicit orders separate from the current combat target."""
@@ -392,7 +403,7 @@ class Unit(GameObject):
         if game_messages is None:
             game_messages = []
 
-        if self.target and self.attack_cooldown <= 0:
+        if self.target and self.target.hp > 0 and self.attack_cooldown <= 0:
             if self.should_attack():
                 self.attack_target(game_messages if game_messages is not None else [])
                 self.attack_cooldown = self.get_attack_cooldown()
@@ -413,9 +424,11 @@ class Unit(GameObject):
             self.target.hp -= self.attack
             message = f"{unit_name} attacked {target_name} for {self.attack} damage."
 
-            if self.target and self.target.hp <= 0:  # Check if target still exists
+            if self.target and self.target.hp <= 0:
                 message = f"{unit_name} destroyed {target_name}"
-                self.target = None  # Clear target after destroying it
+                if self.order.kind is OrderKind.ATTACK:
+                    self.order = UnitOrder(OrderKind.IDLE)
+                self.target = None
             
             if game_messages is not None:
                 if game_messages is not None:

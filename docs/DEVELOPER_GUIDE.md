@@ -33,7 +33,7 @@ This guide describes the code in this checkout. Sections marked **Suggested chan
 
 ## 1. Current status
 
-The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-five committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
+The window title is **Kingdom Conquer**. The project contains about 1,700 lines of Python across the source modules, plus 23 PNG assets. It has pinned runtime and development dependency manifests and twenty-seven committed P0/P1 runtime and rule tests, but no save system or packaging configuration.
 
 | System | Current implementation | Limits you should know |
 |---|---|---|
@@ -53,7 +53,7 @@ The window title is **Kingdom Conquer**. The project contains about 1,700 lines 
 
 The existing local environment ran **Python 3.12.13, Pygame 2.6.1, and the `noise` distribution 1.2.2** on macOS. Its dependency check passed. The source modules compile, and Pygame loaded all 23 PNG files.
 
-Twenty-five committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, and attack positions. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
+Twenty-seven committed tests cover import safety, asset fallback/path resolution, fresh state isolation, fixed timing, world semantics, geometry, A* result statuses, corner safety, movement routes, single-unit orders, footprint/spawn validation, attack positions, and dead-actor cleanup. Headless smoke checks also exercise menu start/quit, Barracks placement, Swordsman training, and coordinate-path movement. The remaining placement, targeting, combat, and match-ending issues described below remain.
 
 These checks confirm those code paths in this environment. They do not establish Windows/Linux installation compatibility, normal-frame-rate gameplay quality, or performance with a large army.
 
@@ -265,7 +265,8 @@ rts-pygame/
 │   ├── test_p1_movement.py   Route invalidation, retry, and waypoint tests
 │   ├── test_p1_orders.py     Single-unit Move, Attack, and Hold tests
 │   ├── test_p1_validation.py Footprint, exit, and spawn-cell tests
-│   └── test_p1_combat.py     Range, attack-position, and retry tests
+│   ├── test_p1_combat.py     Range, attack-position, and retry tests
+│   └── test_p1_lifecycle.py  Dead-actor update and cleanup tests
 └── assets/
     ├── buildings/            Building PNGs and unused sheets
     ├── characters/           Unit PNGs and an unused knight image
@@ -736,13 +737,7 @@ handle_attack(dt, game_messages)
 
 Allies receive the `enemies` list as candidate targets. Enemies receive `units + buildings`.
 
-`find_nearest_target()` filters out dead or invalid targets, groups candidates by priority where applicable, and selects the shortest straight-line distance in the chosen group:
-
-```text
-distance = sqrt((target.x - unit.x)² + (target.y - unit.y)²)
-```
-
-`math.hypot(dx, dy)` computes that distance. This is distance between **top-left positions**, not sprite centers or nearest rectangle edges.
+`find_nearest_target()` filters out dead or invalid targets, groups candidates by priority where applicable, and selects the shortest distance in the chosen group. Objects with rectangles use the shared nearest-edge `rectangle_gap()` geometry; lightweight test doubles fall back to top-left `math.hypot(dx, dy)`.
 
 Units keep a living target until it dies; they do not switch to a closer target each frame. `HOLD` limits automatic acquisition to the current attack range, while `IDLE` enemies/allies can still acquire distant targets. There is no line-of-sight requirement yet; target routing now searches reachable attack-position candidates when a `World` is available.
 
@@ -753,9 +748,7 @@ Units keep a living target until it dies; they do not switch to a closer target 
 | Goblin | 12 | 10 | 1 | 15 | 1500 | Building |
 | Orc | 15 | 5 | 2 | 5 | 2000 | Unit |
 
-`EnemyUnit.__init__()` sets `self.target_priority = "building"` for both types. It does not read the declared Orc priority.
-
-The duplicate-module class problem is resolved by the package imports. `EnemyUnit` now reads `target_priority` from `ENEMY_DATA`, so Orcs prefer allied units as declared. Reachability, chase limits, and order behavior still need further tuning.
+The duplicate-module class problem is resolved by the package imports. `EnemyUnit` reads `target_priority` from `ENEMY_DATA`, so Orcs prefer allied units as declared. Reachability, chase limits, and order behavior still need further tuning.
 
 ### Attack cycle
 
@@ -795,17 +788,9 @@ Ignoring frame-level delays and the menu-time issue, those waves occur near cumu
 
 ### Death and cleanup
 
-The main loop removes dead allies and enemies after both update loops, using slice assignment:
+The match update skips actors whose HP is already zero, then calls `cleanup_dead_entities()` after both update loops. That helper removes dead units, enemies, and buildings with slice assignment, clears stale current/explicit attack targets, and clears a selected unit that died. Drawing only reads the surviving collections; it does not remove objects.
 
-```python
-enemies[:] = [enemy for enemy in enemies if enemy.hp > 0]
-```
-
-Some units hold a reference to this same list. `[:]` changes its contents without replacing the list, so those units see the removals too.
-
-However, a unit killed earlier in the frame can still take its turn before cleanup because updates do not begin with an HP guard. Buildings are removed during drawing with `buildings.remove(building)` inside iteration, which can skip the next building. A selected unit can also remain selected after its removal.
-
-Separate update, death cleanup, and drawing to make these rules consistent. Destroying a Castle currently does not cause defeat.
+A unit killed earlier in the frame therefore does not take a later turn. Destroying a Castle currently removes it but does not yet cause defeat, and population/reservation accounting is still a later match-state feature.
 
 ## 11. Find routes with A*
 

@@ -79,7 +79,7 @@ These findings come from the current source and the earlier review. Each needs a
 | B07 | Partly resolved in P1 | Shared `World.validate_footprint()` now checks full bounds, terrain, buildings, units, and enemies for preview/commit; lane sealing, transaction unification, and map connectivity remain | `world.py`, placement handler and preview helpers | P1, P3 |
 | B08 | Partly resolved in P1 | Training uses adjacent free exits and enemy waves use free walkable edge cells; reachable lanes and pending blocked spawns remain | Training handler, `world.py`, `spawning.py` | P1, P2 |
 | B09 | Partly resolved in P1 | Enemy priorities now load from data, Move/Attack/Hold intent is explicit, and unreachable attack routes retry with a delay; chase limits and full AI policy remain | `EnemyUnit`, target selection, order handling | P1, P4 |
-| B10 | High | Removing buildings while drawing can skip objects; dead selections and target references remain | `rts.py` update/draw blocks | P1 |
+| B10 | Partly resolved in P1 | Dead actors are skipped during updates, removed after the update phase, and stale target/selection references are cleared; reservation/accounting cleanup remains | `rts.py` update/cleanup blocks | P1 |
 | B11 | High | Text overlaps or clips; HUD clicks reach the map; build mode can linger; input uses current mouse position instead of each click's position | `rts.py` events, UI helpers | P3 |
 | B12 | Partly resolved in P0 | Shared image/font loading now has repository-relative lookup, diagnostics, and placeholders; movement diagnostics and final presentation cleanup remain | `assets.py`, object construction, movement prints | P0, P5 |
 
@@ -329,7 +329,7 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 - [x] Separate `UnitOrder` intent from current targets and waypoints. Implement single-unit Move, Attack, and Hold/Stop behavior before group controls.
 - [x] Add `World.validate_footprint()` plus valid trainer exits and free edge spawn-cell selection. Successful construction updates costs and navigation together; lane/connectivity transactions remain for later validation.
 - [x] Share rectangle-gap attack range between targeting and damage, search reachable attack-position candidates, load enemy priorities from data, and bound unreachable-target retries. Line-of-sight and full combat geometry remain later refinements.
-- [ ] Move cleanup out of drawing. Remove dead targets/selections and prevent dead actors taking another turn.
+- [x] Move cleanup out of drawing. Dead actors are skipped during updates, removed after the update phase, and dead target/order/selection references are cleared. Population and reservation accounting remain later match-state work.
 
 **Exit checks:** no movement through water, buildings, or blocked diagonal corners; no movement on a failed route; the start-equals-goal case succeeds without an error message; a building placed across a route forces a safe replan; Goblin and Orc can damage both a 1 × 1 building and the 2 × 2 Castle from legal cells; killing a selected unit leaves no ghost selection.
 
