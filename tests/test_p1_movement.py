@@ -1,8 +1,9 @@
 import pygame
 
 from src.astar import a_star
-from src.entities import AlliedUnit
+from src.entities import AlliedUnit, Building, EnemyUnit
 from src.orders import OrderKind, UnitOrder
+from src.world import TerrainKind, TerrainTile, World
 
 
 def make_unit():
@@ -69,5 +70,43 @@ def test_failed_destination_retries_after_a_bounded_delay_without_direct_motion(
         assert unit.path_retry_timer < first_retry_timer
         assert (unit.x, unit.y) == (0, 0)
         assert unit.destination_cell == (2, 0)
+    finally:
+        pygame.quit()
+
+
+def test_fractional_enemy_position_can_replan_after_building_placement():
+    pygame.init()
+    try:
+        world = World(
+            16,
+            [
+                [TerrainTile(TerrainKind.GRASS) for _ in range(20)]
+                for _ in range(10)
+            ],
+        )
+        font = pygame.font.Font(None, 12)
+        castle = Building(16 * 16, 16 * 5, "Castle", pygame.Surface((32, 32)), font)
+        world.rebuild_navigation([castle])
+        enemy = EnemyUnit(
+            "Goblin",
+            0,
+            16 * 5,
+            [castle],
+            [],
+            pygame.Surface((16, 16)),
+            font,
+        )
+
+        for _ in range(100):
+            enemy.update(1000 / 30, world, [])
+        assert enemy.x % 1 != 0
+
+        blocker = Building(16 * 5, 16 * 5, "House", pygame.Surface((16, 16)), font)
+        world.rebuild_navigation([castle, blocker])
+        enemy.update(1000 / 30, world, [])
+
+        assert enemy.route_revision == world.navigation_revision
+        assert enemy.path
+        assert enemy.path_retry_timer == 0
     finally:
         pygame.quit()

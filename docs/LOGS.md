@@ -436,3 +436,26 @@ Use this format:
 ### Scope
 - Map-wide connectivity/start-area validation, protected spawn lanes, pending blocked-spawn accounting, actor avoidance, Castle defeat handling, and full combat events remain later work.
 - This branch is stacked on the cost-validation update; review it after PR #31.
+
+## 2026-09-23 · Replan correctly after mid-route building placement
+
+### Changed
+- Fixed `pixel_to_cell()` to always return integer cell coordinates, including when a unit's smooth pixel position is fractional.
+- Added a regression test that moves a Goblin to a fractional position, places a building across its route, and verifies a new route is accepted immediately.
+- Updated the movement guide, improvement plan, and status with the failure mode and fix.
+
+### Why
+- Smooth movement stores `x`/`y` as floats. After a building changed the navigation revision, the old conversion passed values such as `(2.0, 5)` to A*, whose strict coordinate validation rejected them as `coordinate_invalid`.
+- The enemy then cleared its route and repeatedly retried without moving around the new building.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `36 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless reproduction: a Goblin moving toward a Castle replanned around a newly placed House after fractional movement.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Building placement can still make a lane genuinely unreachable; lane-sealing validation and actor avoidance remain later work.
+- This branch is stacked on the enemy-stuck fix; review it after PR #32.
