@@ -11,6 +11,7 @@ from src.world import (
     FootprintStatus,
     TerrainKind,
     TerrainTile,
+    TrainerExitRequirement,
     World,
 )
 
@@ -94,6 +95,57 @@ def test_connectivity_accepts_a_route_with_an_open_detour():
     )
 
     assert result.status is ConnectivityStatus.VALID
+
+
+def test_trainer_exit_validation_rejects_a_surrounded_trainer():
+    world = grass_world(5, 5)
+    trainer = ObjectWithRect(pygame.Rect(2 * 16, 2 * 16, 16, 16))
+    blockers = [
+        ObjectWithRect(pygame.Rect(2 * 16, 1 * 16, 16, 16)),
+        ObjectWithRect(pygame.Rect(2 * 16, 3 * 16, 16, 16)),
+        ObjectWithRect(pygame.Rect(1 * 16, 2 * 16, 16, 16)),
+        ObjectWithRect(pygame.Rect(3 * 16, 2 * 16, 16, 16)),
+    ]
+    buildings = [trainer, *blockers]
+    world.rebuild_navigation(buildings)
+    requirement = TrainerExitRequirement(
+        origin=(2, 2),
+        size=(1, 1),
+        actor_size=(16, 16),
+        attack_range=15,
+        actor=trainer,
+    )
+
+    result = world.validate_trainer_exits([requirement], buildings)
+
+    assert result.status is ConnectivityStatus.EXIT_BLOCKED
+    assert result.actor is trainer
+
+
+def test_spawn_lane_validation_requires_two_reachable_edges():
+    world = World(
+        16,
+        [
+            [TerrainTile(TerrainKind.WATER) for _ in range(10)]
+            for _ in range(6)
+        ],
+    )
+    for x in range(6):
+        world.terrain[2][x] = TerrainTile(TerrainKind.GRASS)
+        world.terrain[3][x] = TerrainTile(TerrainKind.GRASS)
+    castle = ObjectWithRect(pygame.Rect(4 * 16, 2 * 16, 32, 32))
+    world.rebuild_navigation([castle])
+
+    result = world.validate_spawn_lanes(
+        castle.rect,
+        (16, 16),
+        5,
+        [castle],
+        minimum_lanes=2,
+    )
+
+    assert result.status is ConnectivityStatus.INSUFFICIENT_SPAWN_LANES
+    assert result.lanes == ("left",)
 
 
 def test_spawn_point_uses_free_edge_land():

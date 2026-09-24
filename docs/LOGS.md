@@ -486,3 +486,31 @@ Use this format:
 ### Scope
 - Future spawn lanes, trainer exits connected to main land, generated-map validation, actor avoidance, Castle defeat handling, and pending spawns remain later work.
 - This branch is stacked on the fractional-replan update; review it after PR #33.
+
+## 2026-09-23 · Protect trainer exits and future spawn lanes
+
+### Changed
+- Added reverse multi-goal reachability using the same diagonal/corner rules as A*.
+- Added `World.validate_trainer_exits()` for adjacent free exits and optional Castle connectivity.
+- Added `World.edge_lanes()`, `reachable_edge_lanes()`, and `validate_spawn_lanes()`; Castle-backed building changes now require at least two reachable map edges for future waves.
+- Updated placement feedback for surrounded trainers and insufficient spawn lanes.
+- Added trainer-exit, spawn-lane, and reverse-reachability tests.
+- Updated the developer guide, improvement plan, and status documentation.
+
+### Why
+- A trainer with one empty neighboring cell can still be isolated from the playable land or Castle approach area.
+- A living-actor check does not protect future waves after current enemies are gone.
+- Connectivity checks should be fast enough for a click; reverse reachability avoids running A* separately from every edge cell to every attack candidate.
+
+### Verification
+- `venv/bin/python -m pytest -q`: `42 passed`.
+- `venv/bin/python -m compileall -q src tests`.
+- `venv/bin/python -m pip check`: no broken requirements.
+- `git diff --check`.
+- Headless surrounded-trainer and one-lane fixtures returned `exit_blocked` and `insufficient_spawn_lanes` respectively.
+- Full-size 48 × 36 lane validation improved to about 5 ms per check in the local smoke benchmark.
+- Verification environment: macOS 26.6.2 arm64, Python 3.12.13. Other platforms remain unverified.
+
+### Scope
+- Protected entry strips, generated-map acceptance/fallback, pending spawn queues, actor avoidance, Castle defeat handling, and finite waves remain later work.
+- This branch is stacked on the lane-sealing update; review it after PR #34.

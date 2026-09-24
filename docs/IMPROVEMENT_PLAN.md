@@ -327,7 +327,7 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 - [x] Correct A*: use octile costs/heuristic, reject diagonal corner cutting, skip stale heap entries, validate inputs, and return explicit `PathResult` statuses. Attack-position candidate search remains part of the later combat step.
 - [x] Remove obstacle-bypassing motion, reuse routes, consume residual waypoint travel, normalize float pixel positions to integer cells, and limit failed-route retries. Store the world navigation revision with each route and invalidate it after walkability changes.
 - [x] Separate `UnitOrder` intent from current targets and waypoints. Implement single-unit Move, Attack, and Hold/Stop behavior before group controls.
-- [x] Add `World.validate_footprint()` plus valid trainer exits and target-reachable free edge spawn-cell selection. Shared `can_afford()`/`deduct_cost()` helpers now validate and apply costs atomically. Proposed construction now rejects buildings that disconnect living actors from Castle approach cells; successful construction updates costs and navigation together. Future spawn lanes, trainer connectivity, transaction unification, and pending spawn accounting remain.
+- [x] Add `World.validate_footprint()` plus valid trainer exits and target-reachable free edge spawn-cell selection. Shared `can_afford()`/`deduct_cost()` helpers now validate and apply costs atomically. Proposed construction now rejects buildings that disconnect living actors from Castle approach cells, surround trainers, or reduce reachable future entry edges below two; successful construction updates costs and navigation together. Protected entry strips, transaction unification, and pending spawn accounting remain.
 - [x] Share rectangle-gap attack range and cell-based line of sight between targeting and damage, search reachable attack-position candidates, load enemy priorities from data, and bound unreachable-target retries. Projectile/cover geometry remains a later refinement.
 - [x] Move cleanup out of drawing. Dead actors are skipped during updates, removed after the update phase, and dead target/order/selection references are cleared. Population and reservation accounting remain later match-state work.
 
@@ -342,7 +342,7 @@ No calendar estimates yet: the import and navigation fixes will show how much re
 **Depends on:** P1. Completes the map/spawn portions of B03/B08 and introduces the match loop. Use the existing single-unit controls and temporary training flow here; P3 replaces them before full-match balancing.
 
 - [ ] Validate seeded maps and add reserved Castle/building space, spawn lanes, bounded retries, and a fallback arena.
-- [ ] Reject construction that seals lanes, isolates living actors, or encloses trainers using current world rules.
+- [ ] Reject construction that seals lanes, isolates living actors, or encloses trainers using current world rules. Living-actor routes, trainer exits, and a two-edge future-lane minimum are implemented; protected strips and full generated-map rules remain.
 - [ ] Preplace the Castle, apply opening resources, and add preparation, wave, intermission, victory, defeat, and pause states.
 - [ ] Track pending spawns separately from living enemies. Add finite wave definitions, protected entry strips, cap-aware staged spawning, countdowns, and lane warnings. Give spawned enemies their default Castle-advance order.
 - [ ] Add wave-clear rewards with exactly-once accounting. Start with simple scripted wave compositions; sophisticated selection is unnecessary here.

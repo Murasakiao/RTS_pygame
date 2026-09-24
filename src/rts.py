@@ -8,6 +8,7 @@ from .constants import (
     BLACK,
     BUILDING_COOLDOWN_TIME,
     BUILDING_DATA,
+    ENEMY_DATA,
     ENEMY_SPAWN_RATE,
     FPS,
     GREEN,
@@ -32,7 +33,12 @@ from .utils import (
     draw_resources,
     update_preview_rect,
 )
-from .world import ConnectivityRoute, cell_to_pixel, pixel_to_cell
+from .world import (
+    ConnectivityRoute,
+    TrainerExitRequirement,
+    cell_to_pixel,
+    pixel_to_cell,
+)
 
 
 def update_grid(state):
@@ -62,25 +68,70 @@ def building_connectivity_result(state, proposed_buildings):
         for building in proposed_buildings
         if building.type == "Castle" and building.hp > 0
     ]
-    if not castles:
-        return None
+    castle = castles[0] if castles else None
 
-    castle = castles[0]
-    routes = [
-        ConnectivityRoute(
-            start_cell=pixel_to_cell(
-                (actor.x, actor.y),
-                state.world.grid_size,
-            ),
-            target_rect=castle.rect,
-            actor_size=actor.rect.size,
-            attack_range=actor.get_attack_range(),
-            actor=actor,
+    if castle is not None:
+        routes = [
+            ConnectivityRoute(
+                start_cell=pixel_to_cell(
+                    (actor.x, actor.y),
+                    state.world.grid_size,
+                ),
+                target_rect=castle.rect,
+                actor_size=actor.rect.size,
+                attack_range=actor.get_attack_range(),
+                actor=actor,
+            )
+            for actor in state.units + state.enemies
+            if actor.hp > 0
+        ]
+        result = state.world.validate_connectivity(
+            routes,
+            proposed_buildings,
         )
-        for actor in state.units + state.enemies
-        if actor.hp > 0
-    ]
-    return state.world.validate_connectivity(routes, proposed_buildings)
+        if not result.valid:
+            return result
+
+    trainer_requirements = []
+    for building in proposed_buildings:
+        building_data = BUILDING_DATA[building.type]
+        unit_type = building_data.get("unit")
+        if unit_type is None:
+            continue
+        size_multiplier = building_data.get("size_multiplier", 1)
+        trainer_requirements.append(
+            TrainerExitRequirement(
+                origin=pixel_to_cell(
+                    (building.rect.left, building.rect.top),
+                    state.world.grid_size,
+                ),
+                size=(size_multiplier, size_multiplier),
+                actor_size=(GRID_SIZE, GRID_SIZE),
+                attack_range=ALLY_DATA[unit_type].get("range", GRID_SIZE - 1),
+                actor=building,
+            )
+        )
+
+    result = state.world.validate_trainer_exits(
+        trainer_requirements,
+        proposed_buildings,
+        state.units,
+        state.enemies,
+        castle.rect if castle is not None else None,
+    )
+    if not result.valid:
+        return result
+
+    if castle is None:
+        return result
+
+    return state.world.validate_spawn_lanes(
+        castle.rect,
+        (GRID_SIZE, GRID_SIZE),
+        ENEMY_DATA["Orc"].get("range", GRID_SIZE - 1),
+        proposed_buildings,
+        minimum_lanes=2,
+    )
 
 
 def create_terrain_generator(assets, noise_seed):
@@ -322,10 +373,14 @@ def handle_game_event(state, event, assets, entity_font, building_map):
                 state.buildings + [new_building],
             )
             if connectivity is not None and not connectivity.valid:
-                add_game_message(
+                message = {
+                    "exit_blocked": "Cannot build: trainer exit blocked.",
+                    "insufficient_spawn_lanes": "Cannot build: spawn lanes blocked.",
+                }.get(
+                    connectivity.reason,
                     "Cannot build: blocked route.",
-                    state.game_messages,
                 )
+                add_game_message(message, state.game_messages)
                 return True
 
             state.buildings.append(new_building)

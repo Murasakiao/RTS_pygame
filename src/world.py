@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .astar import a_star
+from .astar import reachable_cells
 
 
 class TerrainKind(str, Enum):
@@ -19,6 +19,8 @@ class FootprintStatus(str, Enum):
 class ConnectivityStatus(str, Enum):
     VALID = "valid"
     BLOCKED_ROUTE = "blocked_route"
+    EXIT_BLOCKED = "exit_blocked"
+    INSUFFICIENT_SPAWN_LANES = "insufficient_spawn_lanes"
 
 
 @dataclass(frozen=True)
@@ -47,9 +49,19 @@ class ConnectivityRoute:
 
 
 @dataclass(frozen=True)
+class TrainerExitRequirement:
+    origin: tuple[int, int]
+    size: tuple[int, int]
+    actor_size: tuple[int, int]
+    attack_range: float
+    actor: object | None = None
+
+
+@dataclass(frozen=True)
 class ConnectivityResult:
     status: ConnectivityStatus
     actor: object | None = None
+    lanes: tuple[str, ...] = ()
 
     @property
     def valid(self):
@@ -387,6 +399,126 @@ class World:
         candidates.sort(key=lambda item: (item[0], item[1][1], item[1][0]))
         return tuple(cell for _, cell in candidates)
 
+    @staticmethod
+    def _can_reach_any(navigation_grid, start_cell, goal_cells):
+        return start_cell in reachable_cells(navigation_grid, goal_cells)
+
+    def edge_lanes(self):
+        """Return deterministic top, bottom, left, and right edge cells."""
+        return {
+            "top": tuple((x, 0) for x in range(self.width)),
+            "bottom": tuple(
+                (x, self.height - 1) for x in range(self.width)
+            ),
+            "left": tuple(
+                (0, y) for y in range(1, max(1, self.height - 1))
+            ),
+            "right": tuple(
+                (self.width - 1, y)
+                for y in range(1, max(1, self.height - 1))
+            ),
+        }
+
+    def reachable_edge_lanes(
+        self,
+        target_rect,
+        attacker_size,
+        attack_range,
+        buildings=(),
+    ):
+        """Return edge lanes with at least one route to a target approach."""
+        navigation_grid, building_cells = self._navigation_data(buildings)
+        attack_cells = self.attack_cells(
+            target_rect,
+            attacker_size,
+            attack_range,
+            navigation_grid,
+            building_cells,
+        )
+        reachable_cells_from_target = reachable_cells(
+            navigation_grid,
+            attack_cells,
+        )
+        lanes = {}
+        for name, edge_cells in self.edge_lanes().items():
+            reachable = tuple(
+                cell
+                for cell in edge_cells
+                if cell in reachable_cells_from_target
+            )
+            if reachable:
+                lanes[name] = reachable
+        return lanes
+
+    def validate_spawn_lanes(
+        self,
+        target_rect,
+        attacker_size,
+        attack_range,
+        buildings=(),
+        minimum_lanes=2,
+    ):
+        """Require enough distinct map edges to reach a target approach."""
+        lanes = self.reachable_edge_lanes(
+            target_rect,
+            attacker_size,
+            attack_range,
+            buildings,
+        )
+        valid_lanes = tuple(sorted(lanes))
+        if len(valid_lanes) < minimum_lanes:
+            return ConnectivityResult(
+                ConnectivityStatus.INSUFFICIENT_SPAWN_LANES,
+                lanes=valid_lanes,
+            )
+        return ConnectivityResult(
+            ConnectivityStatus.VALID,
+            lanes=valid_lanes,
+        )
+
+    def validate_trainer_exits(
+        self,
+        trainers,
+        buildings=(),
+        units=(),
+        enemies=(),
+        target_rect=None,
+    ):
+        """Ensure every trainer has an adjacent, connected future exit."""
+        navigation_grid, building_cells = self._navigation_data(buildings)
+        for trainer in trainers:
+            exit_cell = self.find_free_exit(
+                trainer.origin,
+                trainer.size,
+                buildings,
+                units,
+                enemies,
+                navigation_grid,
+            )
+            if exit_cell is None:
+                return ConnectivityResult(
+                    ConnectivityStatus.EXIT_BLOCKED,
+                    actor=trainer.actor,
+                )
+            if target_rect is not None:
+                target_cells = self.attack_cells(
+                    target_rect,
+                    trainer.actor_size,
+                    trainer.attack_range,
+                    navigation_grid,
+                    building_cells,
+                )
+                if not self._can_reach_any(
+                    navigation_grid,
+                    exit_cell,
+                    target_cells,
+                ):
+                    return ConnectivityResult(
+                        ConnectivityStatus.BLOCKED_ROUTE,
+                        actor=trainer.actor,
+                    )
+        return ConnectivityResult(ConnectivityStatus.VALID)
+
     def validate_connectivity(self, routes, buildings=()):
         """Reject a building set that strands a required living-actor route."""
         navigation_grid, building_cells = self._navigation_data(buildings)
@@ -398,13 +530,9 @@ class World:
                 navigation_grid,
                 building_cells,
             )
-            if any(
-                a_star(
-                    navigation_grid,
-                    route.start_cell,
-                    candidate,
-                ).succeeded
-                for candidate in candidates
+            if route.start_cell in reachable_cells(
+                navigation_grid,
+                candidates,
             ):
                 continue
             return ConnectivityResult(
