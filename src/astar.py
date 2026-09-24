@@ -3,6 +3,7 @@ from enum import Enum
 import heapq
 import itertools
 import math
+from collections import deque
 from collections.abc import Sequence
 
 
@@ -109,6 +110,34 @@ def _neighbors(grid, cell, width, height):
             if not _walkable(grid, (x, y + dy)):
                 continue
         yield nx, ny
+
+
+def reachable_cells(grid, goals):
+    """Return cells that can reach at least one walkable goal."""
+    dimensions, grid_error = _validate_grid(grid)
+    if grid_error:
+        return frozenset()
+
+    width, height = dimensions
+    valid_goals = {
+        goal
+        for value in goals
+        for goal in (_coordinate(value),)
+        if goal is not None
+        and 0 <= goal[0] < width
+        and 0 <= goal[1] < height
+        and _walkable(grid, goal)
+    }
+    visited = set(valid_goals)
+    frontier = deque(valid_goals)
+    while frontier:
+        current = frontier.popleft()
+        for neighbor in _neighbors(grid, current, width, height):
+            if neighbor in visited:
+                continue
+            visited.add(neighbor)
+            frontier.append(neighbor)
+    return frozenset(visited)
 
 
 def distance(first, second):

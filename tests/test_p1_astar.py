@@ -1,6 +1,6 @@
 import math
 
-from src.astar import PathStatus, a_star, h_score
+from src.astar import PathStatus, a_star, h_score, reachable_cells
 
 
 def open_grid(width, height):
@@ -57,3 +57,15 @@ def test_a_star_does_not_replace_a_blocked_goal_with_a_nearby_cell():
 
     assert result.status is PathStatus.UNREACHABLE
     assert result.reason == "goal_blocked"
+
+
+def test_reachable_cells_uses_the_same_corner_rule_as_a_star():
+    grid = open_grid(3, 3)
+    grid[0][1] = (0, 1)
+    grid[1][0] = (0, 1)
+
+    reachable = reachable_cells(grid, [(2, 2)])
+
+    assert (2, 2) in reachable
+    assert (1, 1) in reachable
+    assert (0, 0) not in reachable
